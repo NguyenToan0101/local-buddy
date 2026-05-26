@@ -1,29 +1,39 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "availability_slots")
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "availability_slots")
 public class AvailabilitySlot {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "buddy_id", nullable = false)
-private localbuddy.backend.model.entity.User buddy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "buddy_id", nullable = false)
+    private User buddy;
 
-@jakarta.persistence.Column(name = "start_time", nullable = false)
-private java.time.OffsetDateTime startTime;
+    @Column(name = "start_time", nullable = false)
+    private OffsetDateTime startTime;
 
-@jakarta.persistence.Column(name = "end_time", nullable = false)
-private java.time.OffsetDateTime endTime;
+    @Column(name = "end_time", nullable = false)
+    private OffsetDateTime endTime;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "created_at", nullable = false)
-private java.time.OffsetDateTime createdAt;
-
+    @ColumnDefault("now()")
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
 
 }

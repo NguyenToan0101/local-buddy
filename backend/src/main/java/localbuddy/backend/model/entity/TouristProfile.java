@@ -1,41 +1,52 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "tourist_profiles")
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "tourist_profiles")
 public class TouristProfile {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "user_id", nullable = false)
-private localbuddy.backend.model.entity.User user;
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-@jakarta.persistence.Column(name = "nationality", length = 100)
-private java.lang.String nationality;
+    @Column(name = "nationality", length = 100)
+    private String nationality;
 
-@jakarta.persistence.Column(name = "bio", length = Integer.MAX_VALUE)
-private java.lang.String bio;
+    @Column(name = "bio", length = Integer.MAX_VALUE)
+    private String bio;
 
-@org.hibernate.annotations.ColumnDefault("'{}'")
-@jakarta.persistence.Column(name = "languages")
-private java.util.List<java.lang.String> languages;
+    @ColumnDefault("'{}'")
+    @Column(name = "languages")
+    private List<String> languages;
 
-@org.hibernate.annotations.ColumnDefault("'{}'")
-@jakarta.persistence.Column(name = "interests")
-private java.util.List<java.lang.String> interests;
+    @ColumnDefault("'{}'")
+    @Column(name = "interests")
+    private List<String> interests;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "created_at", nullable = false)
-private java.time.OffsetDateTime createdAt;
+    @ColumnDefault("now()")
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "updated_at", nullable = false)
-private java.time.OffsetDateTime updatedAt;
-
+    @ColumnDefault("now()")
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
 
 }

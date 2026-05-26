@@ -1,73 +1,90 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "bookings")
+import jakarta.persistence.*;
+import localbuddy.backend.model.enums.BookingStatus;
+import localbuddy.backend.model.enums.MeetupStatus;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "bookings")
 public class Booking {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "traveler_id", nullable = false)
-private localbuddy.backend.model.entity.User traveler;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "traveler_id", nullable = false)
+    private User traveler;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "buddy_id", nullable = false)
-private localbuddy.backend.model.entity.User buddy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "buddy_id", nullable = false)
+    private User buddy;
 
-@jakarta.persistence.Column(name = "title", nullable = false)
-private java.lang.String title;
+    @Column(name = "title", nullable = false)
+    private String title;
 
-@jakarta.persistence.Column(name = "description", length = Integer.MAX_VALUE)
-private java.lang.String description;
+    @Column(name = "description", length = Integer.MAX_VALUE)
+    private String description;
 
-@jakarta.persistence.Column(name = "location", nullable = false)
-private java.lang.String location;
+    @Column(name = "location", nullable = false)
+    private String location;
 
-@jakarta.persistence.Column(name = "start_time", nullable = false)
-private java.time.OffsetDateTime startTime;
+    @Column(name = "start_time", nullable = false)
+    private OffsetDateTime startTime;
 
-@jakarta.persistence.Column(name = "end_time", nullable = false)
-private java.time.OffsetDateTime endTime;
+    @Column(name = "end_time", nullable = false)
+    private OffsetDateTime endTime;
 
-@jakarta.persistence.Column(name = "total_hours", nullable = false)
-private java.lang.Integer totalHours;
+    @Column(name = "total_hours", nullable = false)
+    private Integer totalHours;
 
-@jakarta.persistence.Column(name = "total_price", nullable = false, precision = 10, scale = 2)
-private java.math.BigDecimal totalPrice;
+    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalPrice;
 
-@org.hibernate.annotations.ColumnDefault("'PENDING'")
-@jakarta.persistence.Column(name = "status", columnDefinition = "booking_status not null")
-private java.lang.Object status;
+    @ColumnDefault("'PENDING'")
+    @Column(name = "status", columnDefinition = "booking_status not null")
+    @Enumerated(EnumType.STRING)
+    private BookingStatus status;
 
-@org.hibernate.annotations.ColumnDefault("'NOT_STARTED'")
-@jakarta.persistence.Column(name = "meetup_status", columnDefinition = "meetup_status not null")
-private java.lang.Object meetupStatus;
+    @ColumnDefault("'NOT_STARTED'")
+    @Column(name = "meetup_status", columnDefinition = "meetup_status not null")
+    @Enumerated(EnumType.STRING)
+    private MeetupStatus meetupStatus;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "created_at", nullable = false)
-private java.time.OffsetDateTime createdAt;
+    @ColumnDefault("now()")
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "updated_at", nullable = false)
-private java.time.OffsetDateTime updatedAt;
+    @ColumnDefault("now()")
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
 
-@jakarta.persistence.OneToOne(mappedBy = "booking")
-private localbuddy.backend.model.entity.Cancellation cancellation;
+    @OneToOne(mappedBy = "booking")
+    private Cancellation cancellation;
 
-@jakarta.persistence.OneToMany(mappedBy = "booking")
-private java.util.Set<localbuddy.backend.model.entity.EarningsTransaction> earningsTransactions = new java.util.LinkedHashSet<>();
+    @OneToMany(mappedBy = "booking")
+    private Set<EarningsTransaction> earningsTransactions = new LinkedHashSet<>();
 
-@jakarta.persistence.OneToMany(mappedBy = "booking")
-private java.util.Set<localbuddy.backend.model.entity.Payment> payments = new java.util.LinkedHashSet<>();
+    @OneToMany(mappedBy = "booking")
+    private Set<Payment> payments = new LinkedHashSet<>();
 
-@jakarta.persistence.OneToMany(mappedBy = "booking")
-private java.util.Set<localbuddy.backend.model.entity.Review> reviews = new java.util.LinkedHashSet<>();
-
+    @OneToMany(mappedBy = "booking")
+    private Set<Review> reviews = new LinkedHashSet<>();
 
 
 }

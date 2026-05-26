@@ -1,37 +1,50 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "earnings_transactions")
+import jakarta.persistence.*;
+import localbuddy.backend.model.enums.TransactionType;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "earnings_transactions")
 public class EarningsTransaction {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "buddy_id", nullable = false)
-private localbuddy.backend.model.entity.User buddy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "buddy_id", nullable = false)
+    private User buddy;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
-@jakarta.persistence.JoinColumn(name = "booking_id")
-private localbuddy.backend.model.entity.Booking booking;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
 
-@jakarta.persistence.Column(name = "transaction_type", columnDefinition = "transaction_type not null")
-private java.lang.Object transactionType;
+    @Column(name = "transaction_type", columnDefinition = "transaction_type not null")
+    @Enumerated(EnumType.STRING)
+    private TransactionType transactionType;
 
-@jakarta.persistence.Column(name = "amount", nullable = false, precision = 10, scale = 2)
-private java.math.BigDecimal amount;
+    @Column(name = "amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;
 
-@jakarta.persistence.Column(name = "description", length = Integer.MAX_VALUE)
-private java.lang.String description;
+    @Column(name = "description", length = Integer.MAX_VALUE)
+    private String description;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "created_at", nullable = false)
-private java.time.OffsetDateTime createdAt;
-
+    @ColumnDefault("now()")
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
 
 }

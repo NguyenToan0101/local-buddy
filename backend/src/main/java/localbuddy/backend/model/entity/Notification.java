@@ -1,41 +1,51 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "notifications")
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "notifications")
 public class Notification {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "receiver_id", nullable = false)
-private localbuddy.backend.model.entity.User receiver;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "receiver_id", nullable = false)
+    private User receiver;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.SET_NULL)
-@jakarta.persistence.JoinColumn(name = "sender_id")
-private localbuddy.backend.model.entity.User sender;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "sender_id")
+    private User sender;
 
-@jakarta.persistence.Column(name = "type", nullable = false, length = 100)
-private java.lang.String type;
+    @Column(name = "type", nullable = false, length = 100)
+    private String type;
 
-@jakarta.persistence.Column(name = "title", nullable = false)
-private java.lang.String title;
+    @Column(name = "title", nullable = false)
+    private String title;
 
-@jakarta.persistence.Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
-private java.lang.String content;
+    @Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
+    private String content;
 
-@org.hibernate.annotations.ColumnDefault("false")
-@jakarta.persistence.Column(name = "is_read", nullable = false)
-private java.lang.Boolean isRead;
+    @ColumnDefault("false")
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "created_at", nullable = false)
-private java.time.OffsetDateTime createdAt;
-
+    @ColumnDefault("now()")
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
 
 
 }

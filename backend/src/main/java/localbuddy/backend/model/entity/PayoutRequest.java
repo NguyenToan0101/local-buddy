@@ -1,46 +1,59 @@
 package localbuddy.backend.model.entity;
 
-@lombok.Getter
-@lombok.Setter@jakarta.persistence.Entity
-@jakarta.persistence.Table(name = "payout_requests")
+import jakarta.persistence.*;
+import localbuddy.backend.model.enums.PayoutStatus;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "payout_requests")
 public class PayoutRequest {
-@jakarta.persistence.Id
-@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
-@jakarta.persistence.Column(name = "id", nullable = false)
-private java.util.UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
-@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-@jakarta.persistence.JoinColumn(name = "buddy_id", nullable = false)
-private localbuddy.backend.model.entity.User buddy;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "buddy_id", nullable = false)
+    private User buddy;
 
-@jakarta.persistence.Column(name = "amount", nullable = false, precision = 10, scale = 2)
-private java.math.BigDecimal amount;
+    @Column(name = "amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal amount;
 
-@org.hibernate.annotations.ColumnDefault("10.00")
-@jakarta.persistence.Column(name = "tax_rate", nullable = false, precision = 5, scale = 2)
-private java.math.BigDecimal taxRate;
+    @ColumnDefault("10.00")
+    @Column(name = "tax_rate", nullable = false, precision = 5, scale = 2)
+    private BigDecimal taxRate;
 
-@org.hibernate.annotations.ColumnDefault("'PENDING'")
-@jakarta.persistence.Column(name = "status", columnDefinition = "payout_status not null")
-private java.lang.Object status;
+    @ColumnDefault("'PENDING'")
+    @Column(name = "status", columnDefinition = "payout_status not null")
+    @Enumerated(EnumType.STRING)
+    private PayoutStatus status;
 
-@jakarta.persistence.Column(name = "bank_name", nullable = false)
-private java.lang.String bankName;
+    @Column(name = "bank_name", nullable = false)
+    private String bankName;
 
-@jakarta.persistence.Column(name = "bank_account_name", nullable = false)
-private java.lang.String bankAccountName;
+    @Column(name = "bank_account_name", nullable = false)
+    private String bankAccountName;
 
-@jakarta.persistence.Column(name = "bank_account_number", nullable = false, length = 100)
-private java.lang.String bankAccountNumber;
+    @Column(name = "bank_account_number", nullable = false, length = 100)
+    private String bankAccountNumber;
 
-@org.hibernate.annotations.ColumnDefault("now()")
-@jakarta.persistence.Column(name = "requested_at", nullable = false)
-private java.time.OffsetDateTime requestedAt;
+    @ColumnDefault("now()")
+    @Column(name = "requested_at", nullable = false)
+    private OffsetDateTime requestedAt;
 
-@jakarta.persistence.Column(name = "processed_at")
-private java.time.OffsetDateTime processedAt;
-
+    @Column(name = "processed_at")
+    private OffsetDateTime processedAt;
 
 
 }
