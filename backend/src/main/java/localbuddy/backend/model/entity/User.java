@@ -1,77 +1,52 @@
 package localbuddy.backend.model.entity;
 
-
-import jakarta.persistence.*;
-import localbuddy.backend.model.enums.UserRole;
-import lombok.*;
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
-@Entity
-@Table(name = "users")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "users")
 public class User {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.Column(name = "email", nullable = false)
+private java.lang.String email;
 
-    @Column(name = "email", nullable = false, unique = true, length = 255)
-    private String email;
+@jakarta.persistence.Column(name = "password_hash", nullable = false, length = Integer.MAX_VALUE)
+private java.lang.String passwordHash;
 
-    @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
-    private String passwordHash;
+@jakarta.persistence.Column(name = "full_name", nullable = false)
+private java.lang.String fullName;
 
-    @Column(name = "full_name", nullable = false, length = 255)
-    private String fullName;
+@jakarta.persistence.Column(name = "phone", length = 20)
+private java.lang.String phone;
 
-    @Column(name = "phone", length = 30)
-    private String phone;
+@jakarta.persistence.Column(name = "avatar_url", length = Integer.MAX_VALUE)
+private java.lang.String avatarUrl;
 
-    @Column(name = "avatar_url", columnDefinition = "TEXT")
-    private String avatarUrl;
+@org.hibernate.annotations.ColumnDefault("'TRAVELER'")
+@jakarta.persistence.Column(name = "role", columnDefinition = "user_role not null")
+private java.lang.Object role;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, columnDefinition = "user_role")
-    private UserRole role = UserRole.tourist;
+@org.hibernate.annotations.ColumnDefault("false")
+@jakarta.persistence.Column(name = "is_buddy", nullable = false)
+private java.lang.Boolean isBuddy;
 
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
+@org.hibernate.annotations.ColumnDefault("true")
+@jakarta.persistence.Column(name = "is_active", nullable = false)
+private java.lang.Boolean isActive;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "updated_at", nullable = false)
+private java.time.OffsetDateTime updatedAt;
 
-    // --------------------------------------------------------
-    // Relationships
-    // --------------------------------------------------------
+@jakarta.persistence.Column(name = "deleted_at")
+private java.time.OffsetDateTime deletedAt;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private TouristProfile touristProfile;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private BuddyProfile buddyProfile;
 
-    // --------------------------------------------------------
-    // Lifecycle hooks
-    // --------------------------------------------------------
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

@@ -1,89 +1,75 @@
 package localbuddy.backend.model.entity;
 
-
-import jakarta.persistence.*;
-import localbuddy.backend.model.enums.BuddyStatus;
-import lombok.*;
-
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
-@Entity
-@Table(name = "buddy_profiles")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "buddy_profiles")
 public class BuddyProfile {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "user_id", nullable = false)
+private localbuddy.backend.model.entity.User user;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private User user;
+@jakarta.persistence.Column(name = "age")
+private java.lang.Short age;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "buddy_status")
-    private BuddyStatus status = BuddyStatus.pending;
+@jakarta.persistence.Column(name = "location", nullable = false)
+private java.lang.String location;
 
-    /** Trình độ ngoại ngữ */
-    @Column(name = "language_level", length = 100)
-    private String languageLevel;
+@jakarta.persistence.Column(name = "latitude", precision = 10, scale = 7)
+private java.math.BigDecimal latitude;
 
-    /** Giới thiệu bản thân và phong cách đồng hành */
-    @Column(name = "self_introduction", columnDefinition = "TEXT")
-    private String selfIntroduction;
+@jakarta.persistence.Column(name = "longitude", precision = 10, scale = 7)
+private java.math.BigDecimal longitude;
 
-    /** Sở thích, thế mạnh */
-    @Column(name = "strengths", columnDefinition = "TEXT[]")
-    @Convert(converter = StringListConverter.class)
-    private List<String> strengths;
+@jakarta.persistence.Column(name = "bio", length = Integer.MAX_VALUE)
+private java.lang.String bio;
 
-    /** Khu vực sinh sống */
-    @Column(name = "living_area", length = 255)
-    private String livingArea;
+@org.hibernate.annotations.ColumnDefault("'{}'")
+@jakarta.persistence.Column(name = "languages")
+private java.util.List<java.lang.String> languages;
 
-    @Column(name = "id_verified", nullable = false)
-    private Boolean idVerified = false;
+@org.hibernate.annotations.ColumnDefault("'{}'")
+@jakarta.persistence.Column(name = "tags")
+private java.util.List<java.lang.String> tags;
 
-    /** Ảnh xác thực */
-    @Column(name = "id_photo_url", columnDefinition = "TEXT")
-    private String idPhotoUrl;
+@org.hibernate.annotations.ColumnDefault("'{}'")
+@jakarta.persistence.Column(name = "interests")
+private java.util.List<java.lang.String> interests;
 
-    @Column(name = "rating_avg", precision = 3, scale = 2)
-    private BigDecimal ratingAvg = BigDecimal.ZERO;
+@jakarta.persistence.Column(name = "hourly_rate", nullable = false, precision = 10, scale = 2)
+private java.math.BigDecimal hourlyRate;
 
-    @Column(name = "total_reviews", nullable = false)
-    private Integer totalReviews = 0;
+@org.hibernate.annotations.ColumnDefault("5.0")
+@jakarta.persistence.Column(name = "rating", nullable = false, precision = 2, scale = 1)
+private java.math.BigDecimal rating;
 
-    @Column(name = "total_sessions", nullable = false)
-    private Integer totalSessions = 0;
+@org.hibernate.annotations.ColumnDefault("0")
+@jakarta.persistence.Column(name = "review_count", nullable = false)
+private java.lang.Integer reviewCount;
 
-    /** Có hiển thị trên nền tảng không */
-    @Column(name = "is_visible", nullable = false)
-    private Boolean isVisible = true;
+@org.hibernate.annotations.ColumnDefault("'PENDING'")
+@jakarta.persistence.Column(name = "verification_status", columnDefinition = "verification_status not null")
+private java.lang.Object verificationStatus;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
+@jakarta.persistence.Column(name = "id_card_front_url", length = Integer.MAX_VALUE)
+private java.lang.String idCardFrontUrl;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
+@jakarta.persistence.Column(name = "id_card_back_url", length = Integer.MAX_VALUE)
+private java.lang.String idCardBackUrl;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "updated_at", nullable = false)
+private java.time.OffsetDateTime updatedAt;
+
+
+
 }

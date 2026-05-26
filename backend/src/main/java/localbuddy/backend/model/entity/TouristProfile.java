@@ -1,67 +1,41 @@
 package localbuddy.backend.model.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
-@Entity
-@Table(name = "tourist_profiles")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "tourist_profiles")
 public class TouristProfile {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "user_id", nullable = false)
+private localbuddy.backend.model.entity.User user;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private User user;
+@jakarta.persistence.Column(name = "nationality", length = 100)
+private java.lang.String nationality;
 
-    @Column(name = "nationality", length = 100)
-    private String nationality;
+@jakarta.persistence.Column(name = "bio", length = Integer.MAX_VALUE)
+private java.lang.String bio;
 
-    @Column(name = "age")
-    private Short age;
+@org.hibernate.annotations.ColumnDefault("'{}'")
+@jakarta.persistence.Column(name = "languages")
+private java.util.List<java.lang.String> languages;
 
-    /** Ngôn ngữ sử dụng – lưu dạng mảng TEXT[] trong PostgreSQL */
-    @Column(name = "languages", columnDefinition = "TEXT[]")
-    @Convert(converter = StringListConverter.class)
-    private List<String> languages;
+@org.hibernate.annotations.ColumnDefault("'{}'")
+@jakarta.persistence.Column(name = "interests")
+private java.util.List<java.lang.String> interests;
 
-    /** Sở thích: ẩm thực, cà phê, đi bộ... */
-    @Column(name = "interests", columnDefinition = "TEXT[]")
-    @Convert(converter = StringListConverter.class)
-    private List<String> interests;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    /** Phong cách trải nghiệm mong muốn */
-    @Column(name = "experience_style", columnDefinition = "TEXT")
-    private String experienceStyle;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "updated_at", nullable = false)
+private java.time.OffsetDateTime updatedAt;
 
-    @Column(name = "bio", columnDefinition = "TEXT")
-    private String bio;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

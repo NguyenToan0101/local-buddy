@@ -1,95 +1,47 @@
 package localbuddy.backend.model.entity;
 
-
-import jakarta.persistence.*;
-import localbuddy.backend.model.enums.PaymentStatus;
-import lombok.*;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
-@Entity
-@Table(
-    name = "payments",
-    indexes = @Index(name = "idx_payments_booking", columnList = "booking_id")
-)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "payments")
 public class Payment {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "booking_id", nullable = false)
+private localbuddy.backend.model.entity.Booking booking;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
-    private Booking booking;
+@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "payer_id", nullable = false)
+private localbuddy.backend.model.entity.User payer;
 
-    /** Khách du lịch thanh toán */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payer_id", nullable = false)
-    private User payer;
+@jakarta.persistence.Column(name = "payment_type", columnDefinition = "payment_type not null")
+private java.lang.Object paymentType;
 
-    /** Tổng tiền */
-    @Column(name = "amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal amount;
+@jakarta.persistence.Column(name = "amount", nullable = false, precision = 10, scale = 2)
+private java.math.BigDecimal amount;
 
-    /** Tiền đặt cọc (30–50%) */
-    @Column(name = "deposit_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal depositAmount;
+@org.hibernate.annotations.ColumnDefault("'PENDING'")
+@jakarta.persistence.Column(name = "status", columnDefinition = "payment_status not null")
+private java.lang.Object status;
 
-    /** % đặt cọc (default 30%) */
-    @Column(name = "deposit_pct", nullable = false, precision = 5, scale = 2)
-    private BigDecimal depositPct = new BigDecimal("30.00");
+@jakarta.persistence.Column(name = "payment_method", length = 100)
+private java.lang.String paymentMethod;
 
-    /** Số tiền còn lại sau khi đặt cọc */
-    @Column(name = "remaining_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal remainingAmount;
+@jakarta.persistence.Column(name = "transaction_reference")
+private java.lang.String transactionReference;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "payment_status")
-    private PaymentStatus status = PaymentStatus.pending;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    @Column(name = "payment_method", length = 100)
-    private String paymentMethod;
+@jakarta.persistence.Column(name = "paid_at")
+private java.time.OffsetDateTime paidAt;
 
-    /** Mã giao dịch từ cổng thanh toán */
-    @Column(name = "transaction_ref", length = 255)
-    private String transactionRef;
 
-    /** Nền tảng giữ tiền (escrow) */
-    @Column(name = "escrow_held", nullable = false)
-    private Boolean escrowHeld = true;
 
-    @Column(name = "deposited_at")
-    private OffsetDateTime depositedAt;
-
-    @Column(name = "fully_paid_at")
-    private OffsetDateTime fullyPaidAt;
-
-    /** Thời điểm giải phóng tiền cho Buddy */
-    @Column(name = "released_at")
-    private OffsetDateTime releasedAt;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

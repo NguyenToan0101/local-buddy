@@ -1,131 +1,73 @@
 package localbuddy.backend.model.entity;
 
-
-import jakarta.persistence.*;
-import localbuddy.backend.model.enums.ActivityGroup;
-import localbuddy.backend.model.enums.BookingStatus;
-import lombok.*;
-
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.UUID;
-
-@Entity
-@Table(
-    name = "bookings",
-    indexes = {
-        @Index(name = "idx_bookings_tourist", columnList = "tourist_id"),
-        @Index(name = "idx_bookings_buddy",   columnList = "buddy_id"),
-        @Index(name = "idx_bookings_date",    columnList = "scheduled_date")
-    }
-)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "bookings")
 public class Booking {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "traveler_id", nullable = false)
+private localbuddy.backend.model.entity.User traveler;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "match_id", nullable = false)
-    private Match match;
+@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "buddy_id", nullable = false)
+private localbuddy.backend.model.entity.User buddy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tourist_id", nullable = false)
-    private User tourist;
+@jakarta.persistence.Column(name = "title", nullable = false)
+private java.lang.String title;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "buddy_id", nullable = false)
-    private User buddy;
+@jakarta.persistence.Column(name = "description", length = Integer.MAX_VALUE)
+private java.lang.String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "activity_group", nullable = false, columnDefinition = "activity_group")
-    private ActivityGroup activityGroup;
+@jakarta.persistence.Column(name = "location", nullable = false)
+private java.lang.String location;
 
-    /** Mô tả tự do của khách */
-    @Column(name = "custom_description", columnDefinition = "TEXT")
-    private String customDescription;
+@jakarta.persistence.Column(name = "start_time", nullable = false)
+private java.time.OffsetDateTime startTime;
 
-    @Column(name = "scheduled_date", nullable = false)
-    private LocalDate scheduledDate;
+@jakarta.persistence.Column(name = "end_time", nullable = false)
+private java.time.OffsetDateTime endTime;
 
-    @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
+@jakarta.persistence.Column(name = "total_hours", nullable = false)
+private java.lang.Integer totalHours;
 
-    @Column(name = "end_time", nullable = false)
-    private LocalTime endTime;
+@jakarta.persistence.Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+private java.math.BigDecimal totalPrice;
 
-    /**
-     * duration_hours is a GENERATED ALWAYS column in PostgreSQL.
-     * Mark as insertable=false, updatable=false so JPA never writes it.
-     */
-    @Column(name = "duration_hours", insertable = false, updatable = false, precision = 4, scale = 2)
-    private BigDecimal durationHours;
+@org.hibernate.annotations.ColumnDefault("'PENDING'")
+@jakarta.persistence.Column(name = "status", columnDefinition = "booking_status not null")
+private java.lang.Object status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "booking_status")
-    private BookingStatus status = BookingStatus.pending;
+@org.hibernate.annotations.ColumnDefault("'NOT_STARTED'")
+@jakarta.persistence.Column(name = "meetup_status", columnDefinition = "meetup_status not null")
+private java.lang.Object meetupStatus;
 
-    /** Giá / giờ */
-    @Column(name = "hourly_rate", nullable = false, precision = 12, scale = 2)
-    private BigDecimal hourlyRate;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    /** Tổng số tiền */
-    @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
-    private BigDecimal totalAmount;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "updated_at", nullable = false)
+private java.time.OffsetDateTime updatedAt;
 
-    /** % hoa hồng nền tảng (default 20%) */
-    @Column(name = "platform_fee_pct", nullable = false, precision = 5, scale = 2)
-    private BigDecimal platformFeePct = new BigDecimal("20.00");
+@jakarta.persistence.OneToOne(mappedBy = "booking")
+private localbuddy.backend.model.entity.Cancellation cancellation;
 
-    /** Tính bởi trigger calc_booking_fees – không ghi từ JPA */
-    @Column(name = "platform_fee_amount", insertable = false, updatable = false, precision = 12, scale = 2)
-    private BigDecimal platformFeeAmount;
+@jakarta.persistence.OneToMany(mappedBy = "booking")
+private java.util.Set<localbuddy.backend.model.entity.EarningsTransaction> earningsTransactions = new java.util.LinkedHashSet<>();
 
-    /** Tính bởi trigger calc_booking_fees – không ghi từ JPA */
-    @Column(name = "buddy_payout", insertable = false, updatable = false, precision = 12, scale = 2)
-    private BigDecimal buddyPayout;
+@jakarta.persistence.OneToMany(mappedBy = "booking")
+private java.util.Set<localbuddy.backend.model.entity.Payment> payments = new java.util.LinkedHashSet<>();
 
-    /** Đề xuất điều chỉnh từ Buddy */
-    @Column(name = "buddy_response", columnDefinition = "TEXT")
-    private String buddyResponse;
+@jakarta.persistence.OneToMany(mappedBy = "booking")
+private java.util.Set<localbuddy.backend.model.entity.Review> reviews = new java.util.LinkedHashSet<>();
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updatedAt;
 
-    // --------------------------------------------------------
-    // Relationships
-    // --------------------------------------------------------
-
-    @OneToOne(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Payment payment;
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Review> reviews;
-
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Cancellation> cancellations;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = OffsetDateTime.now();
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
 }

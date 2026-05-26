@@ -1,73 +1,39 @@
 package localbuddy.backend.model.entity;
 
-
-import jakarta.persistence.*;
-import localbuddy.backend.model.enums.CancellationBy;
-import lombok.*;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.UUID;
-
-@Entity
-@Table(name = "cancellations")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@lombok.Getter
+@lombok.Setter@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "cancellations")
 public class Cancellation {
+@jakarta.persistence.Id
+@org.hibernate.annotations.ColumnDefault("uuid_generate_v4()")
+@jakarta.persistence.Column(name = "id", nullable = false)
+private java.util.UUID id;
 
-    @Id
-    @GeneratedValue(generator = "UUID")
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
-    private UUID id;
+@jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "booking_id", nullable = false)
+private localbuddy.backend.model.entity.Booking booking;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
-    private Booking booking;
+@jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+@org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
+@jakarta.persistence.JoinColumn(name = "cancelled_by_user_id", nullable = false)
+private localbuddy.backend.model.entity.User cancelledByUser;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "cancelled_by", nullable = false, columnDefinition = "cancellation_by")
-    private CancellationBy cancelledBy;
+@jakarta.persistence.Column(name = "reason", length = Integer.MAX_VALUE)
+private java.lang.String reason;
 
-    /** Người thực hiện hủy */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cancelled_by_user")
-    private User cancelledByUser;
+@org.hibernate.annotations.ColumnDefault("0")
+@jakarta.persistence.Column(name = "refund_amount", precision = 10, scale = 2)
+private java.math.BigDecimal refundAmount;
 
-    @Column(name = "reason", columnDefinition = "TEXT")
-    private String reason;
+@org.hibernate.annotations.ColumnDefault("0")
+@jakarta.persistence.Column(name = "cancellation_fee", precision = 10, scale = 2)
+private java.math.BigDecimal cancellationFee;
 
-    /** Số giờ trước lịch hẹn tại thời điểm hủy */
-    @Column(name = "hours_before", precision = 6, scale = 2)
-    private BigDecimal hoursBefore;
+@org.hibernate.annotations.ColumnDefault("now()")
+@jakarta.persistence.Column(name = "created_at", nullable = false)
+private java.time.OffsetDateTime createdAt;
 
-    /**
-     * Các trường bên dưới được tự động tính bởi trigger calc_cancellation_refund.
-     * insertable = false, updatable = false để JPA không ghi đè.
-     */
-    @Column(name = "refund_amount", nullable = false,
-            insertable = false, updatable = false, precision = 12, scale = 2)
-    private BigDecimal refundAmount = BigDecimal.ZERO;
 
-    @Column(name = "refund_pct", nullable = false,
-            insertable = false, updatable = false, precision = 5, scale = 2)
-    private BigDecimal refundPct = BigDecimal.ZERO;
 
-    @Column(name = "buddy_compensation", nullable = false,
-            insertable = false, updatable = false, precision = 12, scale = 2)
-    private BigDecimal buddyCompensation = BigDecimal.ZERO;
-
-    @Column(name = "platform_share", nullable = false,
-            insertable = false, updatable = false, precision = 12, scale = 2)
-    private BigDecimal platformShare = BigDecimal.ZERO;
-
-    @Column(name = "cancelled_at", nullable = false, updatable = false)
-    private OffsetDateTime cancelledAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.cancelledAt = OffsetDateTime.now();
-    }
 }
