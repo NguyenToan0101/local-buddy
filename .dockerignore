@@ -1,0 +1,27 @@
+# Dependencies
+frontend/node_modules
+backend/target
+
+# Build output
+frontend/dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.*

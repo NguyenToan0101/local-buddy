@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --admin-bg: #f8fafc;
+    --admin-sidebar: #ffffff;
+    --admin-card: #ffffff;
+    --admin-header: rgba(255, 255, 255, 0.8);
+    --admin-border: #e2e8f0;
+    --admin-text-main: #0f172a;
+    --admin-text-muted: #64748b;
+    --admin-accent: #6366f1;
+    --admin-surface-muted: #f1f5f9;
+    --admin-input-bg: #f8fafc;
+  }
+
+  .admin-dark {
+    --admin-bg: #020617;
+    --admin-sidebar: #0f172a;
+    --admin-card: #111827;
+    --admin-header: rgba(2, 6, 23, 0.8);
+    --admin-border: #1e293b;
+    --admin-text-main: #f8fafc;
+    --admin-text-muted: #94a3b8;
+    --admin-accent: #818cf8;
+    --admin-surface-muted: #1e293b;
+    --admin-input-bg: #0f172a;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+@layer components {
+  .admin-layout-bg {
+    background-color: var(--admin-bg);
+    color: var(--admin-text-main);
+  }
+
+  .admin-sidebar-bg {
+    background-color: var(--admin-sidebar);
+    border-color: var(--admin-border);
+  }
+
+  .admin-card {
+    background-color: var(--admin-card);
+    border: 1px solid var(--admin-border);
+    @apply rounded-[32px] p-8 transition-all duration-300;
+  }
+
+  .admin-glass {
+    @apply backdrop-blur-xl border-b;
+    background-color: var(--admin-header);
+    border-color: var(--admin-border);
+  }
+
+  .admin-input {
+    background-color: var(--admin-input-bg);
+    border: 1px solid var(--admin-border);
+    color: var(--admin-text-main);
+    @apply rounded-2xl px-6 py-3 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-slate-500;
+  }
+
+  .admin-btn-muted {
+    background-color: var(--admin-surface-muted);
+    color: var(--admin-text-muted);
+    @apply rounded-xl px-4 py-2 text-xs font-black transition-all hover:text-indigo-500 active:scale-95;
+  }
+
+  .text-admin-main { color: var(--admin-text-main); }
+  .text-admin-muted { color: var(--admin-text-muted); }
+  .border-admin { border-color: var(--admin-border); }
+  .bg-admin-surface { background-color: var(--admin-surface-muted); }
+}
+  .heading-mega {
+    @apply text-5xl md:text-6xl font-black leading-tight;
+  }
+
+  .heading-hero {
+    @apply text-3xl md:text-5xl font-black leading-tight;
+  }
+
+  .heading-section {
+    @apply text-2xl md:text-4xl font-black leading-tight;
+  }
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes ken-burns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+.animate-ken-burns {
+  animation: ken-burns 20s ease-out infinite alternate;
+}
