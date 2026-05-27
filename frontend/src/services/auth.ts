@@ -52,6 +52,7 @@ export const authService = {
       role: data.role as UserRole,
       avatar: getDisplayAvatar(data),
       googleAvatar: data.googleAvatarUrl,
+      phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
@@ -168,6 +169,7 @@ export const authService = {
       role: data.role as UserRole,
       avatar: getDisplayAvatar(data),
       googleAvatar: data.googleAvatarUrl,
+      phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
