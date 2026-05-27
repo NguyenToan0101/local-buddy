@@ -133,10 +133,14 @@ const TravelerProfile: React.FC = () => {
                         </p>
                      </div>
 
-                     <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t border-gray-50">
+                     <div className="grid grid-cols-3 gap-4 w-full pt-6 border-t border-gray-50">
                         <div className="space-y-1">
                            <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Nationality</p>
                            <p className="text-sm font-black text-secondary">{profileData?.nationality || '--'}</p>
+                        </div>
+                        <div className="space-y-1">
+                           <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Phone</p>
+                           <p className="text-sm font-black text-secondary">{profileData?.phone || user.phone || '--'}</p>
                         </div>
                         <div className="space-y-1">
                            <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Languages</p>

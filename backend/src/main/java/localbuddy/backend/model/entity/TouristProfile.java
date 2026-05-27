@@ -29,7 +29,7 @@ public class TouristProfile {
     @Column(name = "nationality", length = 100)
     private String nationality;
 
-    @Column(name = "bio", length = Integer.MAX_VALUE)
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     @ColumnDefault("'{}'")
