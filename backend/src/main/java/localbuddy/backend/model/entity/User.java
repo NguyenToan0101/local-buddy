@@ -36,6 +36,9 @@ public class User {
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
+    @Column(name = "google_avatar_url", columnDefinition = "TEXT")
+    private String googleAvatarUrl;
+
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @ColumnDefault("'TRAVELER'")
     @Column(name = "role", columnDefinition = "user_role not null")

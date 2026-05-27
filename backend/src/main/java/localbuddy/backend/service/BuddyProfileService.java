@@ -88,7 +88,7 @@ public class BuddyProfileService {
                 .reviewCount(profile.getReviewCount())
                 .languages(profile.getLanguages())
                 .description(profile.getBio())
-                .image(user.getAvatarUrl())
+                .image(AvatarService.getDisplayAvatarUrl(user))
                 .tags(profile.getTags())
                 .interests(profile.getInterests())
                 .price(profile.getHourlyRate())

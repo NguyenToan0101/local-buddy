@@ -98,7 +98,7 @@ public class TouristProfileService {
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .avatarUrl(user.getAvatarUrl()) // Get from User entity
+                .avatarUrl(AvatarService.getDisplayAvatarUrl(user)) // Final display avatar
                 .build();
     }
 }
