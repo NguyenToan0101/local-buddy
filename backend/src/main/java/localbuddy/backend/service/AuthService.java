@@ -145,6 +145,19 @@ public class AuthService {
         // 5. Generate JWT token
         String jwt = jwtService.generateToken(savedUser.getEmail(), savedUser.getId(), savedUser.getRole().name());
 
+        String verificationStatus = null;
+        String location = null;
+        if (savedUser.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(savedUser.getId()).orElse(null);
+            if (buddyProfile != null) {
+                verificationStatus = buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified";
+                location = buddyProfile.getLocation();
+            } else {
+                verificationStatus = "unverified";
+                location = "Not Specified";
+            }
+        }
+
         return AuthResponse.builder()
                 .token(jwt)
                 .id(savedUser.getId())
@@ -152,6 +165,8 @@ public class AuthService {
                 .fullName(savedUser.getFullName())
                 .avatarUrl(savedUser.getAvatarUrl())
                 .role(savedUser.getRole().name())
+                .verificationStatus(verificationStatus)
+                .location(location)
                 .build();
     }
 }
