@@ -13,6 +13,7 @@ const EditTouristProfile: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const [profileData, setProfileData] = useState<TouristProfileResponse | null>(null);
+    const [hasProfile, setHasProfile] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     useEffect(() => {
@@ -21,21 +22,17 @@ const EditTouristProfile: React.FC = () => {
             return;
         }
 
-        // Load existing profile
         const loadProfile = async () => {
             try {
-                const profile = await touristProfileService.getProfile();
-                setProfileData(profile);
+                const exists = await touristProfileService.checkProfileExists();
+                setHasProfile(exists);
+
+                if (exists) {
+                    const profile = await touristProfileService.getProfile();
+                    setProfileData(profile);
+                }
             } catch (error) {
                 console.error('Error loading profile:', error);
-                setMessage({
-                    type: 'error',
-                    text: 'Failed to load profile. Please try again.'
-                });
-                // Redirect to create profile if profile doesn't exist
-                setTimeout(() => {
-                    navigate('/traveller/create-profile');
-                }, 2000);
             } finally {
                 setIsLoadingProfile(false);
             }
@@ -44,21 +41,26 @@ const EditTouristProfile: React.FC = () => {
         loadProfile();
     }, [user, navigate]);
 
-    const handleSubmit = async (updatedData: TouristProfileRequest) => {
+    const handleSubmit = async (data: TouristProfileRequest) => {
         setIsLoading(true);
         setMessage(null);
 
         try {
-            const updatedProfile = await touristProfileService.updateProfile(updatedData);
-            setProfileData(updatedProfile);
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            if (hasProfile) {
+                const updated = await touristProfileService.updateProfile(data);
+                setProfileData(updated);
+                setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            } else {
+                await touristProfileService.createProfile(data);
+                setHasProfile(true);
+                setMessage({ type: 'success', text: 'Profile created successfully!' });
+            }
 
-            // Redirect to profile page after a short delay
             setTimeout(() => {
                 navigate('/traveller/profile');
-            }, 2000);
+            }, 1500);
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+            const errorMessage = error instanceof Error ? error.message : 'Failed to save profile';
             setMessage({ type: 'error', text: errorMessage });
         } finally {
             setIsLoading(false);
@@ -111,10 +113,12 @@ const EditTouristProfile: React.FC = () => {
 
                     <div className="text-center mb-8">
                         <h1 className="text-3xl md:text-4xl font-bold text-secondary mb-4">
-                            Edit Your Tourist Profile
+                            {hasProfile ? 'Edit Your Tourist Profile' : 'Create Your Tourist Profile'}
                         </h1>
                         <p className="text-lg text-secondary/70 max-w-2xl mx-auto">
-                            Update your information to help local buddies provide better personalized experiences.
+                            {hasProfile
+                                ? 'Update your information to help local buddies provide better personalized experiences.'
+                                : 'Tell us about yourself to help local buddies understand your travel preferences and provide personalized experiences.'}
                         </p>
                     </div>
                 </div>
@@ -134,15 +138,13 @@ const EditTouristProfile: React.FC = () => {
                     </div>
                 )}
 
-                {/* Form */}
-                {profileData && (
-                    <TouristProfileForm
-                        initialData={profileData}
-                        onSubmit={handleSubmit}
-                        isLoading={isLoading}
-                        submitButtonText="Update Profile"
-                    />
-                )}
+                {/* Form — always shown, with or without existing data */}
+                <TouristProfileForm
+                    initialData={profileData ?? undefined}
+                    onSubmit={handleSubmit}
+                    isLoading={isLoading}
+                    submitButtonText={hasProfile ? 'Update Profile' : 'Create Profile'}
+                />
             </main>
         </div>
     );

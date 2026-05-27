@@ -82,6 +82,7 @@ public class AuthController {
                 .fullName(user.getFullName())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole().name())
+                .phone(user.getPhone())
                 .verificationStatus(verificationStatus)
                 .location(location)
                 .build();
@@ -106,6 +107,7 @@ public class AuthController {
         response.put("avatarUrl", user.getAvatarUrl());
         response.put("role", user.getRole().name());
         response.put("isBuddy", user.getIsBuddy());
+        response.put("phone", user.getPhone());
 
         if (user.getRole() == UserRole.BUDDY) {
             BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(user.getId()).orElse(null);
