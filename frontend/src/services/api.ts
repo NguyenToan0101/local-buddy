@@ -322,3 +322,74 @@ export const notificationService = {
     return clone(updated);
   },
 };
+
+const API_BASE_URL = 'http://localhost:8080';
+
+export interface AvailabilitySlot {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  title: string;
+}
+
+export const availabilityService = {
+  fetchAvailabilities: async (buddyId: string): Promise<AvailabilitySlot[]> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch availabilities');
+    }
+    return response.json();
+  },
+
+  addAvailability: async (buddyId: string, slot: Omit<AvailabilitySlot, 'id'>): Promise<AvailabilitySlot> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(slot),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to add availability');
+    }
+    return response.json();
+  },
+
+  addAvailabilitiesBulk: async (buddyId: string, slots: Omit<AvailabilitySlot, 'id'>[]): Promise<AvailabilitySlot[]> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(slots),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to bulk add availabilities');
+    }
+    return response.json();
+  },
+
+  deleteAvailability: async (buddyId: string, slotId: string): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities/${slotId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete availability');
+    }
+  },
+};
