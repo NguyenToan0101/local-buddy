@@ -90,4 +90,37 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(Principal principal, @RequestBody Map<String, Object> updates) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        if (updates.containsKey("name")) {
+            user.setFullName((String) updates.get("name"));
+        }
+        if (updates.containsKey("avatar")) {
+            user.setAvatarUrl((String) updates.get("avatar"));
+        }
+        if (updates.containsKey("phone")) {
+            user.setPhone((String) updates.get("phone"));
+        }
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        User savedUser = userRepository.save(user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", savedUser.getId());
+        response.put("email", savedUser.getEmail());
+        response.put("fullName", savedUser.getFullName());
+        response.put("avatarUrl", savedUser.getAvatarUrl());
+        response.put("role", savedUser.getRole().name());
+        response.put("isBuddy", savedUser.getIsBuddy());
+
+        return ResponseEntity.ok(response);
+    }
 }

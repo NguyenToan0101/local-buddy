@@ -67,23 +67,41 @@ export interface Buddy {
 
 export const buddyService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'buddies')) as Buddy[];
+    const response = await fetch('http://localhost:8080/buddies', {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch buddies');
+    }
+    return await response.json() as Buddy[];
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const buddies = ensureArray(db, 'buddies');
-    const found = getById<Buddy>(buddies, id);
-    if (!found) throw new Error('Buddy not found');
-    return clone(found) as Buddy;
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:8080/buddies/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch buddy profile');
+    }
+    return await response.json() as Buddy;
   },
   updateProfile: async (id: string, data: Partial<Buddy>) => {
-    const db = loadDb();
-    const buddies = ensureArray(db, 'buddies');
-    const updated = patchById<Buddy>(buddies, id, data);
-    if (!updated) throw new Error('Buddy not found');
-    saveDb(db);
-    return clone(updated) as Buddy;
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:8080/buddies/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update buddy profile');
+    }
+    return await response.json() as Buddy;
   },
 };
 

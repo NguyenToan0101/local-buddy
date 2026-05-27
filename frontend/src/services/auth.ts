@@ -157,11 +157,12 @@ export const authService = {
   },
 
   updateProfile: async (id: string, userData: Partial<User>): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(userData),
     });
