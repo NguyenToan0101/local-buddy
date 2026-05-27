@@ -40,6 +40,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/auth/login",
+                                "/auth/register",
+                                "/auth/verify-otp",
                                 "/login/**",
                                 "/oauth2/**"
                         ).permitAll()

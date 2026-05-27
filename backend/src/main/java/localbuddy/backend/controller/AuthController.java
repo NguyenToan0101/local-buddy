@@ -2,8 +2,11 @@ package localbuddy.backend.controller;
 
 import localbuddy.backend.dto.AuthResponse;
 import localbuddy.backend.dto.LoginRequest;
+import localbuddy.backend.dto.RegisterRequest;
+import localbuddy.backend.dto.VerifyOtpRequest;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
+import localbuddy.backend.service.AuthService;
 import localbuddy.backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +30,17 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
+        return ResponseEntity.ok(authService.register(registerRequest));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<AuthResponse> verifyOtp(@RequestBody VerifyOtpRequest verifyOtpRequest) {
+        return ResponseEntity.ok(authService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp()));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
