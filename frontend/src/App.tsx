@@ -5,6 +5,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import OAuth2RedirectHandler from './pages/auth/OAuth2RedirectHandler';
 import BuddyRegistration from './pages/auth/BuddyRegistration';
 import EditProfile from './pages/shared/EditProfile';
 import ExploreBuddies from './pages/traveler/ExploreBuddies';
@@ -41,6 +42,7 @@ function App() {
       <Route path="/traveller/experiences" element={<ExploreExperiences />} />
       <Route path="/traveller/experience/:id" element={<ExperienceDetail />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/oauth2/success" element={<OAuth2RedirectHandler />} />
       <Route path="/traveller/home" element={<HomePage />} />
       <Route path="/traveller/profile" element={<TravelerProfile />} />
       <Route path="/signup" element={<RegisterPage />} />
