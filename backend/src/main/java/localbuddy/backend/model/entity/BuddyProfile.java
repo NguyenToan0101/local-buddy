@@ -41,7 +41,7 @@ public class BuddyProfile {
     @Column(name = "longitude", precision = 10, scale = 7)
     private BigDecimal longitude;
 
-    @Column(name = "bio", length = Integer.MAX_VALUE)
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     @ColumnDefault("'{}'")
@@ -73,10 +73,10 @@ public class BuddyProfile {
     @Enumerated(EnumType.STRING)
     private VerificationStatus verificationStatus;
 
-    @Column(name = "id_card_front_url", length = Integer.MAX_VALUE)
+    @Column(name = "id_card_front_url", columnDefinition = "TEXT")
     private String idCardFrontUrl;
 
-    @Column(name = "id_card_back_url", length = Integer.MAX_VALUE)
+    @Column(name = "id_card_back_url", columnDefinition = "TEXT")
     private String idCardBackUrl;
 
     @ColumnDefault("now()")

@@ -66,6 +66,9 @@ const EditProfile: React.FC = () => {
           // Update form data with tourist profile data
           setFormData(prev => ({
             ...prev,
+            name: profile.fullName || prev.name,
+            phone: profile.phone || prev.phone,
+            avatar: profile.avatarUrl || prev.avatar,
             nationality: profile.nationality || prev.nationality,
             description: profile.bio || prev.description,
             languages: profile.languages || prev.languages,
@@ -409,7 +412,7 @@ const EditProfile: React.FC = () => {
                 </div>
               </div>
 
-              {/* Identity Verification (Traveler) */}
+              {/* Identity Verification (Traveler) commented out since travellers do not need verification
               {user.role === 'TRAVELER' && (
                 <div id="identity-verification" className="space-y-8 pt-10 border-t border-gray-50 scroll-mt-32">
                   <div className="flex items-center justify-between">
@@ -528,6 +531,7 @@ const EditProfile: React.FC = () => {
                   )}
                 </div>
               )}
+              */}
             </div>
           </div>
         </div>

@@ -122,7 +122,7 @@ const TravelerProfile: React.FC = () => {
                </Link>
             </div>
 
-            {/* Verification banner styled similar to Buddy welcome */}
+            {/* Verification banner commented out since travellers do not need verification
             <div className="bg-white rounded-[40px] px-8 py-8 md:px-12 md:py-10 text-secondary flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-premium border border-gray-100 relative overflow-hidden">
                <div className="absolute -top-12 -right-12 p-10 text-primary/10 pointer-events-none">
                   <Shield size={120} />
@@ -181,6 +181,7 @@ const TravelerProfile: React.FC = () => {
                   </div>
                )}
             </div>
+            */}
 
             <div className="flex flex-col lg:flex-row gap-12">
                {/* Left Column: Avatar & Quick Info */}
@@ -213,10 +214,14 @@ const TravelerProfile: React.FC = () => {
                         </p>
                      </div>
 
-                     <div className="grid grid-cols-2 gap-4 w-full pt-6 border-t border-gray-50">
+                     <div className="grid grid-cols-3 gap-4 w-full pt-6 border-t border-gray-50">
                         <div className="space-y-1">
                            <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Nationality</p>
                            <p className="text-sm font-black text-secondary">{profileData?.nationality || '--'}</p>
+                        </div>
+                        <div className="space-y-1">
+                           <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Phone</p>
+                           <p className="text-sm font-black text-secondary">{profileData?.phone || user.phone || '--'}</p>
                         </div>
                         <div className="space-y-1">
                            <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Languages</p>
