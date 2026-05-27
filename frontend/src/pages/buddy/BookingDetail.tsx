@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ChevronLeft, 
-  MessageCircle, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  ShieldCheck, 
-  DollarSign, 
+import {
+  ChevronLeft,
+  MessageCircle,
+  Calendar,
+  Clock,
+  MapPin,
+  ShieldCheck,
+  DollarSign,
   Compass,
   ArrowRight,
   Star,
@@ -55,7 +55,7 @@ const BookingDetail: React.FC = () => {
     <div className="space-y-12 animate-in fade-in duration-700">
       {/* Back Header */}
       <div className="flex items-center justify-between">
-        <button 
+        <button
           onClick={() => navigate('/buddy/dashboard/trips')}
           className="group flex items-center gap-3 text-secondary/40 hover:text-primary transition-all font-black text-[10px] uppercase tracking-widest border-none bg-transparent cursor-pointer"
         >
@@ -64,7 +64,7 @@ const BookingDetail: React.FC = () => {
           </div>
           Back to Sessions
         </button>
-        
+
         <div className="flex items-center gap-4">
           <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm ${booking.status === 'CONFIRMED' || booking.status === 'UPCOMING' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
             {booking.status}
@@ -93,15 +93,15 @@ const BookingDetail: React.FC = () => {
                 <p className="text-[10px] font-bold text-secondary/30 uppercase tracking-widest mt-1">Hanoi Traveler • Verified</p>
               </div>
               <div className="flex items-center gap-6 pt-2">
-                 <div className="text-center">
-                    <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest mb-1">Trips</p>
-                    <p className="text-sm font-black text-secondary">12</p>
-                 </div>
-                 <div className="w-px h-8 bg-gray-100"></div>
-                 <div className="text-center">
-                    <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest mb-1">Joined</p>
-                    <p className="text-sm font-black text-secondary">2022</p>
-                 </div>
+                <div className="text-center">
+                  <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest mb-1">Trips</p>
+                  <p className="text-sm font-black text-secondary">12</p>
+                </div>
+                <div className="w-px h-8 bg-gray-100"></div>
+                <div className="text-center">
+                  <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest mb-1">Joined</p>
+                  <p className="text-sm font-black text-secondary">2022</p>
+                </div>
               </div>
               <Button className="w-full py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-primary-glow border-none flex items-center justify-center gap-3">
                 <MessageCircle size={18} /> Chat with {booking.traveler?.split(' ')[0] || 'Traveler'}
@@ -127,19 +127,19 @@ const BookingDetail: React.FC = () => {
                 </div>
               </div>
               <div className="p-6 bg-white/5 rounded-3xl border border-white/5 space-y-4">
-                 <div className="flex justify-between items-center text-[10px] font-bold">
-                    <span className="opacity-40">Session Rate</span>
-                    <span>{booking.price}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-[10px] font-bold">
-                    <span className="opacity-40">Service Fee</span>
-                    <span>-$0.00</span>
-                 </div>
-                 <div className="h-px bg-white/10"></div>
-                 <div className="flex justify-between items-center text-xs font-black text-primary">
-                    <span>Net Income</span>
-                    <span>{booking.price}</span>
-                 </div>
+                <div className="flex justify-between items-center text-[10px] font-bold">
+                  <span className="opacity-40">Session Rate</span>
+                  <span>{booking.price}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-bold">
+                  <span className="opacity-40">Service Fee</span>
+                  <span>-$0.00</span>
+                </div>
+                <div className="h-px bg-white/10"></div>
+                <div className="flex justify-between items-center text-xs font-black text-primary">
+                  <span>Net Income</span>
+                  <span>{booking.price}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -160,80 +160,80 @@ const BookingDetail: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 p-10 bg-surface-dark rounded-[40px] border border-gray-100 shadow-inner">
-               <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-primary">
-                     <Calendar size={14} />
-                     <p className="text-[8px] font-black uppercase tracking-widest">Date</p>
-                  </div>
-                  <p className="text-lg font-black text-secondary">{booking.date}</p>
-               </div>
-               <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-primary">
-                     <Clock size={14} />
-                     <p className="text-[8px] font-black uppercase tracking-widest">Starts</p>
-                  </div>
-                  <p className="text-lg font-black text-secondary">{booking.time}</p>
-               </div>
-               <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-primary">
-                     <Star size={14} />
-                     <p className="text-[8px] font-black uppercase tracking-widest">Duration</p>
-                  </div>
-                  <p className="text-lg font-black text-secondary">3 Hours</p>
-               </div>
-               <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-primary">
-                     <UserIcon size={14} />
-                     <p className="text-[8px] font-black uppercase tracking-widest">People</p>
-                  </div>
-                  <p className="text-lg font-black text-secondary">2 Persons</p>
-               </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Calendar size={14} />
+                  <p className="text-[8px] font-black uppercase tracking-widest">Date</p>
+                </div>
+                <p className="text-lg font-black text-secondary">{booking.date}</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Clock size={14} />
+                  <p className="text-[8px] font-black uppercase tracking-widest">Starts</p>
+                </div>
+                <p className="text-lg font-black text-secondary">{booking.time}</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Star size={14} />
+                  <p className="text-[8px] font-black uppercase tracking-widest">Duration</p>
+                </div>
+                <p className="text-lg font-black text-secondary">3 Hours</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <UserIcon size={14} />
+                  <p className="text-[8px] font-black uppercase tracking-widest">People</p>
+                </div>
+                <p className="text-lg font-black text-secondary">2 Persons</p>
+              </div>
             </div>
 
             <div className="space-y-10">
               <h5 className="text-xl font-black text-secondary tracking-tight uppercase border-l-4 border-primary pl-6">Itinerary Timeline</h5>
-              
+
               <div className="relative ml-6 space-y-12">
-                 <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-primary/10 border-l border-dashed border-primary/30"></div>
-                 
-                 <div className="relative pl-12 group">
-                    <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-primary border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest flex items-center gap-2">
-                          <MapPin size={10} className="text-primary" /> Meeting Point
-                       </p>
-                       <h6 className="text-xl font-black text-secondary tracking-tight">St. Joseph's Cathedral, Old Quarter</h6>
-                       <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">Wait near the side entrance. I'll be wearing a Local Buddy orange lanyard.</p>
-                    </div>
-                 </div>
+                <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-primary/10 border-l border-dashed border-primary/30"></div>
 
-                 <div className="relative pl-12 group">
-                    <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-primary border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">Action Highlight</p>
-                       <h6 className="text-xl font-black text-secondary tracking-tight">Exploring Hidden Train Street Cafe</h6>
-                       <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">We'll secure a safe spot for photos and enjoy the signature egg coffee while talking about local railways history.</p>
-                    </div>
-                 </div>
+                <div className="relative pl-12 group">
+                  <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-primary border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest flex items-center gap-2">
+                      <MapPin size={10} className="text-primary" /> Meeting Point
+                    </p>
+                    <h6 className="text-xl font-black text-secondary tracking-tight">St. Joseph's Cathedral, Old Quarter</h6>
+                    <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">Wait near the side entrance. I'll be wearing a Local Buddy orange lanyard.</p>
+                  </div>
+                </div>
 
-                 <div className="relative pl-12 group">
-                    <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-gray-200 border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
-                    <div className="space-y-2">
-                       <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">End Point</p>
-                       <h6 className="text-xl font-black text-secondary tracking-tight">Long Bien Bridge Sunset</h6>
-                       <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">Session concludes with a panoramic sunset view over the Red River.</p>
-                    </div>
-                 </div>
+                <div className="relative pl-12 group">
+                  <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-primary border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">Action Highlight</p>
+                    <h6 className="text-xl font-black text-secondary tracking-tight">Exploring Hidden Train Street Cafe</h6>
+                    <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">We'll secure a safe spot for photos and enjoy the signature egg coffee while talking about local railways history.</p>
+                  </div>
+                </div>
+
+                <div className="relative pl-12 group">
+                  <div className="absolute left-[-5px] top-2 w-3 h-3 rounded-full bg-gray-200 border-4 border-white shadow-lg group-hover:scale-150 transition-transform"></div>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">End Point</p>
+                    <h6 className="text-xl font-black text-secondary tracking-tight">Long Bien Bridge Sunset</h6>
+                    <p className="text-sm font-bold text-secondary/40 max-w-lg leading-relaxed italic">Session concludes with a panoramic sunset view over the Red River.</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="pt-12 border-t border-gray-50 flex items-center justify-between">
-               <div className="flex items-center gap-4 text-xs font-black text-secondary/20 uppercase tracking-widest">
-                  <ShieldCheck size={18} className="text-primary" /> Protected by Local Buddy Guarantee
-               </div>
-               <button className="text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:gap-5 transition-all">
-                  Print Trip Summary <ArrowRight size={14} strokeWidth={4} />
-               </button>
+              <div className="flex items-center gap-4 text-xs font-black text-secondary/20 uppercase tracking-widest">
+                <ShieldCheck size={18} className="text-primary" /> Protected by Local Buddy Guarantee
+              </div>
+              <button className="text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:gap-5 transition-all">
+                Print Trip Summary <ArrowRight size={14} strokeWidth={4} />
+              </button>
             </div>
           </div>
         </div>

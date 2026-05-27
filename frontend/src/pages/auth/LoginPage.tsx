@@ -10,7 +10,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +18,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     try {
       const loggedInUser = await login(email.trim(), password);
       if (loggedInUser.role === 'BUDDY') {
@@ -36,7 +36,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8F9FB] p-6">
       <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-12 items-center">
-        
+
         {/* Left Side - Login Form Card */}
         <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[640px]">
           <div className="mb-10">
@@ -62,11 +62,11 @@ const LoginPage: React.FC = () => {
                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#FF7E4B] transition-colors">
                   <Mail size={20} />
                 </div>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com" 
+                  placeholder="your@email.com"
                   className="w-full bg-[#F9FAFB] border-none outline-none rounded-2xl py-5.5 pl-14 pr-6 font-semibold text-[#1A1A1A] transition-all placeholder:text-[#9CA3AF] shadow-sm focus:ring-2 focus:ring-[#FF7E4B]/10"
                   required
                 />
@@ -82,15 +82,15 @@ const LoginPage: React.FC = () => {
                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-[#9CA3AF] group-focus-within:text-[#FF7E4B] transition-colors">
                   <Lock size={20} />
                 </div>
-                <input 
-                  type={showPassword ? 'text' : 'password'} 
+                <input
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••" 
+                  placeholder="••••••••"
                   className="w-full bg-[#F9FAFB] border-none outline-none rounded-2xl py-5.5 pl-14 pr-14 font-semibold text-[#1A1A1A] transition-all placeholder:text-[#9CA3AF] shadow-sm focus:ring-2 focus:ring-[#FF7E4B]/10"
                   required
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#1A1A1A] transition-colors"
@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
 
             {error && <p className="text-red-500 font-bold text-sm px-2 text-center">{error}</p>}
 
-            <Button 
+            <Button
               type="submit"
               disabled={loading}
               className="w-full bg-[#FF7E4B] hover:bg-[#FF6B35] text-white py-4.5 text-lg font-bold rounded-2xl shadow-[0_10px_20px_rgba(255,126,75,0.2)] transition-all hover:scale-[1.02] active:scale-95 border-none"
@@ -118,7 +118,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button 
+            <button
               type="button"
               onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
               className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5"
@@ -142,9 +142,9 @@ const LoginPage: React.FC = () => {
         {/* Right Side - Testimonial Card */}
         <div className="hidden lg:block flex-1 relative h-[640px] group">
           <div className="absolute inset-0 rounded-[60px] overflow-hidden shadow-2xl">
-            <img 
-              src="/assets/auth/hanoi.png" 
-              alt="Hanoi Old Quarter" 
+            <img
+              src="/assets/auth/hanoi.png"
+              alt="Hanoi Old Quarter"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[4s]"
             />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-700"></div>
@@ -152,10 +152,10 @@ const LoginPage: React.FC = () => {
 
           {/* Floating Icon */}
           <div className="absolute top-10 right-10 w-24 h-24 bg-white/10 backdrop-blur-3xl rounded-full flex items-center justify-center border border-white/20 shadow-xl overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-             <div className="w-16 h-16 bg-[#FF7E4B] rounded-full flex items-center justify-center text-white shadow-lg relative z-10">
-                <Compass size={28} className="animate-spin-slow" />
-             </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+            <div className="w-16 h-16 bg-[#FF7E4B] rounded-full flex items-center justify-center text-white shadow-lg relative z-10">
+              <Compass size={28} className="animate-spin-slow" />
+            </div>
           </div>
 
           {/* Testimonial Content */}
@@ -166,7 +166,7 @@ const LoginPage: React.FC = () => {
               ))}
             </div>
             <h2 className="text-[32px] font-black text-white leading-tight italic">
-              "Found a legendary <br/> Pho spot in Hanoi <br/> thanks to my buddy!"
+              "Found a legendary <br /> Pho spot in Hanoi <br /> thanks to my buddy!"
             </h2>
             <p className="text-white/80 font-bold text-lg">
               — Alex, World Traveler

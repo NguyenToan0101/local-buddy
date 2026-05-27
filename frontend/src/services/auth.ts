@@ -8,8 +8,7 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
-  location?: string;
-  age?: number;
+  phone?: string;
   nationality?: string;
   languages?: string[];
   description?: string;
@@ -108,11 +107,33 @@ export const authService = {
   },
 
   updateProfile: async (id: string, userData: Partial<User>): Promise<User> => {
-    const users: any[] = (mockData.users || []);
-    const idx = users.findIndex((u) => String(u.id) === String(id));
-    if (idx === -1) throw new Error('User not found');
-    users[idx] = { ...users[idx], ...userData };
-    mockData.users = users;
-    return users[idx] as User;
+    const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to update profile');
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: data.avatarUrl,
+      phone: data.phone,
+      nationality: data.nationality,
+      description: data.description,
+      languages: data.languages,
+      interests: data.interests,
+      verificationStatus: data.verificationStatus
+    };
   }
 };
