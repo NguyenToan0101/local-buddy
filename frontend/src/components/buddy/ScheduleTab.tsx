@@ -133,12 +133,21 @@ const ScheduleTab: React.FC = () => {
     let cleanBuddyId = buddyId;
     if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
 
+    const tempId = `temp-${Date.now()}`;
+    const tempSlot = { id: tempId, date, time, status: 'FREE', title: 'Available' };
+
+    // Optimistically add to UI instantly
+    setGeneratedSlots(prev => [...prev, tempSlot]);
+
     availabilityService.addAvailability(cleanBuddyId, {
       date, time, status: 'FREE', title: 'Available'
     }).then(newSlot => {
-      setGeneratedSlots(prev => [...prev, newSlot]);
+      // Replace temporary slot with real one from database
+      setGeneratedSlots(prev => prev.map(s => s.id === tempId ? newSlot : s));
     }).catch(error => {
       console.error("Failed to add slot:", error);
+      // Revert change
+      setGeneratedSlots(prev => prev.filter(s => s.id !== tempId));
     });
   };
 
@@ -146,10 +155,16 @@ const ScheduleTab: React.FC = () => {
     let cleanBuddyId = buddyId;
     if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
 
-    availabilityService.deleteAvailability(cleanBuddyId, id).then(() => {
-      setGeneratedSlots(prev => prev.filter(s => s.id !== id));
-    }).catch(error => {
+    const slotToRemove = generatedSlots.find(s => s.id === id);
+    if (!slotToRemove) return;
+
+    // Optimistically remove from UI instantly
+    setGeneratedSlots(prev => prev.filter(s => s.id !== id));
+
+    availabilityService.deleteAvailability(cleanBuddyId, id).catch(error => {
       console.error("Failed to remove slot:", error);
+      // Revert change (add the slot back)
+      setGeneratedSlots(prev => [...prev, slotToRemove]);
     });
   };
 
