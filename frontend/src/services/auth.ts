@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  location?: string;
   nationality?: string;
   languages?: string[];
   description?: string;
@@ -46,29 +47,86 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      phone: data.phone,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
 
     return { user, token: data.token };
   },
 
   register: async (userData: Omit<User, 'id'> & { password: string }): Promise<AuthResponse> => {
-    // For registration, we can still fall back to mock or write a mock implementation,
-    // but we can generate a basic response. Let's keep it compatible.
-    const users: any[] = (mockData.users || []);
-    const exists = users.some((u) => String(u.email || '').toLowerCase() === String(userData.email).toLowerCase());
-    if (exists) {
-      throw new Error('Email already exists');
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: userData.email.trim(),
+        name: userData.name,
+        password: userData.password,
+        role: userData.role,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Registration failed');
     }
 
-    const user = {
-      ...userData,
-      id: Math.random().toString(36).substring(2, 11),
-    } as any;
-    users.push(user);
-    mockData.users = users;
+    const data = await response.json();
 
-    const token = btoa(JSON.stringify(user));
-    return { user, token };
+    if (data.type === 'OTP_SENT') {
+      return {
+        user: {
+          id: '',
+          email: data.email,
+          name: data.fullName,
+          role: data.role as UserRole,
+        },
+        token: 'OTP_SENT',
+      };
+    }
+
+    const user: User = {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
+    };
+
+    return { user, token: data.token };
+  },
+
+  verifyOtp: async (email: string, otp: string): Promise<AuthResponse> => {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'OTP verification failed');
+    }
+
+    const data = await response.json();
+    const user: User = {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
+    };
+
+    return { user, token: data.token };
   },
 
   getCurrentUser: (): User | null => {
@@ -103,15 +161,19 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      phone: data.phone,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
   },
 
   updateProfile: async (id: string, userData: Partial<User>): Promise<User> => {
-    const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(userData),
     });
@@ -129,6 +191,7 @@ export const authService = {
       role: data.role as UserRole,
       avatar: data.avatarUrl,
       phone: data.phone,
+      location: data.location,
       nationality: data.nationality,
       description: data.description,
       languages: data.languages,

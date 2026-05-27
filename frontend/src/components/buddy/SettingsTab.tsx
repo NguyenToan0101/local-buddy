@@ -3,6 +3,12 @@ import { User, Camera, Phone, CreditCard, Shield, MapPin, Sparkles, Languages, U
 import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import { buddyService, type Buddy } from '../../services/api';
+import SmartSelect from '../ui/SmartSelect';
+import TagSelector from '../registration/TagSelector';
+import { COMMON_LANGUAGES, COMMON_INTERESTS } from '../../types/tourist-profile';
+
+const languageOptions = COMMON_LANGUAGES.map(lang => ({ label: lang, value: lang }));
+const interestOptions = COMMON_INTERESTS.map(interest => ({ label: interest, value: interest }));
 
 const SettingsTab: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -68,6 +74,10 @@ const SettingsTab: React.FC = () => {
       ...prev, 
       [name]: name === 'age' || name === 'price' ? (parseFloat(value) || 0) : value 
     }));
+  };
+
+  const handleSelectChange = (name: string, value: string[]) => {
+    setBuddyData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
@@ -359,6 +369,51 @@ const SettingsTab: React.FC = () => {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Your Story & Local Expertise</label>
                   <textarea name="description" rows={3} value={buddyData.description || ''} onChange={handleChange} className="w-full bg-surface/50 border border-gray-100/50 rounded-[32px] px-10 py-6 font-bold text-secondary outline-none focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all resize-none italic leading-relaxed shadow-inner" placeholder="Tell travelers what makes your tours unique..."/>
+                </div>
+              </div>
+
+              {/* Skills & Preferences Section */}
+              <div className="space-y-6 pt-4">
+                <div className="flex items-center gap-4 border-b border-gray-50 pb-6">
+                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                      <Languages size={20} />
+                   </div>
+                   <h4 className="text-xl font-black text-secondary tracking-tight italic">Skills & Preferences</h4>
+                </div>
+                <div className="space-y-6">
+                  <SmartSelect
+                    multiple
+                    label="Languages"
+                    options={languageOptions}
+                    value={buddyData.languages || []}
+                    onChange={(val) => handleSelectChange('languages', val)}
+                    placeholder="Add languages..."
+                  />
+
+                  <SmartSelect
+                    multiple
+                    label="Passions & Interests"
+                    options={interestOptions}
+                    value={buddyData.interests || []}
+                    onChange={(val) => handleSelectChange('interests', val)}
+                    placeholder="Add passions..."
+                  />
+
+                  <TagSelector 
+                    label="Areas of Expertise"
+                    tags={buddyData.tags || []}
+                    onAddTag={(tag) => {
+                      const currentTags = buddyData.tags || [];
+                      if (!currentTags.includes(tag)) {
+                        setBuddyData(prev => ({ ...prev, tags: [...currentTags, tag] }));
+                      }
+                    }}
+                    onRemoveTag={(tag) => {
+                      setBuddyData(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }));
+                    }}
+                    placeholder="Add expertise (e.g. Gastronomy, Architecture, History)"
+                    suggestions={['History', 'Culture', 'Gastronomy', 'Shopping', 'Hidden Gems', 'Photography']}
+                  />
                 </div>
               </div>
 

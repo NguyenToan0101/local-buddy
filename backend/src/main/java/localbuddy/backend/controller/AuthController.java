@@ -2,8 +2,11 @@ package localbuddy.backend.controller;
 
 import localbuddy.backend.dto.AuthResponse;
 import localbuddy.backend.dto.LoginRequest;
+import localbuddy.backend.dto.RegisterRequest;
+import localbuddy.backend.dto.VerifyOtpRequest;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
+import localbuddy.backend.service.AuthService;
 import localbuddy.backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +16,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.model.enums.UserRole;
+import localbuddy.backend.model.entity.BuddyProfile;
 
 import java.security.Principal;
 import java.util.HashMap;
@@ -27,6 +33,18 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final AuthService authService;
+    private final BuddyProfileRepository buddyProfileRepository;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
+        return ResponseEntity.ok(authService.register(registerRequest));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<AuthResponse> verifyOtp(@RequestBody VerifyOtpRequest verifyOtpRequest) {
+        return ResponseEntity.ok(authService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp()));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
@@ -44,6 +62,19 @@ public class AuthController {
 
         String jwt = jwtService.generateToken(user.getEmail(), user.getId(), user.getRole().name());
 
+        String verificationStatus = null;
+        String location = null;
+        if (user.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(user.getId()).orElse(null);
+            if (buddyProfile != null) {
+                verificationStatus = buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified";
+                location = buddyProfile.getLocation();
+            } else {
+                verificationStatus = "unverified";
+                location = "Not Specified";
+            }
+        }
+
         AuthResponse authResponse = AuthResponse.builder()
                 .token(jwt)
                 .id(user.getId())
@@ -51,6 +82,9 @@ public class AuthController {
                 .fullName(user.getFullName())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole().name())
+                .phone(user.getPhone())
+                .verificationStatus(verificationStatus)
+                .location(location)
                 .build();
 
         return ResponseEntity.ok(authResponse);
@@ -73,6 +107,62 @@ public class AuthController {
         response.put("avatarUrl", user.getAvatarUrl());
         response.put("role", user.getRole().name());
         response.put("isBuddy", user.getIsBuddy());
+        response.put("phone", user.getPhone());
+
+        if (user.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(user.getId()).orElse(null);
+            if (buddyProfile != null) {
+                response.put("verificationStatus", buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified");
+                response.put("location", buddyProfile.getLocation());
+            } else {
+                response.put("verificationStatus", "unverified");
+                response.put("location", "Not Specified");
+            }
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(Principal principal, @RequestBody Map<String, Object> updates) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        if (updates.containsKey("name")) {
+            user.setFullName((String) updates.get("name"));
+        }
+        if (updates.containsKey("avatar")) {
+            user.setAvatarUrl((String) updates.get("avatar"));
+        }
+        if (updates.containsKey("phone")) {
+            user.setPhone((String) updates.get("phone"));
+        }
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        User savedUser = userRepository.save(user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", savedUser.getId());
+        response.put("email", savedUser.getEmail());
+        response.put("fullName", savedUser.getFullName());
+        response.put("avatarUrl", savedUser.getAvatarUrl());
+        response.put("role", savedUser.getRole().name());
+        response.put("isBuddy", savedUser.getIsBuddy());
+
+        if (savedUser.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(savedUser.getId()).orElse(null);
+            if (buddyProfile != null) {
+                response.put("verificationStatus", buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified");
+                response.put("location", buddyProfile.getLocation());
+            } else {
+                response.put("verificationStatus", "unverified");
+                response.put("location", "Not Specified");
+            }
+        }
 
         return ResponseEntity.ok(response);
     }

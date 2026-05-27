@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, MapPin, Globe, Heart, Edit3, ChevronLeft, Hash, Shield, Clock, Sparkles, Loader2, Plus, Calendar } from 'lucide-react';
+import { User, MapPin, Globe, Heart, Edit3, ChevronLeft, Hash, Loader2, Plus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import Button from '../../components/ui/Button';
@@ -8,9 +8,8 @@ import { touristProfileService } from '../../services/tourist-profile';
 import type { TouristProfileResponse } from '../../types/tourist-profile';
 
 const TravelerProfile: React.FC = () => {
-   const { user, updateUser } = useAuth();
+   const { user } = useAuth();
    const navigate = useNavigate();
-   const [syncing, setSyncing] = useState(false);
    const [profileData, setProfileData] = useState<TouristProfileResponse | null>(null);
    const [loadingProfile, setLoadingProfile] = useState(true);
    const [hasProfile, setHasProfile] = useState(false);
@@ -39,25 +38,6 @@ const TravelerProfile: React.FC = () => {
 
       loadProfile();
    }, []);
-
-   // Sync latest verificationStatus from API after admin approve
-   useEffect(() => {
-      let mounted = true;
-      const run = async () => {
-         try {
-            setSyncing(true);
-            await updateUser({});
-         } catch {
-            // ignore
-         } finally {
-            if (mounted) setSyncing(false);
-         }
-      };
-      run();
-      return () => {
-         mounted = false;
-      };
-   }, [updateUser]);
 
    if (loadingProfile) {
       return (
@@ -120,66 +100,6 @@ const TravelerProfile: React.FC = () => {
                   </div>
                   Back to Home
                </Link>
-            </div>
-
-            {/* Verification banner styled similar to Buddy welcome */}
-            <div className="bg-white rounded-[40px] px-8 py-8 md:px-12 md:py-10 text-secondary flex flex-col md:flex-row md:items-center justify-between gap-8 shadow-premium border border-gray-100 relative overflow-hidden">
-               <div className="absolute -top-12 -right-12 p-10 text-primary/10 pointer-events-none">
-                  <Shield size={120} />
-               </div>
-               <div className="flex items-start gap-5 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                     {user.verificationStatus === 'verified' ? <Shield size={22} /> : <Clock size={22} />}
-                  </div>
-                  <div className="space-y-2">
-                     <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.25em]">
-                        <Sparkles size={12} className="animate-pulse" /> Traveler Identity
-                     </div>
-                     {user.verificationStatus === 'verified' ? (
-                        <>
-                           <h2 className="text-xl md:text-2xl font-black tracking-tight">You&apos;re a verified traveler</h2>
-                           <p className="text-xs md:text-sm font-medium text-secondary/60 max-w-xl">
-                              Your identity has been verified. Local buddies will see you as a trusted guest in the community.
-                           </p>
-                        </>
-                     ) : user.verificationStatus === 'pending' ? (
-                        <>
-                           <h2 className="text-xl md:text-2xl font-black tracking-tight">Verification in progress</h2>
-                           <p className="text-xs md:text-sm font-medium text-secondary/60 max-w-xl">
-                              Our safety team is reviewing your passport and selfie. You&apos;ll receive an update once everything is confirmed.
-                           </p>
-                        </>
-                     ) : (
-                        <>
-                           <h2 className="text-xl md:text-2xl font-black tracking-tight">Verify your traveler identity</h2>
-                           <p className="text-xs md:text-sm font-medium text-secondary/60 max-w-xl">
-                              A quick passport and selfie check helps buddies feel safe before accepting your requests and trips.
-                           </p>
-                        </>
-                     )}
-                  </div>
-               </div>
-
-               {user.verificationStatus !== 'verified' && (
-                  <div className="relative z-10 flex flex-col items-stretch gap-3 md:items-end">
-                     <div className="text-right">
-                        {syncing && (
-                           <p className="text-[9px] font-black text-secondary/30 uppercase tracking-[0.3em] mb-2">
-                              Syncing status...
-                           </p>
-                        )}
-                     </div>
-                     <Button
-                        onClick={() => navigate('/traveller/profile/edit#identity-verification')}
-                        className="px-10 py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-primary-glow hover:scale-[1.03] active:scale-95 transition-all border-none"
-                     >
-                        {user.verificationStatus === 'pending' ? 'View verification' : 'Start verification'}
-                     </Button>
-                     <p className="text-[9px] font-black text-secondary/30 uppercase tracking-[0.3em] hidden md:block">
-                        End-to-end encrypted • For safety only
-                     </p>
-                  </div>
-               )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-12">
