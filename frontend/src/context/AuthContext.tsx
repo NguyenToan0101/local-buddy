@@ -7,7 +7,8 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   loginWithToken: (token: string) => Promise<User>;
-  register: (userData: any) => Promise<User>;
+  register: (userData: any) => Promise<any>;
+  verifyOtp: (email: string, otp: string) => Promise<User>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -44,6 +45,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (userData: any) => {
     const { user, token } = await authService.register(userData);
+    if (token === 'OTP_SENT') {
+      return { otpRequired: true, email: user.email, name: user.name, role: user.role };
+    }
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    setUser(user);
+    return user;
+  };
+
+  const verifyOtp = async (email: string, otp: string) => {
+    const { user, token } = await authService.verifyOtp(email, otp);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
@@ -69,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, verifyOtp, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );
