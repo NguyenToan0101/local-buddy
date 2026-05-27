@@ -2,6 +2,31 @@ import { mockData } from '../mock/mockData';
 
 type Db = Record<string, any>;
 const DB_KEY = 'mock_db_v1';
+const DB_SYNC_KEY = 'mock_db_v1_sync';
+const MESSAGE_CHANNEL = 'local_buddy_messages';
+const API_BASE_URL = 'http://localhost:8080';
+
+function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
+  const token = localStorage.getItem('token');
+  return {
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+function emitDbChange(topic: string) {
+  const payload = { topic, at: Date.now() };
+  try {
+    localStorage.setItem(DB_SYNC_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore sync failures in private browsing or restricted storage.
+  }
+  if (typeof BroadcastChannel !== 'undefined') {
+    const channel = new BroadcastChannel(MESSAGE_CHANNEL);
+    channel.postMessage(payload);
+    channel.close();
+  }
+}
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
@@ -217,28 +242,86 @@ export const transactionService = {
 
 export const messageService = {
   getConversations: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'conversations'));
+    const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch conversations');
+    return response.json();
+  },
+  getOrCreateConversationByBuddyId: async (buddyId: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/conversations/buddy/${buddyId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to create conversation');
+    return response.json();
   },
   getMessagesByConvId: async (convId: string) => {
-    const db = loadDb();
-    const conv = getById<any>(ensureArray(db, 'conversations'), convId);
-    if (!conv) throw new Error('Conversation not found');
-    return clone(conv.messages || []);
+    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch messages');
+    return response.json();
   },
   sendMessage: async (convId: string, message: any) => {
-    const db = loadDb();
-    const convs = ensureArray(db, 'conversations');
-    const conv = getById<any>(convs, convId);
-    if (!conv) throw new Error('Conversation not found');
-    const updatedMessages = [...(conv.messages || []), { ...message, id: Date.now() }];
-    const updated = patchById<any>(convs, convId, {
-      messages: updatedMessages,
-      lastMsg: message.text || message.content,
-      time: 'Just now',
+    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        text: message.text || message.content,
+        content: message.content,
+        isOffer: message.isOffer,
+        hours: message.hours,
+        price: message.price,
+      }),
     });
-    saveDb(db);
-    return clone(updated);
+    if (!response.ok) throw new Error('Failed to send message');
+    return response.json();
+  },
+  subscribe: (callback: () => void, onStatusChange?: (connected: boolean) => void) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return () => {};
+    }
+
+    let closedByClient = false;
+    let retryTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let socket: WebSocket | null = null;
+
+    const connect = () => {
+      const wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => onStatusChange?.(true);
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'messages') {
+            callback();
+          }
+        } catch {
+          callback();
+        }
+      };
+      socket.onclose = () => {
+        onStatusChange?.(false);
+        if (!closedByClient) {
+          retryTimer = window.setTimeout(connect, 1500);
+        }
+      };
+      socket.onerror = () => {
+        onStatusChange?.(false);
+        socket?.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      closedByClient = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
   },
 };
 
@@ -322,8 +405,6 @@ export const notificationService = {
     return clone(updated);
   },
 };
-
-const API_BASE_URL = 'http://localhost:8080';
 
 export interface AvailabilitySlot {
   id: string;
