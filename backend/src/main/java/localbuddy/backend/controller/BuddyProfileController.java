@@ -13,7 +13,7 @@ import java.util.UUID;
 @RequestMapping("/buddies")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
-public class BuddyProfileController {
+public class    BuddyProfileController {
 
     private final BuddyProfileService buddyProfileService;
 
