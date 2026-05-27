@@ -47,6 +47,7 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
@@ -160,6 +161,7 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
