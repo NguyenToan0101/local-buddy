@@ -94,7 +94,7 @@ const TravelerProfile: React.FC = () => {
                      </p>
 
                      <Button
-                        onClick={() => navigate('/traveller/create-profile')}
+                        onClick={() => navigate('/traveller/profile/edit')}
                         className="px-8 py-4 bg-primary text-white rounded-xl hover:bg-primary/90 flex items-center gap-2 mx-auto"
                      >
                         <Plus size={20} />
