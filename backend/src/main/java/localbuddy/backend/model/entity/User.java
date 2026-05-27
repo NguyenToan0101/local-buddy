@@ -5,6 +5,8 @@ import localbuddy.backend.model.enums.UserRole;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -34,6 +36,7 @@ public class User {
     @Column(name = "avatar_url", length = Integer.MAX_VALUE)
     private String avatarUrl;
 
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @ColumnDefault("'TRAVELER'")
     @Column(name = "role", columnDefinition = "user_role not null")
     @Enumerated(EnumType.STRING)
