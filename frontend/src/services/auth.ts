@@ -9,6 +9,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   phone?: string;
+  location?: string;
   nationality?: string;
   languages?: string[];
   description?: string;
@@ -46,6 +47,8 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
 
     return { user, token: data.token };
@@ -90,6 +93,8 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
 
     return { user, token: data.token };
@@ -116,6 +121,8 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
 
     return { user, token: data.token };
@@ -153,6 +160,8 @@ export const authService = {
       name: data.fullName,
       role: data.role as UserRole,
       avatar: data.avatarUrl,
+      location: data.location,
+      verificationStatus: data.verificationStatus,
     };
   },
 
@@ -180,6 +189,7 @@ export const authService = {
       role: data.role as UserRole,
       avatar: data.avatarUrl,
       phone: data.phone,
+      location: data.location,
       nationality: data.nationality,
       description: data.description,
       languages: data.languages,

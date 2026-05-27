@@ -95,7 +95,7 @@ public class BuddyProfileService {
                 .phone(user.getPhone())
                 .idCardFront(profile.getIdCardFrontUrl())
                 .idCardBack(profile.getIdCardBackUrl())
-                .verificationStatus(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name() : "unverified")
+                .verificationStatus(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "unverified")
                 .build();
     }
 }

@@ -16,6 +16,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.model.enums.UserRole;
+import localbuddy.backend.model.entity.BuddyProfile;
 
 import java.security.Principal;
 import java.util.HashMap;
@@ -31,6 +34,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final AuthService authService;
+    private final BuddyProfileRepository buddyProfileRepository;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
@@ -58,6 +62,19 @@ public class AuthController {
 
         String jwt = jwtService.generateToken(user.getEmail(), user.getId(), user.getRole().name());
 
+        String verificationStatus = null;
+        String location = null;
+        if (user.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(user.getId()).orElse(null);
+            if (buddyProfile != null) {
+                verificationStatus = buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified";
+                location = buddyProfile.getLocation();
+            } else {
+                verificationStatus = "unverified";
+                location = "Not Specified";
+            }
+        }
+
         AuthResponse authResponse = AuthResponse.builder()
                 .token(jwt)
                 .id(user.getId())
@@ -65,6 +82,8 @@ public class AuthController {
                 .fullName(user.getFullName())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole().name())
+                .verificationStatus(verificationStatus)
+                .location(location)
                 .build();
 
         return ResponseEntity.ok(authResponse);
@@ -87,6 +106,17 @@ public class AuthController {
         response.put("avatarUrl", user.getAvatarUrl());
         response.put("role", user.getRole().name());
         response.put("isBuddy", user.getIsBuddy());
+
+        if (user.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(user.getId()).orElse(null);
+            if (buddyProfile != null) {
+                response.put("verificationStatus", buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified");
+                response.put("location", buddyProfile.getLocation());
+            } else {
+                response.put("verificationStatus", "unverified");
+                response.put("location", "Not Specified");
+            }
+        }
 
         return ResponseEntity.ok(response);
     }
@@ -120,6 +150,17 @@ public class AuthController {
         response.put("avatarUrl", savedUser.getAvatarUrl());
         response.put("role", savedUser.getRole().name());
         response.put("isBuddy", savedUser.getIsBuddy());
+
+        if (savedUser.getRole() == UserRole.BUDDY) {
+            BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(savedUser.getId()).orElse(null);
+            if (buddyProfile != null) {
+                response.put("verificationStatus", buddyProfile.getVerificationStatus() != null ? buddyProfile.getVerificationStatus().name().toLowerCase() : "unverified");
+                response.put("location", buddyProfile.getLocation());
+            } else {
+                response.put("verificationStatus", "unverified");
+                response.put("location", "Not Specified");
+            }
+        }
 
         return ResponseEntity.ok(response);
     }

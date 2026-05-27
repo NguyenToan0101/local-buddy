@@ -22,4 +22,6 @@ public class AuthResponse {
     private String fullName;
     private String avatarUrl;
     private String role;
+    private String verificationStatus;
+    private String location;
 }
