@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/register",
                                 "/auth/verify-otp",
+                                "/ws/**",
                                 "/login/**",
                                 "/oauth2/**"
                         ).permitAll()

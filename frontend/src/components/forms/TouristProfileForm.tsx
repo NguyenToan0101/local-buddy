@@ -297,11 +297,11 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                 )}
 
                 {/* Selected Custom Languages */}
-                {formData.languages?.filter(lang => !COMMON_LANGUAGES.includes(lang as any)).length > 0 && (
+                {(formData.languages || []).filter(lang => !COMMON_LANGUAGES.includes(lang as any)).length > 0 && (
                     <div className="mb-4">
                         <p className="text-sm font-medium text-secondary mb-2">Custom Languages:</p>
                         <div className="flex flex-wrap gap-2">
-                            {formData.languages
+                            {(formData.languages || [])
                                 .filter(lang => !COMMON_LANGUAGES.includes(lang as any))
                                 .map(lang => (
                                     <span
@@ -395,11 +395,11 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                 )}
 
                 {/* Selected Custom Interests */}
-                {formData.interests?.filter(interest => !COMMON_INTERESTS.includes(interest as any)).length > 0 && (
+                {(formData.interests || []).filter(interest => !COMMON_INTERESTS.includes(interest as any)).length > 0 && (
                     <div className="mb-4">
                         <p className="text-sm font-medium text-secondary mb-2">Custom Interests:</p>
                         <div className="flex flex-wrap gap-2">
-                            {formData.interests
+                            {(formData.interests || [])
                                 .filter(interest => !COMMON_INTERESTS.includes(interest as any))
                                 .map(interest => (
                                     <span

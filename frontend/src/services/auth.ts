@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
+  googleAvatar?: string;
   phone?: string;
   location?: string;
   nationality?: string;
@@ -24,6 +25,9 @@ export interface AuthResponse {
 }
 
 const API_BASE_URL = 'http://localhost:8080';
+
+const getDisplayAvatar = (data: any): string | undefined =>
+  data.displayAvatarUrl || data.avatar || data.avatarUrl || data.googleAvatarUrl;
 
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
@@ -46,7 +50,8 @@ export const authService = {
       email: data.email,
       name: data.fullName,
       role: data.role as UserRole,
-      avatar: data.avatarUrl,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
       phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
@@ -93,7 +98,8 @@ export const authService = {
       email: data.email,
       name: data.fullName,
       role: data.role as UserRole,
-      avatar: data.avatarUrl,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
@@ -121,7 +127,8 @@ export const authService = {
       email: data.email,
       name: data.fullName,
       role: data.role as UserRole,
-      avatar: data.avatarUrl,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
       location: data.location,
       verificationStatus: data.verificationStatus,
     };
@@ -160,7 +167,8 @@ export const authService = {
       email: data.email,
       name: data.fullName,
       role: data.role as UserRole,
-      avatar: data.avatarUrl,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
       phone: data.phone,
       location: data.location,
       verificationStatus: data.verificationStatus,
@@ -189,7 +197,8 @@ export const authService = {
       email: data.email,
       name: data.fullName,
       role: data.role as UserRole,
-      avatar: data.avatarUrl,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
       phone: data.phone,
       location: data.location,
       nationality: data.nationality,

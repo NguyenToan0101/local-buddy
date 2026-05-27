@@ -9,7 +9,6 @@ import type { Buddy, Review, Experience } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { useAuth } from '../../context/AuthContext';
 
 const BuddyProfile: React.FC = () => {
   const { id } = useParams();
@@ -20,7 +19,6 @@ const BuddyProfile: React.FC = () => {
   const [buddyStories, setBuddyStories] = useState<Experience[]>([]);
   const [freeSlots, setFreeSlots] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const { user } = useAuth();
 
 
   useEffect(() => {
@@ -362,11 +360,14 @@ const BuddyProfile: React.FC = () => {
                   <div className="space-y-4">
                      <Button 
                         onClick={() => {
-                          if (user?.role === 'TRAVELER' && user?.verificationStatus !== 'verified') {
-                            navigate('/traveller/profile');
-                          } else {
-                            navigate(`/traveller/messages?buddyId=${buddy.id}`);
-                          }
+                          // Traveller verification is no longer required before messaging.
+                          // Previous flow:
+                          // if (user?.role === 'TRAVELER' && user?.verificationStatus !== 'verified') {
+                          //   navigate('/traveller/profile');
+                          // } else {
+                          //   navigate(`/traveller/messages?buddyId=${buddy.id}`);
+                          // }
+                          navigate(`/traveller/messages?buddyId=${buddy.id}`);
                         }}
                         className="w-full py-7 text-xs font-black tracking-[0.2em] shadow-primary-glow uppercase rounded-2xl flex items-center justify-center gap-2"
                      >

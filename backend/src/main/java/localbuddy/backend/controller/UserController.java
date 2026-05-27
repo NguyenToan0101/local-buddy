@@ -2,6 +2,7 @@ package localbuddy.backend.controller;
 
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
+import localbuddy.backend.service.AvatarService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -46,7 +47,9 @@ public class UserController {
             response.put("id", savedUser.getId());
             response.put("email", savedUser.getEmail());
             response.put("fullName", savedUser.getFullName());
-            response.put("avatarUrl", savedUser.getAvatarUrl());
+            response.put("avatarUrl", AvatarService.getDisplayAvatarUrl(savedUser));
+            response.put("googleAvatarUrl", savedUser.getGoogleAvatarUrl());
+            response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(savedUser));
             response.put("role", savedUser.getRole().name());
             response.put("phone", savedUser.getPhone());
             
@@ -72,7 +75,9 @@ public class UserController {
             
             Map<String, String> response = new HashMap<>();
             response.put("message", "Avatar updated successfully");
-            response.put("avatarUrl", avatarUrl);
+            response.put("avatarUrl", AvatarService.getDisplayAvatarUrl(user));
+            response.put("googleAvatarUrl", user.getGoogleAvatarUrl());
+            response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(user));
             
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {

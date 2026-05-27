@@ -7,6 +7,7 @@ import localbuddy.backend.dto.VerifyOtpRequest;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AuthService;
+import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -80,7 +81,9 @@ public class AuthController {
                 .id(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .avatarUrl(user.getAvatarUrl())
+                .avatarUrl(AvatarService.getDisplayAvatarUrl(user))
+                .googleAvatarUrl(user.getGoogleAvatarUrl())
+                .displayAvatarUrl(AvatarService.getDisplayAvatarUrl(user))
                 .role(user.getRole().name())
                 .phone(user.getPhone())
                 .verificationStatus(verificationStatus)
@@ -104,7 +107,9 @@ public class AuthController {
         response.put("id", user.getId());
         response.put("email", user.getEmail());
         response.put("fullName", user.getFullName());
-        response.put("avatarUrl", user.getAvatarUrl());
+        response.put("avatarUrl", AvatarService.getDisplayAvatarUrl(user));
+        response.put("googleAvatarUrl", user.getGoogleAvatarUrl());
+        response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(user));
         response.put("role", user.getRole().name());
         response.put("isBuddy", user.getIsBuddy());
         response.put("phone", user.getPhone());
@@ -149,7 +154,9 @@ public class AuthController {
         response.put("id", savedUser.getId());
         response.put("email", savedUser.getEmail());
         response.put("fullName", savedUser.getFullName());
-        response.put("avatarUrl", savedUser.getAvatarUrl());
+        response.put("avatarUrl", AvatarService.getDisplayAvatarUrl(savedUser));
+        response.put("googleAvatarUrl", savedUser.getGoogleAvatarUrl());
+        response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(savedUser));
         response.put("role", savedUser.getRole().name());
         response.put("isBuddy", savedUser.getIsBuddy());
 

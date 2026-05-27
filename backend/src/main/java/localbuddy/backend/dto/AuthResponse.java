@@ -21,6 +21,8 @@ public class AuthResponse {
     private String email;
     private String fullName;
     private String avatarUrl;
+    private String googleAvatarUrl;
+    private String displayAvatarUrl;
     private String role;
     private String verificationStatus;
     private String location;
