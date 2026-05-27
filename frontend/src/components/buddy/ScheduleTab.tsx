@@ -46,7 +46,10 @@ const ScheduleTab: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         let cleanBuddyId = buddyId;
