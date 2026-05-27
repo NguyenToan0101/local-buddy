@@ -24,7 +24,7 @@ public class User {
     @Column(name = "email", nullable = false)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = Integer.MAX_VALUE)
+    @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
     private String passwordHash;
 
     @Column(name = "full_name", nullable = false)
@@ -33,7 +33,7 @@ public class User {
     @Column(name = "phone", length = 20)
     private String phone;
 
-    @Column(name = "avatar_url", length = Integer.MAX_VALUE)
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
