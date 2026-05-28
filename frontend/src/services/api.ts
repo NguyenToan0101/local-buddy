@@ -92,7 +92,7 @@ export interface Buddy {
 
 export const buddyService = {
   getAll: async () => {
-    const response = await fetch('http://localhost:8080/buddies', {
+    const response = await fetch(`${API_BASE_URL}/buddies`, {
       method: 'GET',
     });
     if (!response.ok) {
@@ -102,7 +102,7 @@ export const buddyService = {
   },
   getById: async (id: string) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:8080/buddies/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -115,7 +115,7 @@ export const buddyService = {
   },
   updateProfile: async (id: string, data: Partial<Buddy>) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:8080/buddies/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -132,49 +132,53 @@ export const buddyService = {
 
 export const bookingService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'bookings'));
+    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch bookings');
+    return response.json();
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const found = getById<any>(bookings, id);
-    if (!found) throw new Error('Booking not found');
-    return clone(found);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Booking not found');
+    return response.json();
   },
   create: async (bookingData: any) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const created = { ...bookingData, id: bookingData.id || String(Date.now()) };
-    bookings.push(created);
-    saveDb(db);
-    return clone(created);
+    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(bookingData),
+    });
+    if (!response.ok) throw new Error('Failed to create booking');
+    return response.json();
   },
   getByUserId: async (userId: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    return clone(bookings.filter((b: any) => String(b.userId) === String(userId)));
+    const bookings = await bookingService.getAll();
+    return bookings.filter((b: any) => String(b.userId) === String(userId));
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    return clone(bookings.filter((b: any) => String(b.buddyId) === String(buddyId)));
+    const bookings = await bookingService.getAll();
+    return bookings.filter((b: any) => String(b.buddyId) === String(buddyId));
   },
   updateStatus: async (id: string, status: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const updated = patchById<any>(bookings, id, { status });
-    if (!updated) throw new Error('Booking not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) throw new Error('Failed to update booking status');
+    return response.json();
   },
   updateMeetupStatus: async (id: string, status: string | null) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const updated = patchById<any>(bookings, id, { meetupStatus: status });
-    if (!updated) throw new Error('Booking not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/meetup-status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) throw new Error('Failed to update meetup status');
+    return response.json();
   },
 };
 
@@ -271,6 +275,13 @@ export const messageService = {
         text: message.text || message.content,
         content: message.content,
         isOffer: message.isOffer,
+        activity: message.activity,
+        description: message.description,
+        date: message.date,
+        time: message.startTime || message.offerTime,
+        duration: message.duration,
+        guests: message.guests,
+        location: message.location,
         hours: message.hours,
         price: message.price,
       }),

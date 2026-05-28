@@ -20,6 +20,8 @@ const Checkout: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const isAlreadyPaid = booking ? booking.status && booking.status !== 'PENDING' : false;
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -48,6 +50,10 @@ const Checkout: React.FC = () => {
     if (!bookingId) {
       alert("Demo Mode: Payment successful!");
       setSuccess(true);
+      return;
+    }
+
+    if (isAlreadyPaid) {
       return;
     }
 
@@ -168,11 +174,18 @@ const Checkout: React.FC = () => {
                   <h2 className="text-xl font-black text-secondary tracking-tight">Payment Method</h2>
                </div>
 
+               {isAlreadyPaid && (
+                  <div className="rounded-[32px] border border-green-200 bg-green-50 px-6 py-5 text-sm font-black text-green-700 uppercase tracking-widest">
+                     This booking has already been paid.
+                  </div>
+               )}
+
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Credit Card */}
                   <button 
+                    disabled={isAlreadyPaid}
                     onClick={() => setPaymentMethod('card')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'card' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'}`}
+                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'card' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                      <div className="flex flex-col items-center gap-6 text-center">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'card' ? 'bg-primary text-white shadow-lg rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
@@ -188,8 +201,9 @@ const Checkout: React.FC = () => {
 
                   {/* Apple Pay */}
                   <button 
+                    disabled={isAlreadyPaid}
                     onClick={() => setPaymentMethod('apple')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'apple' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'}`}
+                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'apple' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                      <div className="flex flex-col items-center gap-6 text-center">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'apple' ? 'bg-black text-white shadow-lg -rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
@@ -205,8 +219,9 @@ const Checkout: React.FC = () => {
 
                   {/* Google Pay */}
                   <button 
+                    disabled={isAlreadyPaid}
                     onClick={() => setPaymentMethod('google')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'google' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'}`}
+                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'google' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                      <div className="flex flex-col items-center gap-6 text-center">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'google' ? 'bg-[#4285F4] text-white shadow-lg rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
@@ -247,11 +262,11 @@ const Checkout: React.FC = () => {
 
                  <div className="space-y-6">
                     <Button 
-                      disabled={processing}
+                      disabled={processing || isAlreadyPaid}
                       onClick={handleCheckout}
                       className="w-full py-8 text-xl shadow-premium-hover hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border-none"
                     >
-                       {processing ? "Securing Session..." : "Secure My Adventure"}
+                       {isAlreadyPaid ? "Already Paid" : processing ? "Securing Session..." : "Secure My Adventure"}
                     </Button>
                    <div className="flex flex-col items-center gap-3">
                       <div className="flex items-center gap-2 text-primary/30 font-black uppercase tracking-[0.3em] text-[9px]">

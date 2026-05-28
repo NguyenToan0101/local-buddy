@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   X, Utensils, Coffee, ShoppingBag, Footprints, 
-  Calendar, Clock, Timer, MapPin, Users, Send 
+  Calendar, Clock, Timer, MapPin, Users, Send, DollarSign
 } from 'lucide-react';
 import Button from '../ui/Button';
 
@@ -11,6 +11,7 @@ interface ExperienceRequestModalProps {
   onSend: (data: any) => void;
   buddyName: string;
   buddyAvatar: string;
+  hourlyRate?: number;
 }
 
 const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({ 
@@ -18,7 +19,8 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
   onClose, 
   onSend,
   buddyName,
-  buddyAvatar
+  buddyAvatar,
+  hourlyRate = 0
 }) => {
   const [activity, setActivity] = useState('Food');
   const [description, setDescription] = useState('');
@@ -27,9 +29,32 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
   const [duration, setDuration] = useState('2 hours');
   const [guests, setGuests] = useState(1);
   const [location, setLocation] = useState('');
+  const [price, setPrice] = useState(45);
+  const [priceEdited, setPriceEdited] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
 
-  if (!isOpen) return null;
+  const hours = useMemo(() => {
+    if (duration.toLowerCase().includes('full')) return 8;
+    return Math.max(1, parseInt(duration, 10) || 1);
+  }, [duration]);
+
+  const calculatedPrice = useMemo(() => {
+    const baseRate = Number(hourlyRate) > 0 ? Number(hourlyRate) : 45;
+    return Number((baseRate * hours).toFixed(2));
+  }, [hourlyRate, hours]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPriceEdited(false);
+      setPrice(calculatedPrice);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && !priceEdited) {
+      setPrice(calculatedPrice);
+    }
+  }, [calculatedPrice, isOpen, priceEdited]);
 
   const activities = [
     { id: 'Food', icon: Utensils, label: 'Food' },
@@ -45,11 +70,14 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
       date,
       time,
       duration,
+      hours,
       guests,
       location,
-      price: 45 // Default price for now, can be made dynamic
+      price
     });
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/40 backdrop-blur-sm animate-in fade-in duration-300">
@@ -139,6 +167,27 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Offer Price */}
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Offer Price</label>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
+              <input
+                type="number"
+                min="1"
+                value={price}
+                onChange={(e) => {
+                  setPriceEdited(true);
+                  setPrice(Math.max(1, Number(e.target.value) || 1));
+                }}
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
+              />
+            </div>
+            <p className="text-[9px] font-bold text-secondary/25 uppercase tracking-widest ml-1">
+              Base ${Number(hourlyRate || 45).toFixed(2)}/hour x {hours}h
+            </p>
           </div>
 
           {/* Duration & Guests */}

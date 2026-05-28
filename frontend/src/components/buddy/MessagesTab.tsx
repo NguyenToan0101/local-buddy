@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Plus, Search, DollarSign, Sparkles, MapPin, Users, Calendar, Timer, MessageSquare } from 'lucide-react';
 import Button from '../ui/Button';
-import { messageService } from '../../services/api';
+import { buddyService, messageService } from '../../services/api';
 import ExperienceRequestModal from './ExperienceRequestModal';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,6 +19,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
   const [messageInput, setMessageInput] = useState('');
   const [socketConnected, setSocketConnected] = useState(false);
   const [sending, setSending] = useState(false);
+  const [buddyHourlyRate, setBuddyHourlyRate] = useState(0);
   const messageListRef = useRef<HTMLDivElement>(null);
 
   const getBuddyId = () => {
@@ -59,6 +60,18 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
   }, [user?.id, activeChat]);
 
   useEffect(() => {
+    const loadBuddyRate = async () => {
+      try {
+        const profile = await buddyService.getById(getBuddyId());
+        setBuddyHourlyRate(Number(profile.price || 0));
+      } catch (error) {
+        console.error("Failed to load buddy hourly rate:", error);
+      }
+    };
+    loadBuddyRate();
+  }, [user?.id]);
+
+  useEffect(() => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
@@ -88,6 +101,8 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
       type: 'sent',
       senderRole: 'BUDDY',
       isOffer: true,
+      offerTime: data.time,
+      hours: data.hours,
       text: `Custom Offer: ${data.duration} of ${data.activity}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
@@ -247,7 +262,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
                       {m.date && (
                         <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={8} /> Trip Date</p>
-                          <p className="text-xs font-black text-white">{m.date} at {m.time}</p>
+                          <p className="text-xs font-black text-white">{m.date} at {m.offerTime || m.time}</p>
                         </div>
                       )}
                       {m.location && (
@@ -261,7 +276,9 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
                         <p className="text-xl font-black text-primary">${m.price}</p>
                       </div>
                     </div>
-                    <p className="text-[9px] font-bold text-white/40 text-center uppercase tracking-widest">Awaiting Traveler Payment</p>
+                    <p className="text-[9px] font-bold text-white/40 text-center uppercase tracking-widest">
+                      {m.bookingId ? `Booking created: ${String(m.bookingId).slice(0, 8)}` : 'Awaiting Traveler Payment'}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -281,6 +298,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
           onSend={handleSendOffer}
           buddyName="Linh Nguyen"
           buddyAvatar="/assets/img/Linh.jpg"
+          hourlyRate={buddyHourlyRate}
         />
 
         {/* Input Area */}
