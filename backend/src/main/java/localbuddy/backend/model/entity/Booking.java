@@ -6,8 +6,10 @@ import localbuddy.backend.model.enums.MeetupStatus;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -53,15 +55,21 @@ public class Booking {
     @Column(name = "total_hours", nullable = false)
     private Integer totalHours;
 
+    @ColumnDefault("1")
+    @Column(name = "guest_count", nullable = false)
+    private Integer guestCount;
+
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
     @ColumnDefault("'PENDING'")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", columnDefinition = "booking_status not null")
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
 
     @ColumnDefault("'NOT_STARTED'")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "meetup_status", columnDefinition = "meetup_status not null")
     @Enumerated(EnumType.STRING)
     private MeetupStatus meetupStatus;

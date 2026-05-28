@@ -18,6 +18,15 @@ public class ChatMessageDto {
     private String type;
     private String text;
     private Boolean isOffer;
+    private UUID bookingId;
+    private String bookingStatus;
+    private String activity;
+    private String description;
+    private String date;
+    private String offerTime;
+    private String duration;
+    private Integer guests;
+    private String location;
     private Integer hours;
     private BigDecimal price;
     private String time;

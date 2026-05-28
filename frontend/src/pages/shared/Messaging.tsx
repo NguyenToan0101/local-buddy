@@ -91,6 +91,15 @@ const Messaging: React.FC = () => {
     return msg.type === 'sent';
   };
 
+  const canPayBooking = (msg: any) => msg.bookingId && msg.bookingStatus === 'PENDING';
+
+  const getOfferButtonLabel = (msg: any) => {
+    if (!msg.bookingId) return 'Booking Pending';
+    if (msg.bookingStatus === 'PENDING') return 'Book & Pay Now';
+    if (['CONFIRMED', 'UPCOMING', 'COMPLETED'].includes(msg.bookingStatus)) return 'Already Paid';
+    return msg.bookingStatus ? `Booking ${msg.bookingStatus}` : 'Booking Unavailable';
+  };
+
   const handleSendMessage = async () => {
     if (!activeChatId || !messageInput.trim() || sending) return;
     setSending(true);
@@ -260,7 +269,7 @@ const Messaging: React.FC = () => {
                                                 {msg.date && (
                                                   <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
                                                      <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={8}/> Trip Date</p>
-                                                     <p className="text-xs font-black text-white">{msg.date} at {msg.time}</p>
+                                                     <p className="text-xs font-black text-white">{msg.date} at {msg.offerTime || msg.time}</p>
                                                   </div>
                                                 )}
                                                 {msg.location && (
@@ -274,9 +283,17 @@ const Messaging: React.FC = () => {
                                                    <p className="text-xl font-black text-primary">${msg.price}</p>
                                                 </div>
                                              </div>
-                                             <Button className="w-full bg-primary text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-primary-glow border-none">
-                                               Book & Pay Now
-                                             </Button>
+                                             {canPayBooking(msg) ? (
+                                               <Link to="/traveller/checkout" state={{ bookingId: msg.bookingId }} className="block">
+                                                 <Button className="w-full bg-primary text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-primary-glow border-none">
+                                                   {getOfferButtonLabel(msg)}
+                                                 </Button>
+                                               </Link>
+                                             ) : (
+                                               <Button disabled className="w-full bg-primary/60 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-none">
+                                                 {getOfferButtonLabel(msg)}
+                                               </Button>
+                                             )}
                                           </div>
                                        </div>
                                      ) : (
