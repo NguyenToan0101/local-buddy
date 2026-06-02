@@ -4,8 +4,8 @@ import type {
     TouristProfileExistsResponse
 } from '../types/tourist-profile';
 
-const API_BASE_URL = 'http://localhost:8080';
-
+// const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = '/api';
 class TouristProfileService {
     private getAuthHeaders(): HeadersInit {
         const token = localStorage.getItem('token');
@@ -22,10 +22,10 @@ class TouristProfileService {
 
     async createProfile(profileData: TouristProfileRequest): Promise<TouristProfileResponse> {
         console.log('Creating profile with data:', profileData);
-        console.log('API URL:', `${API_BASE_URL}/api/tourist-profile`);
+        console.log('API URL:', `${API_BASE_URL}/tourist-profile`);
         console.log('Headers:', this.getAuthHeaders());
 
-        const response = await fetch(`${API_BASE_URL}/api/tourist-profile`, {
+        const response = await fetch(`${API_BASE_URL}/tourist-profile`, {
             method: 'POST',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(profileData),
@@ -46,7 +46,7 @@ class TouristProfileService {
     }
 
     async updateProfile(profileData: TouristProfileRequest): Promise<TouristProfileResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/tourist-profile`, {
+        const response = await fetch(`${API_BASE_URL}/tourist-profile`, {
             method: 'PUT',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(profileData),
@@ -61,7 +61,7 @@ class TouristProfileService {
     }
 
     async getProfile(): Promise<TouristProfileResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/tourist-profile`, {
+        const response = await fetch(`${API_BASE_URL}/tourist-profile`, {
             method: 'GET',
             headers: this.getAuthHeaders(),
         });
@@ -75,7 +75,7 @@ class TouristProfileService {
     }
 
     async checkProfileExists(): Promise<boolean> {
-        const response = await fetch(`${API_BASE_URL}/api/tourist-profile/exists`, {
+        const response = await fetch(`${API_BASE_URL}/tourist-profile/exists`, {
             method: 'GET',
             headers: this.getAuthHeaders(),
         });
@@ -89,7 +89,7 @@ class TouristProfileService {
     }
 
     async deleteProfile(): Promise<void> {
-        const response = await fetch(`${API_BASE_URL}/api/tourist-profile`, {
+        const response = await fetch(`${API_BASE_URL}/tourist-profile`, {
             method: 'DELETE',
             headers: this.getAuthHeaders(),
         });

@@ -4,8 +4,8 @@ type Db = Record<string, any>;
 const DB_KEY = 'mock_db_v1';
 const DB_SYNC_KEY = 'mock_db_v1_sync';
 const MESSAGE_CHANNEL = 'local_buddy_messages';
-const API_BASE_URL = 'http://localhost:8080';
-
+// const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = '/api';
 function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
   const token = localStorage.getItem('token');
   return {
@@ -94,6 +94,7 @@ export const buddyService = {
   getAll: async () => {
     const response = await fetch(`${API_BASE_URL}/buddies`, {
       method: 'GET',
+      headers: getAuthHeaders(),
     });
     if (!response.ok) {
       throw new Error('Failed to fetch buddies');
@@ -132,21 +133,21 @@ export const buddyService = {
 
 export const bookingService = {
   getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch bookings');
     return response.json();
   },
   getById: async (id: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Booking not found');
     return response.json();
   },
   create: async (bookingData: any) => {
-    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(bookingData),
@@ -163,7 +164,7 @@ export const bookingService = {
     return bookings.filter((b: any) => String(b.buddyId) === String(buddyId));
   },
   updateStatus: async (id: string, status: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/status`, {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
       method: 'PATCH',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status }),
@@ -172,7 +173,7 @@ export const bookingService = {
     return response.json();
   },
   updateMeetupStatus: async (id: string, status: string | null) => {
-    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/meetup-status`, {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/meetup-status`, {
       method: 'PATCH',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status }),
@@ -246,14 +247,14 @@ export const transactionService = {
 
 export const messageService = {
   getConversations: async () => {
-    const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+    const response = await fetch(`${API_BASE_URL}/conversations`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch conversations');
     return response.json();
   },
   getOrCreateConversationByBuddyId: async (buddyId: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/conversations/buddy/${buddyId}`, {
+    const response = await fetch(`${API_BASE_URL}/conversations/buddy/${buddyId}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
@@ -261,14 +262,14 @@ export const messageService = {
     return response.json();
   },
   getMessagesByConvId: async (convId: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+    const response = await fetch(`${API_BASE_URL}/conversations/${convId}/messages`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch messages');
     return response.json();
   },
   sendMessage: async (convId: string, message: any) => {
-    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+    const response = await fetch(`${API_BASE_URL}/conversations/${convId}/messages`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
@@ -300,7 +301,12 @@ export const messageService = {
     let socket: WebSocket | null = null;
 
     const connect = () => {
-      const wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
+      let wsUrl: string;
+      if (API_BASE_URL.startsWith('http')) {
+        wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
+      } else {
+        wsUrl = `${API_BASE_URL}/ws/chat?token=${encodeURIComponent(token)}`;
+      }
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => onStatusChange?.(true);
