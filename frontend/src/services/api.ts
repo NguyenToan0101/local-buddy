@@ -2,6 +2,31 @@ import { mockData } from '../mock/mockData';
 
 type Db = Record<string, any>;
 const DB_KEY = 'mock_db_v1';
+const DB_SYNC_KEY = 'mock_db_v1_sync';
+const MESSAGE_CHANNEL = 'local_buddy_messages';
+const API_BASE_URL = 'http://localhost:8080';
+
+function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
+  const token = localStorage.getItem('token');
+  return {
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+function emitDbChange(topic: string) {
+  const payload = { topic, at: Date.now() };
+  try {
+    localStorage.setItem(DB_SYNC_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore sync failures in private browsing or restricted storage.
+  }
+  if (typeof BroadcastChannel !== 'undefined') {
+    const channel = new BroadcastChannel(MESSAGE_CHANNEL);
+    channel.postMessage(payload);
+    channel.close();
+  }
+}
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
@@ -67,71 +92,93 @@ export interface Buddy {
 
 export const buddyService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'buddies')) as Buddy[];
+    const response = await fetch(`${API_BASE_URL}/buddies`, {
+      method: 'GET',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch buddies');
+    }
+    return await response.json() as Buddy[];
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const buddies = ensureArray(db, 'buddies');
-    const found = getById<Buddy>(buddies, id);
-    if (!found) throw new Error('Buddy not found');
-    return clone(found) as Buddy;
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch buddy profile');
+    }
+    return await response.json() as Buddy;
   },
   updateProfile: async (id: string, data: Partial<Buddy>) => {
-    const db = loadDb();
-    const buddies = ensureArray(db, 'buddies');
-    const updated = patchById<Buddy>(buddies, id, data);
-    if (!updated) throw new Error('Buddy not found');
-    saveDb(db);
-    return clone(updated) as Buddy;
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update buddy profile');
+    }
+    return await response.json() as Buddy;
   },
 };
 
 export const bookingService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'bookings'));
+    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch bookings');
+    return response.json();
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const found = getById<any>(bookings, id);
-    if (!found) throw new Error('Booking not found');
-    return clone(found);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Booking not found');
+    return response.json();
   },
   create: async (bookingData: any) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const created = { ...bookingData, id: bookingData.id || String(Date.now()) };
-    bookings.push(created);
-    saveDb(db);
-    return clone(created);
+    const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(bookingData),
+    });
+    if (!response.ok) throw new Error('Failed to create booking');
+    return response.json();
   },
   getByUserId: async (userId: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    return clone(bookings.filter((b: any) => String(b.userId) === String(userId)));
+    const bookings = await bookingService.getAll();
+    return bookings.filter((b: any) => String(b.userId) === String(userId));
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    return clone(bookings.filter((b: any) => String(b.buddyId) === String(buddyId)));
+    const bookings = await bookingService.getAll();
+    return bookings.filter((b: any) => String(b.buddyId) === String(buddyId));
   },
   updateStatus: async (id: string, status: string) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const updated = patchById<any>(bookings, id, { status });
-    if (!updated) throw new Error('Booking not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) throw new Error('Failed to update booking status');
+    return response.json();
   },
   updateMeetupStatus: async (id: string, status: string | null) => {
-    const db = loadDb();
-    const bookings = ensureArray(db, 'bookings');
-    const updated = patchById<any>(bookings, id, { meetupStatus: status });
-    if (!updated) throw new Error('Booking not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/api/bookings/${id}/meetup-status`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) throw new Error('Failed to update meetup status');
+    return response.json();
   },
 };
 
@@ -199,28 +246,93 @@ export const transactionService = {
 
 export const messageService = {
   getConversations: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'conversations'));
+    const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch conversations');
+    return response.json();
+  },
+  getOrCreateConversationByBuddyId: async (buddyId: string) => {
+    const response = await fetch(`${API_BASE_URL}/api/conversations/buddy/${buddyId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to create conversation');
+    return response.json();
   },
   getMessagesByConvId: async (convId: string) => {
-    const db = loadDb();
-    const conv = getById<any>(ensureArray(db, 'conversations'), convId);
-    if (!conv) throw new Error('Conversation not found');
-    return clone(conv.messages || []);
+    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch messages');
+    return response.json();
   },
   sendMessage: async (convId: string, message: any) => {
-    const db = loadDb();
-    const convs = ensureArray(db, 'conversations');
-    const conv = getById<any>(convs, convId);
-    if (!conv) throw new Error('Conversation not found');
-    const updatedMessages = [...(conv.messages || []), { ...message, id: Date.now() }];
-    const updated = patchById<any>(convs, convId, {
-      messages: updatedMessages,
-      lastMsg: message.text || message.content,
-      time: 'Just now',
+    const response = await fetch(`${API_BASE_URL}/api/conversations/${convId}/messages`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        text: message.text || message.content,
+        content: message.content,
+        isOffer: message.isOffer,
+        activity: message.activity,
+        description: message.description,
+        date: message.date,
+        time: message.startTime || message.offerTime,
+        duration: message.duration,
+        guests: message.guests,
+        location: message.location,
+        hours: message.hours,
+        price: message.price,
+      }),
     });
-    saveDb(db);
-    return clone(updated);
+    if (!response.ok) throw new Error('Failed to send message');
+    return response.json();
+  },
+  subscribe: (callback: () => void, onStatusChange?: (connected: boolean) => void) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return () => {};
+    }
+
+    let closedByClient = false;
+    let retryTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let socket: WebSocket | null = null;
+
+    const connect = () => {
+      const wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => onStatusChange?.(true);
+      socket.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.type === 'messages') {
+            callback();
+          }
+        } catch {
+          callback();
+        }
+      };
+      socket.onclose = () => {
+        onStatusChange?.(false);
+        if (!closedByClient) {
+          retryTimer = window.setTimeout(connect, 1500);
+        }
+      };
+      socket.onerror = () => {
+        onStatusChange?.(false);
+        socket?.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      closedByClient = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
   },
 };
 
@@ -302,5 +414,74 @@ export const notificationService = {
     if (!updated) throw new Error('Notification not found');
     saveDb(db);
     return clone(updated);
+  },
+};
+
+export interface AvailabilitySlot {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  title: string;
+}
+
+export const availabilityService = {
+  fetchAvailabilities: async (buddyId: string): Promise<AvailabilitySlot[]> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch availabilities');
+    }
+    return response.json();
+  },
+
+  addAvailability: async (buddyId: string, slot: Omit<AvailabilitySlot, 'id'>): Promise<AvailabilitySlot> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(slot),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to add availability');
+    }
+    return response.json();
+  },
+
+  addAvailabilitiesBulk: async (buddyId: string, slots: Omit<AvailabilitySlot, 'id'>[]): Promise<AvailabilitySlot[]> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(slots),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to bulk add availabilities');
+    }
+    return response.json();
+  },
+
+  deleteAvailability: async (buddyId: string, slotId: string): Promise<void> => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/buddies/${buddyId}/availabilities/${slotId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete availability');
+    }
   },
 };

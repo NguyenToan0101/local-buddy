@@ -46,6 +46,11 @@ public class Message {
     @Column(name = "offered_price", precision = 10, scale = 2)
     private BigDecimal offeredPrice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
     @ColumnDefault("false")
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;

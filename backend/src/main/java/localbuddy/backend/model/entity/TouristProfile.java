@@ -29,7 +29,7 @@ public class TouristProfile {
     @Column(name = "nationality", length = 100)
     private String nationality;
 
-    @Column(name = "bio", length = Integer.MAX_VALUE)
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     @ColumnDefault("'{}'")
@@ -48,5 +48,14 @@ public class TouristProfile {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
+    }
 
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
 }

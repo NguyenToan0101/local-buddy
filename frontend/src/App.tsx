@@ -32,6 +32,7 @@ import LiveExperience from './pages/shared/LiveExperience';
 import BuddyPreview from './pages/buddy/BuddyPreview';
 import BuddyLiveExperience from './pages/buddy/BuddyLiveExperience';
 import BuddyOnboarding from './pages/buddy/BuddyOnboarding';
+import CreateTouristProfile from './pages/traveler/CreateTouristProfile';
 import ShareExperience from './pages/traveler/ShareExperience';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
       <Route path="/oauth2/success" element={<OAuth2RedirectHandler />} />
       <Route path="/traveller/home" element={<HomePage />} />
       <Route path="/traveller/profile" element={<TravelerProfile />} />
+      <Route path="/traveller/create-profile" element={<CreateTouristProfile />} />
       <Route path="/signup" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

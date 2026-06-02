@@ -14,6 +14,8 @@ interface SmartSelectProps {
   multiple?: boolean;
   placeholder?: string;
   className?: string;
+  allowCustom?: boolean;
+  customPlaceholder?: string;
 }
 
 const SmartSelect: React.FC<SmartSelectProps> = ({
@@ -23,10 +25,14 @@ const SmartSelect: React.FC<SmartSelectProps> = ({
   onChange,
   multiple = false,
   placeholder = 'Select an option...',
-  className = ''
+  className = '',
+  allowCustom = false,
+  customPlaceholder = 'Enter custom value...'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customValue, setCustomValue] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,11 +45,22 @@ const SmartSelect: React.FC<SmartSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter(opt => 
+  const filteredOptions = options.filter(opt =>
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Add "Other" option if allowCustom is true and not already in options
+  const optionsWithOther = allowCustom && !options.some(opt => opt.value === 'Other')
+    ? [...filteredOptions, { label: 'Other', value: 'Other' }]
+    : filteredOptions;
+
   const handleSelect = (option: Option) => {
+    if (option.value === 'Other' && allowCustom) {
+      setShowCustomInput(true);
+      setIsOpen(false);
+      return;
+    }
+
     if (multiple) {
       const currentValues = Array.isArray(value) ? value : [];
       if (currentValues.includes(option.value)) {
@@ -69,20 +86,19 @@ const SmartSelect: React.FC<SmartSelectProps> = ({
       <label className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] ml-4 transition-colors group-focus-within:text-primary">
         {label}
       </label>
-      
-      <div 
+
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full bg-surface-dark border-2 rounded-[24px] py-4 px-6 flex items-center justify-between cursor-pointer transition-all duration-300 ${
-          isOpen ? 'border-primary/20 bg-white shadow-premium' : 'border-transparent hover:border-primary/10'
-        }`}
+        className={`w-full bg-surface-dark border-2 rounded-[24px] py-4 px-6 flex items-center justify-between cursor-pointer transition-all duration-300 ${isOpen ? 'border-primary/20 bg-white shadow-premium' : 'border-transparent hover:border-primary/10'
+          }`}
       >
         <div className="flex flex-wrap gap-2 flex-1">
           {multiple && Array.isArray(value) && value.length > 0 ? (
             value.map(v => {
               const opt = options.find(o => o.value === v);
               return (
-                <span 
-                  key={v} 
+                <span
+                  key={v}
                   className="px-3 py-1.5 bg-primary/10 text-primary text-[10px] font-black rounded-lg uppercase flex items-center gap-2 animate-in zoom-in-90"
                 >
                   {opt?.label || v}
@@ -108,7 +124,7 @@ const SmartSelect: React.FC<SmartSelectProps> = ({
           <div className="p-4 border-b border-gray-50">
             <div className="relative">
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" />
-              <input 
+              <input
                 autoFocus
                 type="text"
                 value={search}
@@ -122,12 +138,11 @@ const SmartSelect: React.FC<SmartSelectProps> = ({
           <div className="max-h-64 overflow-y-auto p-2 overscroll-contain">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
-                <div 
+                <div
                   key={opt.value}
                   onClick={() => handleSelect(opt)}
-                  className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${
-                    isSelected(opt.value) ? 'bg-primary/5 text-primary' : 'hover:bg-surface-dark text-secondary'
-                  }`}
+                  className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${isSelected(opt.value) ? 'bg-primary/5 text-primary' : 'hover:bg-surface-dark text-secondary'
+                    }`}
                 >
                   <span className="font-bold text-sm tracking-tight">{opt.label}</span>
                   {isSelected(opt.value) && <Check size={16} strokeWidth={3} />}

@@ -5,6 +5,7 @@ import localbuddy.backend.model.enums.VerificationStatus;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -40,7 +41,7 @@ public class BuddyProfile {
     @Column(name = "longitude", precision = 10, scale = 7)
     private BigDecimal longitude;
 
-    @Column(name = "bio", length = Integer.MAX_VALUE)
+    @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
     @ColumnDefault("'{}'")
@@ -66,15 +67,16 @@ public class BuddyProfile {
     @Column(name = "review_count", nullable = false)
     private Integer reviewCount;
 
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
     @ColumnDefault("'PENDING'")
     @Column(name = "verification_status", columnDefinition = "verification_status not null")
     @Enumerated(EnumType.STRING)
     private VerificationStatus verificationStatus;
 
-    @Column(name = "id_card_front_url", length = Integer.MAX_VALUE)
+    @Column(name = "id_card_front_url", columnDefinition = "TEXT")
     private String idCardFrontUrl;
 
-    @Column(name = "id_card_back_url", length = Integer.MAX_VALUE)
+    @Column(name = "id_card_back_url", columnDefinition = "TEXT")
     private String idCardBackUrl;
 
     @ColumnDefault("now()")

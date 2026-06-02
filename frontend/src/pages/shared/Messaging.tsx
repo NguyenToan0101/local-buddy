@@ -3,6 +3,7 @@ import { Search, Paperclip, Image as ImageIcon, Send, Plus, MessageCircle, Check
 import { useSearchParams, Link } from 'react-router-dom';
 import { messageService, buddyService } from '../../services/api';
 import Button from '../../components/ui/Button';
+import { useAuth } from '../../context/AuthContext';
 
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -14,23 +15,33 @@ const Messaging: React.FC = () => {
   const [allBuddies, setAllBuddies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageInput, setMessageInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [searchParams] = useSearchParams();
   const buddyIdFromQuery = searchParams.get('buddyId');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (preferredChatId?: string | null) => {
       try {
-        const [convs, buddies] = await Promise.all([
+        let [convs, buddies] = await Promise.all([
           messageService.getConversations(),
           buddyService.getAll()
         ]);
+
+        if (buddyIdFromQuery) {
+          const conversation = await messageService.getOrCreateConversationByBuddyId(buddyIdFromQuery);
+          convs = await messageService.getConversations();
+          preferredChatId = conversation.id;
+        }
+
         setConversations(convs);
         setAllBuddies(buddies);
         
         if (convs.length > 0) {
-          const targetConv = buddyIdFromQuery 
-            ? convs.find((c: any) => c.buddyId === buddyIdFromQuery)
+          const targetConv = preferredChatId
+            ? convs.find((c: any) => String(c.id) === String(preferredChatId))
             : convs[0];
             
           if (targetConv) {
@@ -48,7 +59,8 @@ const Messaging: React.FC = () => {
       }
     };
     fetchData();
-  }, [buddyIdFromQuery]);
+    return messageService.subscribe(() => fetchData(activeChatId), setSocketConnected);
+  }, [buddyIdFromQuery, user?.id, user?.name, activeChatId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,8 +72,8 @@ const Messaging: React.FC = () => {
     const buddyInfo = allBuddies.find(b => b.id === conv.buddyId);
     return { 
       ...conv, 
-      name: buddyInfo?.name || "User", 
-      avatar: buddyInfo?.image || `https://i.pravatar.cc/100?u=${conv.id}`,
+      name: buddyInfo?.name || conv.buddyName || "User", 
+      avatar: buddyInfo?.image || conv.buddyAvatar || `https://i.pravatar.cc/100?u=${conv.id}`,
       role: buddyInfo?.role || "Traveler"
     };
   };
@@ -74,18 +86,39 @@ const Messaging: React.FC = () => {
     setActiveMessages(conv.messages || []);
   };
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
+  const isOwnMessage = (msg: any) => {
+    if (msg.senderRole) return msg.senderRole === 'TRAVELER';
+    return msg.type === 'sent';
+  };
+
+  const canPayBooking = (msg: any) => msg.bookingId && msg.bookingStatus === 'PENDING';
+
+  const getOfferButtonLabel = (msg: any) => {
+    if (!msg.bookingId) return 'Booking Pending';
+    if (msg.bookingStatus === 'PENDING') return 'Book & Pay Now';
+    if (['CONFIRMED', 'UPCOMING', 'COMPLETED'].includes(msg.bookingStatus)) return 'Already Paid';
+    return msg.bookingStatus ? `Booking ${msg.bookingStatus}` : 'Booking Unavailable';
+  };
+
+  const handleSendMessage = async () => {
+    if (!activeChatId || !messageInput.trim() || sending) return;
+    setSending(true);
     
     const newMessage = {
-      id: Date.now(),
       type: "sent",
+      senderRole: "TRAVELER",
       text: messageInput,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     
-    setActiveMessages([...activeMessages, newMessage]);
-    setMessageInput("");
+    try {
+      const updated = await messageService.sendMessage(activeChatId, newMessage);
+      setConversations(prev => prev.map(conv => conv.id === updated.id ? updated : conv));
+      setActiveMessages(updated.messages || []);
+      setMessageInput("");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -93,13 +126,18 @@ const Messaging: React.FC = () => {
       <Navbar />
       
       {/* Fit chat into one viewport (under fixed navbar) */}
-      <main className="pt-28 px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto w-full flex flex-col overflow-hidden h-[calc(100vh-96px)]">
-        <div className="bg-white rounded-[48px] shadow-premium overflow-hidden flex flex-1 border border-gray-50 min-h-0">
+      <main className="pt-24 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto w-full flex flex-col overflow-hidden h-[calc(100vh-88px)]">
+        <div className="bg-white rounded-[32px] shadow-premium overflow-hidden flex flex-1 border border-gray-100 min-h-0">
           {/* Conversation List Sidebar */}
-          <aside className="w-[380px] bg-white border-r border-gray-100 flex flex-col z-10 shadow-sm overflow-hidden">
-             <div className="p-8 pb-4 space-y-6">
+          <aside className="w-[340px] bg-white border-r border-gray-100 flex flex-col z-10 shadow-sm overflow-hidden">
+             <div className="p-6 pb-4 space-y-5">
                 <div className="flex justify-between items-center">
-                   <h1 className="text-2xl font-black text-secondary tracking-tighter">Inbox</h1>
+                   <div>
+                     <h1 className="text-2xl font-black text-secondary tracking-tighter">Inbox</h1>
+                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-secondary/30">
+                       {socketConnected ? 'Realtime connected' : 'Reconnecting...'}
+                     </p>
+                   </div>
                    <button className="w-10 h-10 bg-primary/5 hover:bg-primary/10 rounded-xl transition-all flex items-center justify-center text-primary">
                       <Plus size={20} />
                    </button>
@@ -109,7 +147,7 @@ const Messaging: React.FC = () => {
                    <input 
                      type="text" 
                      placeholder="Search..." 
-                     className="w-full bg-gray-50 border-2 border-transparent focus:border-primary/10 focus:bg-white rounded-2xl py-4 pl-12 pr-4 transition-all outline-none text-sm font-bold text-secondary placeholder:text-secondary/20 shadow-inner"
+                     className="w-full bg-gray-50 border border-gray-100 focus:border-primary/20 focus:bg-white rounded-2xl py-3.5 pl-12 pr-4 transition-all outline-none text-sm font-bold text-secondary placeholder:text-secondary/20"
                    />
                 </div>
              </div>
@@ -163,19 +201,20 @@ const Messaging: React.FC = () => {
              {activeChatId && activeChatInfo ? (
                 <>
                    {/* Chat Header */}
-                   <header className="h-24 px-8 border-b border-gray-50 flex items-center justify-between z-10">
+                   <header className="h-24 px-8 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
                       <div className="flex items-center gap-4">
                          <div className="relative group cursor-pointer">
                             <img src={activeChatInfo.avatar} alt="Buddy" className="w-12 h-12 rounded-2xl object-cover ring-4 ring-primary/5" />
-                            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
+                            <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-white rounded-full ${socketConnected ? 'bg-green-500' : 'bg-amber-500'}`}></div>
                          </div>
                          <div>
                             <div className="flex items-center gap-2">
                                <h2 className="text-lg font-black text-secondary tracking-tight">{activeChatInfo.name}</h2>
                                <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[8px] font-black uppercase tracking-widest rounded">{activeChatInfo.role}</span>
                             </div>
-                            <p className="text-[10px] text-green-500 font-black uppercase tracking-widest flex items-center gap-1.5">
-                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Online
+                            <p className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${socketConnected ? 'text-green-500' : 'text-amber-500'}`}>
+                               <span className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                               {socketConnected ? 'Live chat' : 'Trying to reconnect'}
                             </p>
                          </div>
                       </div>
@@ -184,10 +223,18 @@ const Messaging: React.FC = () => {
                    {/* Messages Container */}
                    <div 
                      ref={scrollRef}
-                     className="flex-1 overflow-y-auto p-10 space-y-8 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed"
+                     className="flex-1 overflow-y-auto p-8 space-y-6 bg-[#F8F9FB]"
                    >
+                      {activeMessages.length === 0 && (
+                        <div className="h-full flex items-center justify-center text-center">
+                          <div className="space-y-3">
+                            <MessageCircle size={36} className="mx-auto text-primary/30" />
+                            <p className="text-sm font-black text-secondary/40 uppercase tracking-widest">Start the conversation</p>
+                          </div>
+                        </div>
+                      )}
                       {activeMessages.map((msg: any) => {
-                         const isSent = msg.type === 'sent';
+                         const isSent = isOwnMessage(msg);
                          return (
                             <div key={msg.id} className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
                                <div className={`max-w-[70%] space-y-2 flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
@@ -222,7 +269,7 @@ const Messaging: React.FC = () => {
                                                 {msg.date && (
                                                   <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
                                                      <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={8}/> Trip Date</p>
-                                                     <p className="text-xs font-black text-white">{msg.date} at {msg.time}</p>
+                                                     <p className="text-xs font-black text-white">{msg.date} at {msg.offerTime || msg.time}</p>
                                                   </div>
                                                 )}
                                                 {msg.location && (
@@ -236,9 +283,17 @@ const Messaging: React.FC = () => {
                                                    <p className="text-xl font-black text-primary">${msg.price}</p>
                                                 </div>
                                              </div>
-                                             <Button className="w-full bg-primary text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-primary-glow border-none">
-                                               Book & Pay Now
-                                             </Button>
+                                             {canPayBooking(msg) ? (
+                                               <Link to="/traveller/checkout" state={{ bookingId: msg.bookingId }} className="block">
+                                                 <Button className="w-full bg-primary text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-primary-glow border-none">
+                                                   {getOfferButtonLabel(msg)}
+                                                 </Button>
+                                               </Link>
+                                             ) : (
+                                               <Button disabled className="w-full bg-primary/60 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-none">
+                                                 {getOfferButtonLabel(msg)}
+                                               </Button>
+                                             )}
                                           </div>
                                        </div>
                                      ) : (
@@ -256,9 +311,10 @@ const Messaging: React.FC = () => {
                    </div>
 
                    {/* Input Footer */}
-                   <footer className="px-8 py-6 border-t border-gray-50">
+                   <footer className="px-8 py-5 border-t border-gray-100 bg-white">
                       <div className="relative flex items-center gap-3">
-                         <div className="flex-1 flex items-center gap-3 bg-gray-50 rounded-[28px] px-2 py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 transition-all border border-transparent focus-within:border-primary/5 shadow-inner">
+                         <div className="flex-1 flex items-center gap-3 bg-gray-50 rounded-[24px] px-2 py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 transition-all border border-gray-100 focus-within:border-primary/20">
+                            <button className="w-10 h-10 rounded-full text-secondary/30 hover:text-primary transition-all flex items-center justify-center shrink-0"><Paperclip size={19} /></button>
                             <button className="w-10 h-10 rounded-full text-secondary/30 hover:text-primary transition-all flex items-center justify-center shrink-0"><ImageIcon size={20} /></button>
                             <input 
                               type="text" 
@@ -270,7 +326,8 @@ const Messaging: React.FC = () => {
                             />
                             <button 
                               onClick={handleSendMessage}
-                              className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all shrink-0"
+                              disabled={sending || !messageInput.trim()}
+                              className="w-10 h-10 bg-primary disabled:bg-secondary/20 text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all shrink-0"
                             >
                                <Send size={18} />
                             </button>

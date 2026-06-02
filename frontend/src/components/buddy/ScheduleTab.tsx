@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { bookingService } from '../../services/api';
+import { bookingService, availabilityService } from '../../services/api';
 
 const HOURS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"];
 
@@ -33,22 +33,8 @@ const ScheduleTab: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
-  // Free slots persisted in localStorage per buddyId
   const buddyId = user?.id || "1";
-  const localKey = `freeSlots_buddy_${buddyId}`;
-  const [generatedSlots, setGeneratedSlots] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem(localKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  // Sync to localStorage whenever slots change
-  useEffect(() => {
-    try {
-      localStorage.setItem(localKey, JSON.stringify(generatedSlots));
-    } catch { /* quota exceeded, ignore */ }
-  }, [generatedSlots, localKey]);
+  const [generatedSlots, setGeneratedSlots] = useState<any[]>([]);
 
   // Modal State
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -59,18 +45,30 @@ const ScheduleTab: React.FC = () => {
   const [timeTo, setTimeTo] = useState('16:00');
 
   useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchData = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
-        const data = await bookingService.getAll();
-        setBookings(data.filter((b: any) => String(b.buddyId) === String(buddyId)));
+        setLoading(true);
+        let cleanBuddyId = buddyId;
+        if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
+
+        const [bookingsData, slotsData] = await Promise.all([
+          bookingService.getAll(),
+          availabilityService.fetchAvailabilities(cleanBuddyId)
+        ]);
+        setBookings(bookingsData.filter((b: any) => String(b.buddyId) === String(buddyId)));
+        setGeneratedSlots(slotsData);
       } catch (error) {
-        console.error("Error fetching schedule:", error);
+        console.error("Error fetching schedule data:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchBookings();
-  }, [buddyId]);
+    fetchData();
+  }, [buddyId, user]);
 
   const getMonday = (d: Date) => {
     const date = new Date(d);
@@ -134,14 +132,43 @@ const ScheduleTab: React.FC = () => {
       const end = start + (b.hours || 1);
       return b.date === date && slotHour >= start && slotHour < end;
     })) return;
-    setGeneratedSlots(prev => [...prev, {
-      id: `free-${Date.now()}-${Math.random()}`,
+
+    let cleanBuddyId = buddyId;
+    if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
+
+    const tempId = `temp-${Date.now()}`;
+    const tempSlot = { id: tempId, date, time, status: 'FREE', title: 'Available' };
+
+    // Optimistically add to UI instantly
+    setGeneratedSlots(prev => [...prev, tempSlot]);
+
+    availabilityService.addAvailability(cleanBuddyId, {
       date, time, status: 'FREE', title: 'Available'
-    }]);
+    }).then(newSlot => {
+      // Replace temporary slot with real one from database
+      setGeneratedSlots(prev => prev.map(s => s.id === tempId ? newSlot : s));
+    }).catch(error => {
+      console.error("Failed to add slot:", error);
+      // Revert change
+      setGeneratedSlots(prev => prev.filter(s => s.id !== tempId));
+    });
   };
 
   const handleRemoveFreeSlot = (id: string) => {
+    let cleanBuddyId = buddyId;
+    if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
+
+    const slotToRemove = generatedSlots.find(s => s.id === id);
+    if (!slotToRemove) return;
+
+    // Optimistically remove from UI instantly
     setGeneratedSlots(prev => prev.filter(s => s.id !== id));
+
+    availabilityService.deleteAvailability(cleanBuddyId, id).catch(error => {
+      console.error("Failed to remove slot:", error);
+      // Revert change (add the slot back)
+      setGeneratedSlots(prev => [...prev, slotToRemove]);
+    });
   };
 
   const handleDaySelect = (i: number) =>
@@ -162,15 +189,28 @@ const ScheduleTab: React.FC = () => {
             const h = slotToHour(hour);
             const time = hourToStr12(h);
             if (!generatedSlots.some(s => s.date === dateStr && s.time === time)) {
-              newSlots.push({ id: `free-${Date.now()}-${Math.random()}`, date: dateStr, time, status: 'FREE', title: 'Available' });
+              newSlots.push({ date: dateStr, time, status: 'FREE', title: 'Available' });
             }
           }
         }
       }
     }
-    setGeneratedSlots(prev => [...prev, ...newSlots]);
-    setShowQuickAdd(false);
-    setStartDate(''); setEndDate(''); setSelectedDays([]);
+
+    if (newSlots.length === 0) {
+      setShowQuickAdd(false);
+      return;
+    }
+
+    let cleanBuddyId = buddyId;
+    if (cleanBuddyId.startsWith('buddy-')) cleanBuddyId = cleanBuddyId.replace('buddy-', '');
+
+    availabilityService.addAvailabilitiesBulk(cleanBuddyId, newSlots).then(savedSlots => {
+      setGeneratedSlots(prev => [...prev, ...savedSlots]);
+      setShowQuickAdd(false);
+      setStartDate(''); setEndDate(''); setSelectedDays([]);
+    }).catch(error => {
+      console.error("Failed to bulk generate slots:", error);
+    });
   };
 
   if (loading) return (

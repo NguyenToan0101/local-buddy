@@ -51,6 +51,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             user = new User();
             user.setEmail(email);
             user.setFullName(name != null ? name : email);
+            user.setGoogleAvatarUrl(picture);
             user.setAvatarUrl(picture);
             user.setRole(UserRole.TRAVELER);
             user.setIsBuddy(false);
@@ -65,7 +66,10 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 user.setFullName(name);
             }
             if (picture != null) {
-                user.setAvatarUrl(picture);
+                user.setGoogleAvatarUrl(picture);
+                if (user.getAvatarUrl() == null || user.getAvatarUrl().isBlank()) {
+                    user.setAvatarUrl(picture);
+                }
             }
             user.setUpdatedAt(OffsetDateTime.now());
         }
