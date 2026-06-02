@@ -1,14 +1,14 @@
 services:
   frontend:
     image: congtoan0101/vite-app:latest
-    env_file:
-      - .env
     ports:
       - "5173:80"
     restart: unless-stopped
 
   backend:
     image: congtoan0101/springboot-app:latest
+    env_file:
+      - backend/.env
     ports:
       - "8080:8080"
     restart: unless-stopped
