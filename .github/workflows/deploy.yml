@@ -47,8 +47,9 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /path/to/your/project-on-vps
+            cd /root/local-buddy
             
             # Kéo image mới nhất về và khởi động lại
-            docker-compose pull
-            docker-compose up -d --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
