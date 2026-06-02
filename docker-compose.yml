@@ -1,0 +1,12 @@
+services:
+  frontend:
+    image: congtoan0101/vite-app:latest
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  backend:
+    image: congtoan0101/springboot-app:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
