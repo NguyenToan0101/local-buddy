@@ -26,7 +26,9 @@ jobs:
           context: ./frontend # Đường dẫn tới thư mục chứa Vite
           file: ./frontend/Dockerfile
           push: true
-          tags: congtoan0101/vite-app:latest
+          tags:
+            congtoan0101/vite-app:latest
+            congtoan0101/vite-app:${{ github.sha }}
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }} # Truyền secret từ GitHub vào Docker
 
@@ -37,7 +39,9 @@ jobs:
           context: ./backend # Đường dẫn tới thư mục chứa Spring Boot
           file: ./backend/Dockerfile
           push: true
-          tags: congtoan0101/springboot-app:latest
+          tags:
+            congtoan0101/springboot-app:latest
+            congtoan0101/springboot-app:${{ github.sha }}
 
       # 3. SSH vào VPS để ra lệnh Deploy
       - name: Deploy to VPS via SSH
@@ -48,7 +52,13 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /root/local-buddy
-            
+            git pull origin main
+            cat > .env << EOF
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            EOF
             # Kéo image mới nhất về và khởi động lại
             docker compose pull
             docker compose up -d --remove-orphans

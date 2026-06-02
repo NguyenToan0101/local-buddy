@@ -24,7 +24,8 @@ export interface AuthResponse {
   token: string;
 }
 
-const API_BASE_URL = 'http://localhost:8080';
+// const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = '/api';
 
 const getDisplayAvatar = (data: any): string | undefined =>
   data.displayAvatarUrl || data.avatar || data.avatarUrl || data.googleAvatarUrl;
