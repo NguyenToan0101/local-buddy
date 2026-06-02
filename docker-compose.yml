@@ -2,7 +2,7 @@ services:
   frontend:
     image: congtoan0101/vite-app:latest
     ports:
-      - "80:80"
+      - "5173:80"
     restart: unless-stopped
 
   backend:
