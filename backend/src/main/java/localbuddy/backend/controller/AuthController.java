@@ -1,14 +1,18 @@
 package localbuddy.backend.controller;
 
+import jakarta.validation.Valid;
 import localbuddy.backend.dto.AuthResponse;
+import localbuddy.backend.dto.ForgotPasswordRequest;
 import localbuddy.backend.dto.LoginRequest;
 import localbuddy.backend.dto.RegisterRequest;
+import localbuddy.backend.dto.ResetPasswordRequest;
 import localbuddy.backend.dto.VerifyOtpRequest;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AuthService;
 import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.JwtService;
+import localbuddy.backend.service.PasswordResetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,19 +40,20 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthService authService;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         return ResponseEntity.ok(authService.register(registerRequest));
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse> verifyOtp(@RequestBody VerifyOtpRequest verifyOtpRequest) {
+    public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest verifyOtpRequest) {
         return ResponseEntity.ok(authService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp()));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail().trim(),
@@ -91,6 +96,21 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.ok(authResponse);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.getEmail());
+        return ResponseEntity.ok(Map.of(
+                "message",
+                "If an active account exists for this email, a password reset link has been sent."
+        ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok(Map.of("message", "Password has been reset successfully."));
     }
 
     @GetMapping("/me")

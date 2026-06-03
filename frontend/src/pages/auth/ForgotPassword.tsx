@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Compass, ArrowLeft, Send, Star } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import { authService } from '../../services/auth';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isSent, setIsSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+      await authService.forgotPassword(email);
       setIsSent(true);
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset link.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,6 +49,11 @@ const ForgotPassword: React.FC = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-10">
+                {error && (
+                  <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm font-bold text-red-600">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-3">
                   <label className="text-sm font-bold text-[#4B5563] ml-1">Email Address</label>
                   <div className="relative group">
