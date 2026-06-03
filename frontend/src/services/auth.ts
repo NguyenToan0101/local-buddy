@@ -1,6 +1,6 @@
 import { mockData } from '../mock/mockData';
 
-export type UserRole = 'TRAVELER' | 'BUDDY';
+export type UserRole = 'TRAVELER' | 'BUDDY' | 'ADMIN';
 
 export interface User {
   id: string;

@@ -6,6 +6,19 @@ const DB_SYNC_KEY = 'mock_db_v1_sync';
 const MESSAGE_CHANNEL = 'local_buddy_messages';
 // const API_BASE_URL = 'http://localhost:8080';
 const API_BASE_URL = '/api';
+
+function getWebSocketUrl(path: string) {
+  const token = localStorage.getItem('token');
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+
+  if (API_BASE_URL.startsWith('http')) {
+    return `${API_BASE_URL.replace(/^http/, 'ws')}${path}${query}`;
+  }
+
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProtocol}//${window.location.host}${API_BASE_URL}${path}${query}`;
+}
+
 function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
   const token = localStorage.getItem('token');
   return {
@@ -301,12 +314,7 @@ export const messageService = {
     let socket: WebSocket | null = null;
 
     const connect = () => {
-      let wsUrl: string;
-      if (API_BASE_URL.startsWith('http')) {
-        wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
-      } else {
-        wsUrl = `${API_BASE_URL}/ws/chat?token=${encodeURIComponent(token)}`;
-      }
+      const wsUrl = getWebSocketUrl('/ws/chat');
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => onStatusChange?.(true);
