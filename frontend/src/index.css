@@ -34,6 +34,17 @@
   body {
     @apply font-sans antialiased;
   }
+
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none;
+    pointer-events: none;
+  }
 }
 
 @layer components {
