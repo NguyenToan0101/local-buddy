@@ -8,7 +8,7 @@ services:
   backend:
     image: congtoan0101/springboot-app:latest
     env_file:
-      - .env
+      - ${BACKEND_ENV_FILE:-/etc/local-buddy/backend.env}
     ports:
       - "8080:8080"
     restart: unless-stopped
