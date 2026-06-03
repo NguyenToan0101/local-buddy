@@ -218,6 +218,39 @@ export const userService = {
   },
 };
 
+export const adminService = {
+  getVerifications: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch verification records');
+    return response.json();
+  },
+  getPendingBuddyVerifications: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/buddies/pending`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch pending buddy verifications');
+    return response.json();
+  },
+  updateBuddyVerification: async (buddyId: string, status: 'pending' | 'verified' | 'rejected', reason?: string) => {
+    const response = await fetch(`${API_BASE_URL}/admin/buddies/${buddyId}/verification`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status, reason }),
+    });
+    if (!response.ok) throw new Error('Failed to update buddy verification');
+    return response.json();
+  },
+  getDashboardStats: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch admin dashboard stats');
+    return response.json();
+  },
+};
+
 export const matchService = {
   getAll: async () => {
     const db = loadDb();

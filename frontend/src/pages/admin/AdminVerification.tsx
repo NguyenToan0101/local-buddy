@@ -5,7 +5,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { buddyService, userService } from '../../services/api';
+import { adminService } from '../../services/api';
 
 interface VerificationRecord {
   id: string;
@@ -40,58 +40,16 @@ const AdminVerification: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Lấy cả users và buddies, ưu tiên trạng thái từ buddies (Buddy tự upload CCCD)
-        const [users, buddies] = await Promise.all([
-          userService.getAll(),
-          buddyService.getAll(),
-        ]);
-
-        const buddyById = new Map<string, any>();
-        (buddies as any[]).forEach((b) => buddyById.set(String(b.id), b));
-
-        const mapped: VerificationRecord[] = (users as any[]).map((u: any, index: number) => {
-          const buddy = buddyById.get(String(u.id));
-
-          const rawStatus =
-            buddy?.verificationStatus ??
-            u.verificationStatus ??
-            'unverified';
-
-          const status: VerificationRecord['status'] =
-            rawStatus === 'verified'
-              ? 'Verified'
-              : rawStatus === 'rejected'
-              ? 'Rejected'
-              : 'Pending';
-
-          return {
-            id: u.id,
-            name: u.name,
-            type: u.role === 'BUDDY' ? 'Buddy' : 'Traveller',
-            regDate: u.createdAt || u.registrationDate || 'N/A',
-            docType: u.role === 'TRAVELER' ? 'Passport' : 'CCCD',
-            status,
-            avatar:
-              buddy?.image ||
-              u.avatar ||
-              `https://i.pravatar.cc/150?u=${encodeURIComponent(u.email || String(index))}`,
-            docs: {
-              front: buddy?.idCardFront || u.verificationDocs?.front || '',
-              back: buddy?.idCardBack || u.verificationDocs?.back || '',
-              selfie:
-                buddy?.idCardFront ||
-                u.verificationDocs?.selfie ||
-                buddy?.image ||
-                u.avatar ||
-                '',
-            },
-            email: u.email || '',
-            phone: buddy?.phone || u.phone || '',
-          };
-        });
-
-        // Hiển thị đầy đủ (Pending / Verified / Rejected) để admin xem lịch sử
-        setVerifications(mapped);
+        const data = await adminService.getVerifications();
+        setVerifications((data || []).map((record: any) => ({
+          ...record,
+          avatar: record.avatar || `https://i.pravatar.cc/150?u=${encodeURIComponent(record.email || record.id)}`,
+          docs: {
+            front: record.docs?.front || '',
+            back: record.docs?.back || '',
+            selfie: record.docs?.selfie || record.avatar || '',
+          },
+        })));
       } catch (err: any) {
         setError(err.message || 'Something went wrong while loading users/buddies.');
       } finally {
@@ -105,11 +63,8 @@ const AdminVerification: React.FC = () => {
   const handleApprove = async (record: VerificationRecord) => {
     try {
       setError(null);
-      await userService.patchById(record.id, { verificationStatus: 'verified' });
-
-      // Nếu là Buddy thì cập nhật luôn hồ sơ trong 'buddies'
       if (record.type === 'Buddy') {
-        await buddyService.updateProfile(record.id, { verificationStatus: 'verified' });
+        await adminService.updateBuddyVerification(record.id, 'verified');
       }
 
       setVerifications((prev) =>
@@ -132,16 +87,8 @@ const AdminVerification: React.FC = () => {
     if (!rejectReason) return;
     try {
       setError(null);
-      await userService.patchById(record.id, {
-        verificationStatus: 'rejected',
-        verificationRejectReason: rejectReason,
-      });
-
       if (record.type === 'Buddy') {
-        await buddyService.updateProfile(record.id, {
-          verificationStatus: 'rejected',
-          verificationRejectReason: rejectReason,
-        } as any);
+        await adminService.updateBuddyVerification(record.id, 'rejected', rejectReason);
       }
 
       setVerifications((prev) =>

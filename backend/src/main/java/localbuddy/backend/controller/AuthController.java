@@ -1,5 +1,6 @@
 package localbuddy.backend.controller;
 
+import jakarta.validation.Valid;
 import localbuddy.backend.dto.AuthResponse;
 import localbuddy.backend.dto.LoginRequest;
 import localbuddy.backend.dto.RegisterRequest;
@@ -38,17 +39,17 @@ public class AuthController {
     private final BuddyProfileRepository buddyProfileRepository;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         return ResponseEntity.ok(authService.register(registerRequest));
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse> verifyOtp(@RequestBody VerifyOtpRequest verifyOtpRequest) {
+    public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest verifyOtpRequest) {
         return ResponseEntity.ok(authService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp()));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail().trim(),

@@ -1,5 +1,8 @@
 package localbuddy.backend.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,6 +13,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VerifyOtpRequest {
+    @Email(message = "Email must be valid.")
+    @NotBlank(message = "Email is required.")
     private String email;
+
+    @NotBlank(message = "OTP is required.")
+    @Pattern(regexp = "\\d{6}", message = "OTP must be 6 digits.")
     private String otp;
 }
