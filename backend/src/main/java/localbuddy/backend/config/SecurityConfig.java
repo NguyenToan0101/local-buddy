@@ -42,11 +42,15 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/register",
                                 "/auth/verify-otp",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/verify-otp",
                                 "/ws/**",
+                                "/api/ws/**",
                                 "/login/**",
                                 "/oauth2/**"
                         ).permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/buddies", "/buddies/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/buddies", "/buddies/**", "/api/buddies", "/api/buddies/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth
