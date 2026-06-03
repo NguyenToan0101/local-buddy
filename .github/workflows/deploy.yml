@@ -59,6 +59,7 @@ jobs:
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             VITE_API_URL=${{ secrets.VITE_API_URL }}
+            APP_OAUTH2_REDIRECT_URI_FRONTEND=${{ secrets.APP_OAUTH2_REDIRECT_URI_FRONTEND }}
             EOF
             # Kéo image mới nhất về và khởi động lại
             docker compose pull

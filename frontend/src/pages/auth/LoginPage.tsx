@@ -120,7 +120,10 @@ const LoginPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
-              onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
+              onClick={() => {
+                
+                window.location.href = `/oauth2/authorization/google`;
+              }}
               className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
