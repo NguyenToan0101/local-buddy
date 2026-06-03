@@ -9,7 +9,13 @@ interface ExperienceCardProps {
 
 const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
   const { user } = useAuth();
-  const detailPath = user ? `/traveller/experience/${exp.id}` : '/login';
+  const detailPath = user?.role === 'TRAVELER'
+    ? `/traveller/experience/${exp.id}`
+    : user?.role === 'BUDDY'
+      ? '/buddy/dashboard'
+      : user?.role === 'ADMIN'
+        ? '/admin/dashboard'
+        : '/login';
 
   return (
     <Link

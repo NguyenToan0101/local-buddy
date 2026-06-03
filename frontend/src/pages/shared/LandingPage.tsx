@@ -17,7 +17,7 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/traveller/home');
+      navigate(user.role === 'BUDDY' ? '/buddy/dashboard' : user.role === 'ADMIN' ? '/admin/dashboard' : '/traveller/home');
       return;
     }
     const fetchBuddies = async () => {

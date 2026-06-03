@@ -1,16 +1,34 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Command, ArrowRight, Eye, EyeOff, Compass } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const AdminLogin: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login, logout } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/admin/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      const user = await login(email, password);
+      if (user.role !== 'ADMIN') {
+        logout();
+        setError('This account is not allowed to access the admin portal.');
+        return;
+      }
+      navigate('/admin/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Admin sign in failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,6 +63,11 @@ const AdminLogin: React.FC = () => {
           <div className="mb-10">
             <h2 className="text-2xl font-black text-white tracking-tight">Admin sign in</h2>
             <p className="text-slate-500 text-sm font-bold mt-1">Use your email and password.</p>
+            {error && (
+              <p className="mt-4 rounded-2xl bg-red-500/10 border border-red-500/20 px-5 py-4 text-xs font-bold text-red-300">
+                {error}
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleLogin} className="space-y-8">
@@ -91,9 +114,10 @@ const AdminLogin: React.FC = () => {
 
             <button
               type="submit"
+              disabled={loading}
               className="w-full h-24 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[32px] font-black text-2xl shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-4 group/btn transition-all active:scale-95 border-b-[6px] border-indigo-800"
             >
-              Sign in <ArrowRight size={32} className="group-hover/btn:translate-x-3 transition-transform duration-500" />
+              {loading ? 'Signing in...' : 'Sign in'} <ArrowRight size={32} className="group-hover/btn:translate-x-3 transition-transform duration-500" />
             </button>
           </form>
 

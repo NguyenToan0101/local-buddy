@@ -26,7 +26,13 @@ const BuddyCard: React.FC<BuddyProps> = ({
   tags = []
 }) => {
   const { user } = useAuth();
-  const detailPath = user ? `/traveller/buddy/${id}` : '/login';
+  const detailPath = user?.role === 'TRAVELER'
+    ? `/traveller/buddy/${id}`
+    : user?.role === 'BUDDY'
+      ? '/buddy/dashboard'
+      : user?.role === 'ADMIN'
+        ? '/admin/dashboard'
+        : '/login';
 
   return (
     <Link 
