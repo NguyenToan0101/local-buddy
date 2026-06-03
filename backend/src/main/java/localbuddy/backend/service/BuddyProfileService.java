@@ -8,6 +8,7 @@ import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,11 @@ public class BuddyProfileService {
     }
 
     @Transactional
-    public BuddyProfileDto updateProfile(UUID userId, BuddyProfileDto dto) {
+    public BuddyProfileDto updateProfile(UUID userId, BuddyProfileDto dto, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+
         BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
 
@@ -59,7 +64,7 @@ public class BuddyProfileService {
         if (dto.getIdCardFront() != null) buddyProfile.setIdCardFrontUrl(dto.getIdCardFront());
         if (dto.getIdCardBack() != null) buddyProfile.setIdCardBackUrl(dto.getIdCardBack());
 
-        if (dto.getVerificationStatus() != null) {
+        if (currentUserAdmin && dto.getVerificationStatus() != null) {
             try {
                 buddyProfile.setVerificationStatus(VerificationStatus.valueOf(dto.getVerificationStatus().toUpperCase()));
             } catch (Exception ignored) {}
