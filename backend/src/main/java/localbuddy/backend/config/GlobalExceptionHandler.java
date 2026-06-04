@@ -5,6 +5,8 @@ import localbuddy.backend.dto.ApiErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,6 +36,22 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return build(HttpStatus.FORBIDDEN, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisabledAccount(
+            DisabledException exception,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.UNAUTHORIZED, "Your account is not active yet. Please verify your email before signing in.", request, null);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthentication(
+            AuthenticationException exception,
+            HttpServletRequest request
+    ) {
+        return build(HttpStatus.UNAUTHORIZED, "Email or password is incorrect.", request, null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
