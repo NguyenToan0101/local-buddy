@@ -30,6 +30,25 @@ const API_BASE_URL = '/api';
 const getDisplayAvatar = (data: any): string | undefined =>
   data.displayAvatarUrl || data.avatar || data.avatarUrl || data.googleAvatarUrl;
 
+const getLoginErrorMessage = (message?: string): string => {
+  const fallback = 'Email or password is incorrect.';
+
+  if (!message) {
+    return fallback;
+  }
+
+  const normalizedMessage = message.toLowerCase();
+  if (
+    normalizedMessage.includes('bad credentials') ||
+    normalizedMessage.includes('invalid email or password') ||
+    normalizedMessage.includes('user not found')
+  ) {
+    return fallback;
+  }
+
+  return message;
+};
+
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -42,7 +61,7 @@ export const authService = {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'Invalid email or password');
+      throw new Error(getLoginErrorMessage(errData.message));
     }
 
     const data = await response.json(); // AuthResponse from backend (token, type, id, email, fullName, avatarUrl, role)
