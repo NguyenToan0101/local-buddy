@@ -147,9 +147,9 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
   const activeConversation = localChats.find(c => c.id === activeChat);
 
   return (
-    <div className="bg-white rounded-[32px] h-[calc(100vh-210px)] min-h-[680px] shadow-premium border border-gray-100 overflow-hidden flex">
+    <div className="bg-white rounded-[32px] shadow-premium border border-gray-100 overflow-hidden flex flex-col md:flex-row min-h-[calc(100vh-220px)] h-full">
       {/* Chat List */}
-      <div className="w-80 border-r border-gray-100 flex flex-col bg-white">
+      <div className="w-full md:w-80 border-r border-gray-100 flex flex-col bg-white min-h-0">
         <div className="p-6 space-y-5">
           <div className="flex items-center justify-between">
             <div>
@@ -194,8 +194,8 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 flex flex-col relative bg-surface/10">
-        <div className="p-6 bg-white border-b border-gray-100 flex items-center justify-between z-10">
+      <div className="flex-1 flex flex-col relative bg-surface/10 min-h-0">
+        <div className="p-6 bg-white border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between z-10 gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-surface-dark overflow-hidden ring-4 ring-primary/5">
               <img
@@ -224,7 +224,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
         </div>
 
         {/* Message List */}
-        <div ref={messageListRef} className="flex-1 p-8 space-y-6 overflow-y-auto no-scrollbar scroll-smooth bg-[#F8F9FB]">
+        <div ref={messageListRef} className="flex-1 min-h-0 p-6 sm:p-8 space-y-6 overflow-y-auto no-scrollbar scroll-smooth bg-[#F8F9FB]">
           {loadingMessages && (
             <p className="text-center text-[10px] font-black uppercase tracking-widest text-secondary/30">Loading messages...</p>
           )}
@@ -239,18 +239,18 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
           {messages.map((m: any) => (
             <div key={m.id} className={`flex ${isOwnMessage(m) ? 'justify-end' : 'justify-start'}`}>
               {m.isOffer ? (
-                <div className="max-w-xs w-full bg-secondary rounded-[32px] overflow-hidden shadow-2xl transform hover:-translate-y-1 transition-all border border-white/10">
-                  <div className="bg-primary p-6 flex flex-col items-center text-center space-y-4">
-                    <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur">
-                      <DollarSign size={24} />
+                <div className="w-full max-w-[26rem] sm:max-w-[30rem] bg-secondary rounded-[32px] overflow-hidden shadow-2xl transform hover:-translate-y-1 transition-all border border-white/10">
+                  <div className="bg-primary p-4 sm:p-5 flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur">
+                      <DollarSign size={20} />
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-1">{m.activity || 'Custom Trip'} Offer</p>
-                      <h5 className="text-lg font-black text-white tracking-tight leading-tight">{m.text}</h5>
+                      <h5 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight">{m.text}</h5>
                     </div>
                   </div>
-                  <div className="p-6 bg-secondary space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="p-4 sm:p-5 bg-secondary space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
                         <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Timer size={8} /> Duration</p>
                         <p className="text-xs font-black text-white">{m.duration || (m.hours + ' Hours')}</p>
@@ -260,18 +260,18 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
                         <p className="text-xs font-black text-white">{m.guests || 1} People</p>
                       </div>
                       {m.date && (
-                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 sm:col-span-2">
                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={8} /> Trip Date</p>
                           <p className="text-xs font-black text-white">{m.date} at {m.offerTime || m.time}</p>
                         </div>
                       )}
                       {m.location && (
-                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5 sm:col-span-2">
                           <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><MapPin size={8} /> Meetup</p>
                           <p className="text-xs font-black text-white truncate">{m.location}</p>
                         </div>
                       )}
-                      <div className="bg-white/5 p-3 rounded-2xl border border-white/10 col-span-2 text-center">
+                      <div className="bg-white/5 p-3 rounded-2xl border border-white/10 sm:col-span-2 text-center">
                         <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Total Pay</p>
                         <p className="text-xl font-black text-primary">${m.price}</p>
                       </div>
@@ -302,18 +302,18 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
         />
 
         {/* Input Area */}
-        <div className="p-6 bg-white border-t border-gray-100 flex items-center gap-4">
-          <button className="w-14 h-14 bg-surface rounded-2xl flex items-center justify-center text-secondary/20 hover:text-primary transition-all border-none">
+        <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex flex-col sm:flex-row items-center gap-4">
+          <button className="w-14 h-14 bg-surface rounded-2xl flex items-center justify-center text-secondary/20 hover:text-primary transition-all border-none flex-shrink-0">
             <Plus size={24} />
           </button>
-          <div className="flex-1 relative">
+          <div className="flex-1 relative w-full">
             <input
               type="text"
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               placeholder={`Message ${activeConversation?.name?.split(' ')[0] || 'Traveler'}...`}
               disabled={!activeChat}
-              className="w-full bg-surface border border-gray-100 rounded-[24px] py-5 pl-7 pr-20 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 disabled:opacity-60"
+              className="w-full bg-surface border border-gray-100 rounded-[24px] py-4 pl-7 pr-20 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 disabled:opacity-60"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleSendMessage(messageInput);

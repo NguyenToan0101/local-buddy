@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   Clock,
   Compass,
-  ArrowRight
+  ArrowRight,
+  Menu,
+  X
 } from 'lucide-react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +37,7 @@ const BuddyDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Real Data State
   const [travelerStories, setTravelerStories] = useState<Experience[]>([]);
@@ -117,24 +120,34 @@ const BuddyDashboard: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] flex">
+    <div className="min-h-screen bg-[#FDFDFF] relative">
       {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? "w-28" : "w-80"} border-r border-gray-100 flex flex-col fixed inset-y-0 z-50 bg-white transition-all duration-500 ease-in-out`}>
+      <aside className={`${sidebarCollapsed ? "w-20 sm:w-28" : "w-64 sm:w-80"} border-r border-gray-100 flex flex-col fixed inset-y-0 left-0 z-50 bg-white transition-all duration-500 ease-in-out transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="py-10 px-8 flex items-center justify-between">
-          {!sidebarCollapsed ? (
-            <Link to="/buddy/dashboard" className="flex items-center gap-3 transition-transform hover:-translate-y-0.5">
-              <div className="w-12 h-12 bg-primary rounded-[18px] flex items-center justify-center text-white shadow-primary-glow">
-                <Compass size={28} strokeWidth={2.5} />
-              </div>
-              <span className="text-2xl font-black text-secondary tracking-tighter uppercase whitespace-nowrap">Local Buddy</span>
-            </Link>
-          ) : (
-            <Link to="/buddy/dashboard" className="mx-auto flex items-center justify-center transition-transform hover:scale-110">
-              <div className="w-12 h-12 bg-primary rounded-[18px] flex items-center justify-center text-white shadow-primary-glow">
-                <Compass size={28} strokeWidth={2.5} />
-              </div>
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            {mobileMenuOpen && (
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-surface text-secondary/50 hover:text-secondary transition-colors border-none md:hidden"
+              >
+                <X size={18} />
+              </button>
+            )}
+            {!sidebarCollapsed ? (
+              <Link to="/buddy/dashboard" className="flex items-center gap-3 transition-transform hover:-translate-y-0.5">
+                <div className="w-12 h-12 bg-primary rounded-[18px] flex items-center justify-center text-white shadow-primary-glow">
+                  <Compass size={28} strokeWidth={2.5} />
+                </div>
+                <span className="text-2xl font-black text-secondary tracking-tighter uppercase whitespace-nowrap">Local Buddy</span>
+              </Link>
+            ) : (
+              <Link to="/buddy/dashboard" className="mx-auto flex items-center justify-center transition-transform hover:scale-110">
+                <div className="w-12 h-12 bg-primary rounded-[18px] flex items-center justify-center text-white shadow-primary-glow">
+                  <Compass size={28} strokeWidth={2.5} />
+                </div>
+              </Link>
+            )}
+          </div>
           {!sidebarCollapsed && (
             <button 
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -210,33 +223,42 @@ const BuddyDashboard: React.FC = () => {
         </div>
       </aside>
 
+      {/* Mobile overlay */}
+      <div className={`${mobileMenuOpen ? 'fixed inset-0 z-40 bg-black/20 md:hidden' : 'hidden'}`} onClick={() => setMobileMenuOpen(false)}></div>
+
       {/* Main Content */}
-      <main className={`flex-1 ${sidebarCollapsed ? "ml-28" : "ml-80"} transition-all duration-500`}>
-        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-gray-100/50 px-12 py-8 flex justify-between items-center">
-          <div className="flex items-center gap-6">
+      <main className={`flex-1 transition-all duration-500 ${mobileMenuOpen ? 'pointer-events-none' : ''} md:ml-80`}>
+        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-2xl border-b border-gray-100/50 px-4 sm:px-6 md:px-12 py-6 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-1 flex-wrap items-center gap-4">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-surface text-secondary/60 hover:text-primary transition-all md:hidden"
+            >
+              <Menu size={20} />
+            </button>
              <div className="w-12 h-12 bg-secondary/5 rounded-2xl flex items-center justify-center text-secondary">
                 {menuItems.find(i => i.label === currentTab)?.icon && React.createElement(menuItems.find(i => i.label === currentTab)!.icon, { size: 24 })}
              </div>
-             <div>
-                <h1 className="text-2xl font-black text-secondary tracking-tight">{currentTab}</h1>
+             <div className="min-w-0">
+                <h1 className="text-2xl font-black text-secondary tracking-tight truncate">{currentTab}</h1>
                 <p className="text-[10px] font-bold text-secondary/30 uppercase tracking-[0.3em]">Buddy Control Center</p>
              </div>
           </div>
           
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-3 justify-end">
              <button className="relative w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-secondary/40 hover:text-primary transition-all hover:shadow-premium group">
                 <Bell size={20} />
                 <span className="absolute top-3 right-3 w-2 h-2 bg-primary rounded-full border-2 border-white group-hover:animate-ping"></span>
              </button>
-             <Link to="/buddy/preview">
-                <Button className="bg-secondary text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-primary transition-all border-none">
+             <Link to="/buddy/preview" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto min-w-[10rem] bg-secondary text-white px-4 sm:px-8 py-3 sm:py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-primary transition-all border-none">
                   Profile Preview
                 </Button>
              </Link>
           </div>
         </header>
 
-        <div className="p-12 animate-in fade-in duration-700">
+        <div className="p-6 sm:p-8 md:p-12 animate-in fade-in duration-700">
           <Routes>
             <Route index element={<DashboardOverview stats={stats} upcomingTrips={upcomingTrips} chats={chats} />} />
             <Route path="trips" element={<TripsTab upcomingTrips={upcomingTrips} />} />

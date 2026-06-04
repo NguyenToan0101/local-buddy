@@ -40,16 +40,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   return (
     <div className="h-screen flex overflow-hidden animate-fade-in admin-layout-bg">
       {/* Sidebar Overlay (Mobile) */}
-      {!isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(true)}
-        ></div>
-      )}
+      <div 
+        className={`${isSidebarOpen ? 'fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40' : 'hidden'} lg:hidden`}
+        onClick={() => setIsSidebarOpen(false)}
+      ></div>
 
       {/* Sidebar */}
-      <aside className={`fixed lg:relative h-screen z-50 transition-all duration-500 ease-in-out flex flex-col admin-sidebar-bg border-r shrink-0 ${
-        isSidebarOpen ? 'w-72 translate-x-0' : 'w-20 lg:w-24'
+      <aside className={`fixed inset-y-0 left-0 z-50 transition-all duration-500 ease-in-out flex flex-col admin-sidebar-bg border-r shrink-0 ${
+        isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full lg:w-24 lg:translate-x-0'
       }`}>
         <div className={`p-8 mb-4 flex items-center gap-4 ${isSidebarOpen ? '' : 'justify-center'}`}>
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-primary-glow shrink-0">
@@ -104,9 +102,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div className={`flex-1 flex flex-col h-screen overflow-hidden relative transition-all ${isSidebarOpen ? 'lg:ml-72' : 'lg:ml-24'}`}>
         {/* Top Header */}
-        <header className="h-24 px-8 flex items-center justify-between sticky top-0 z-40 admin-glass transition-all shrink-0">
+        <header className="h-24 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-40 admin-glass transition-all shrink-0">
           <div className="flex items-center gap-6">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -119,7 +117,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <input 
                 type="text" 
                 placeholder="Search command..." 
-                className="w-80 admin-input pl-12"
+                className="w-full max-w-xs admin-input pl-12"
               />
             </div>
           </div>

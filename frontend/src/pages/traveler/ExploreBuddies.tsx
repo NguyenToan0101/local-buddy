@@ -89,11 +89,11 @@ const ExploreBuddies: React.FC = () => {
         </div>
 
         {/* PROPERLY ALIGNED Horizontal Filter Bar */}
-        <div className="bg-white/90 backdrop-blur-2xl rounded-full p-2.5 shadow-premium border border-gray-50 flex items-center gap-3 sticky top-28 z-40 max-w-7xl mx-auto h-20">
+        <div className="bg-white/90 backdrop-blur-2xl rounded-full p-4 shadow-premium border border-gray-50 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 sticky top-28 z-40 max-w-7xl mx-auto">
            
-           {/* Search Input - Using flex-1 and h-full to fill container height */}
-           <div className="relative flex-1 group min-w-[240px] h-full">
-              <div className="absolute left-6 top-1/2 -translate-y-1/2 text-secondary/20 group-focus-within:text-primary transition-all z-10">
+           {/* Search Input - Using flex-1 and fixed height to fill container */}
+           <div className="relative flex-1 group min-w-[240px] h-14">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20 group-focus-within:text-primary transition-all z-10">
                  <Search size={22} strokeWidth={2.5} />
               </div>
               <input 
@@ -101,17 +101,17 @@ const ExploreBuddies: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="SEARCH LOCATION, NAME..." 
-                className="w-full h-full bg-surface-dark border-2 border-transparent focus:border-primary/10 rounded-full pl-16 pr-6 font-black text-[11px] uppercase tracking-widest text-secondary outline-none transition-all placeholder:text-secondary/20"
+                className="w-full h-full bg-surface-dark border-2 border-transparent focus:border-primary/10 rounded-full pl-14 pr-6 font-black text-[11px] uppercase tracking-widest text-secondary outline-none transition-all placeholder:text-secondary/20"
               />
            </div>
 
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Category Dropdown - Strict Height */}
-           <div className="relative h-full" ref={categoryRef}>
+           <div className="relative h-14" ref={categoryRef}>
               <button 
                 onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsLanguageOpen(false); }}
-                className={`h-full flex items-center gap-5 px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedInterests.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
+                className={`h-14 flex items-center gap-4 px-5 sm:px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedInterests.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
               >
                  <Filter size={18} strokeWidth={2.5} className={selectedInterests.length > 0 ? 'text-primary' : 'text-secondary/30'} />
                  <span>{selectedInterests.length > 0 ? `${selectedInterests.length} CATEGORIES` : 'CATEGORIES'}</span>
@@ -143,10 +143,10 @@ const ExploreBuddies: React.FC = () => {
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Language Dropdown - Strict Height */}
-           <div className="relative h-full" ref={languageRef}>
+           <div className="relative h-14" ref={languageRef}>
               <button 
                 onClick={() => { setIsLanguageOpen(!isLanguageOpen); setIsCategoryOpen(false); }}
-                className={`h-full flex items-center gap-5 px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedLanguages.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
+                className={`h-14 flex items-center gap-4 px-5 sm:px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedLanguages.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
               >
                  <Globe size={18} strokeWidth={2.5} className={selectedLanguages.length > 0 ? 'text-primary' : 'text-secondary/30'} />
                  <span>{selectedLanguages.length > 0 ? selectedLanguages[0].toUpperCase() : 'LANGUAGE'}</span>
@@ -177,7 +177,7 @@ const ExploreBuddies: React.FC = () => {
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Rating Filter - Strict Height */}
-           <div className="h-full bg-surface-dark px-10 rounded-full flex items-center gap-8 border border-transparent hover:border-gray-100 transition-all group">
+           <div className="h-14 bg-surface-dark px-5 sm:px-10 rounded-full flex items-center gap-5 border border-transparent hover:border-gray-100 transition-all group">
               <div className="flex items-center gap-1.5">
                  {[1, 2, 3, 4, 5].map(star => (
                     <button key={star} onClick={() => setRating(star)} className="transition-transform active:scale-125">
@@ -189,7 +189,7 @@ const ExploreBuddies: React.FC = () => {
            </div>
 
            {/* SEARCH Button - Precise height and shadow to match sample */}
-           <button className="h-full bg-primary text-white px-14 rounded-full font-black text-[13px] uppercase tracking-[0.25em] shadow-primary-glow flex items-center justify-center hover:scale-[1.03] active:scale-95 transition-all outline-none">
+           <button className="h-14 bg-primary text-white px-8 sm:px-14 rounded-full font-black text-[13px] uppercase tracking-[0.25em] shadow-primary-glow flex items-center justify-center hover:scale-[1.03] active:scale-95 transition-all outline-none w-full sm:w-auto">
               SEARCH
            </button>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Paperclip, Image as ImageIcon, Send, Plus, MessageCircle, CheckCheck, DollarSign, Timer, Users, Calendar, MapPin } from 'lucide-react';
+import { Search, Paperclip, Image as ImageIcon, Send, Plus, MessageCircle, CheckCheck, DollarSign, Timer, Users, Calendar, MapPin, ChevronLeft } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { messageService, buddyService } from '../../services/api';
 import Button from '../../components/ui/Button';
@@ -17,10 +17,28 @@ const Messaging: React.FC = () => {
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [searchParams] = useSearchParams();
   const buddyIdFromQuery = searchParams.get('buddyId');
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileView('chat');
+    } else if (!activeChatId) {
+      setMobileView('list');
+    }
+  }, [isMobile, activeChatId]);
 
   useEffect(() => {
     const fetchData = async (preferredChatId?: string | null) => {
@@ -80,10 +98,13 @@ const Messaging: React.FC = () => {
 
   const activeConv = conversations.find(c => c.id === activeChatId);
   const activeChatInfo = activeConv ? getFullChatInfo(activeConv) : null;
+  const showListPanel = !isMobile || mobileView === 'list';
+  const showChatPanel = !isMobile || mobileView === 'chat';
 
   const handleSelectChat = (conv: any) => {
     setActiveChatId(conv.id);
     setActiveMessages(conv.messages || []);
+    if (isMobile) setMobileView('chat');
   };
 
   const isOwnMessage = (msg: any) => {
@@ -126,14 +147,15 @@ const Messaging: React.FC = () => {
       <Navbar />
       
       {/* Fit chat into one viewport (under fixed navbar) */}
-      <main className="pt-24 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto w-full flex flex-col overflow-hidden h-[calc(100vh-88px)]">
-        <div className="bg-white rounded-[32px] shadow-premium overflow-hidden flex flex-1 border border-gray-100 min-h-0">
+      <main className="pt-24 px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto w-full flex flex-col overflow-hidden md:min-h-[calc(100vh-88px)]">
+        <div className="bg-white rounded-[32px] shadow-premium overflow-hidden flex flex-col md:flex-row flex-1 border border-gray-100 min-h-0">
           {/* Conversation List Sidebar */}
-          <aside className="w-[340px] bg-white border-r border-gray-100 flex flex-col z-10 shadow-sm overflow-hidden">
-             <div className="p-6 pb-4 space-y-5">
-                <div className="flex justify-between items-center">
-                   <div>
-                     <h1 className="text-2xl font-black text-secondary tracking-tighter">Inbox</h1>
+          {showListPanel && (
+            <aside className="w-full md:w-[340px] bg-[#F7F8FB] border-b border-gray-100 md:border-b-0 md:border-r flex flex-col z-10 overflow-hidden">
+               <div className="p-6 pb-4 space-y-5 bg-white border-b border-gray-100">
+                <div className="flex justify-between items-center gap-4">
+                   <div className="min-w-0">
+                     <h1 className="text-2xl font-black text-secondary tracking-tighter truncate">Inbox</h1>
                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-secondary/30">
                        {socketConnected ? 'Realtime connected' : 'Reconnecting...'}
                      </p>
@@ -195,14 +217,37 @@ const Messaging: React.FC = () => {
                 </button>
              </div>
           </aside>
+          )}
 
           {/* Chat Area */}
-          <main className="flex-1 flex flex-col bg-white overflow-hidden relative">
-             {activeChatId && activeChatInfo ? (
+          {showChatPanel && (
+            <main className="flex-1 flex flex-col bg-[#F7F8FB] overflow-hidden relative">
+               {activeChatId && activeChatInfo ? (
                 <>
+                   <div className="px-4 sm:px-6 md:px-8 py-5 bg-white border-b border-gray-100">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                         <div>
+                            <h2 className="text-xl font-black text-secondary tracking-tight">Chat with {activeChatInfo.name}</h2>
+                            <p className="text-[10px] uppercase tracking-[0.3em] text-secondary/40 mt-1">Separate conversation list and chat box for cleaner messaging</p>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-surface flex items-center justify-center text-secondary/60">
+                               <MessageCircle size={18} />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-[0.25em] text-secondary/50">{socketConnected ? 'Live chat' : 'Offline'}</span>
+                         </div>
+                      </div>
+                   </div>
+
                    {/* Chat Header */}
-                   <header className="h-24 px-8 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
+                   <header className="h-24 px-4 sm:px-6 md:px-8 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
                       <div className="flex items-center gap-4">
+                         <button
+                           onClick={() => setMobileView('list')}
+                           className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-surface text-secondary/60 hover:text-primary transition-all md:hidden"
+                         >
+                           <ChevronLeft size={20} />
+                         </button>
                          <div className="relative group cursor-pointer">
                             <img src={activeChatInfo.avatar} alt="Buddy" className="w-12 h-12 rounded-2xl object-cover ring-4 ring-primary/5" />
                             <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-white rounded-full ${socketConnected ? 'bg-green-500' : 'bg-amber-500'}`}></div>
@@ -223,7 +268,7 @@ const Messaging: React.FC = () => {
                    {/* Messages Container */}
                    <div 
                      ref={scrollRef}
-                     className="flex-1 overflow-y-auto p-8 space-y-6 bg-[#F8F9FB]"
+                     className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-[#F8F9FB]"
                    >
                       {activeMessages.length === 0 && (
                         <div className="h-full flex items-center justify-center text-center">
@@ -237,7 +282,7 @@ const Messaging: React.FC = () => {
                          const isSent = isOwnMessage(msg);
                          return (
                             <div key={msg.id} className={`flex ${isSent ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                               <div className={`max-w-[70%] space-y-2 flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
+                               <div className={`max-w-[90%] sm:max-w-[70%] space-y-2 flex flex-col ${isSent ? 'items-end' : 'items-start'}`}>
                                   <div className={`shadow-md ${
                                      isSent 
                                         ? 'bg-primary text-white rounded-[24px] rounded-tr-none px-6 py-4 text-[14px] font-bold leading-relaxed' 
@@ -246,18 +291,18 @@ const Messaging: React.FC = () => {
                                            : 'bg-white border border-gray-100 text-secondary rounded-[24px] rounded-tl-none px-6 py-4 text-[14px] font-bold leading-relaxed'
                                   }`}>
                                      {msg.isOffer ? (
-                                       <div className="max-w-xs w-full bg-secondary overflow-hidden">
-                                          <div className="bg-primary p-6 flex flex-col items-center text-center space-y-4">
-                                             <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur">
-                                                <DollarSign size={24} />
+                                       <div className="w-full max-w-[26rem] sm:max-w-[30rem] bg-secondary overflow-hidden rounded-[32px] shadow-sm">
+                                          <div className="bg-primary p-4 sm:p-5 flex flex-col items-center text-center space-y-3">
+                                             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur">
+                                                <DollarSign size={20} />
                                              </div>
                                              <div>
                                                 <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-1">{msg.activity || 'Custom Trip'} Offer</p>
-                                                <h5 className="text-lg font-black text-white tracking-tight leading-tight">{msg.text}</h5>
+                                                <h5 className="text-base sm:text-lg font-black text-white tracking-tight leading-tight">{msg.text}</h5>
                                              </div>
                                           </div>
-                                          <div className="p-6 bg-secondary space-y-4">
-                                             <div className="grid grid-cols-2 gap-3 text-left">
+                                          <div className="p-4 sm:p-5 bg-secondary space-y-3">
+                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
                                                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
                                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Timer size={8}/> Duration</p>
                                                    <p className="text-xs font-black text-white">{msg.duration || (msg.hours + ' Hours')}</p>
@@ -267,18 +312,18 @@ const Messaging: React.FC = () => {
                                                    <p className="text-xs font-black text-white">{msg.guests || 1} People</p>
                                                 </div>
                                                 {msg.date && (
-                                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
+                                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 sm:col-span-2">
                                                      <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={8}/> Trip Date</p>
                                                      <p className="text-xs font-black text-white">{msg.date} at {msg.offerTime || msg.time}</p>
                                                   </div>
                                                 )}
                                                 {msg.location && (
-                                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 col-span-2">
+                                                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 sm:col-span-2">
                                                      <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1 flex items-center gap-1"><MapPin size={8}/> Meetup</p>
                                                      <p className="text-xs font-black text-white truncate">{msg.location}</p>
                                                   </div>
                                                 )}
-                                                <div className="bg-white/5 p-3 rounded-2xl border border-white/10 col-span-2 text-center">
+                                                <div className="bg-white/5 p-3 rounded-2xl border border-white/10 sm:col-span-2 text-center">
                                                    <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">Total Pay</p>
                                                    <p className="text-xl font-black text-primary">${msg.price}</p>
                                                 </div>
@@ -311,7 +356,7 @@ const Messaging: React.FC = () => {
                    </div>
 
                    {/* Input Footer */}
-                   <footer className="px-8 py-5 border-t border-gray-100 bg-white">
+                   <footer className="px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-gray-100 bg-white">
                       <div className="relative flex items-center gap-3">
                          <div className="flex-1 flex items-center gap-3 bg-gray-50 rounded-[24px] px-2 py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 transition-all border border-gray-100 focus-within:border-primary/20">
                             <button className="w-10 h-10 rounded-full text-secondary/30 hover:text-primary transition-all flex items-center justify-center shrink-0"><Paperclip size={19} /></button>
@@ -346,6 +391,7 @@ const Messaging: React.FC = () => {
                 </div>
              )}
           </main>
+          )}
         </div>
       </main>
       
