@@ -127,12 +127,12 @@ const AdminVerification: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="relative group">
+            <div className="relative group w-full max-w-xs">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-admin-muted group-focus-within:text-indigo-500 transition-colors" size={18} />
               <input 
                 type="text" 
                 placeholder="Search..." 
-                className="w-64 admin-input pl-12"
+                className="w-full admin-input pl-12"
               />
             </div>
             <div className="relative group">
@@ -246,7 +246,7 @@ const AdminVerification: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12 animate-fade-in">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl" onClick={() => setSelectedUser(null)}></div>
           
-          <div className="bg-admin-sidebar border border-admin w-full max-w-7xl rounded-[48px] shadow-2xl overflow-hidden relative z-10 flex flex-col xl:flex-row h-[90vh]">
+          <div className="bg-admin-sidebar border border-admin w-full max-w-7xl rounded-[48px] shadow-2xl overflow-hidden relative z-10 flex flex-col xl:flex-row min-h-[80vh] xl:min-h-[90vh]">
             <button 
               className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-admin-surface flex items-center justify-center text-admin-muted hover:text-rose-500 border border-admin shadow-sm transition-all z-20" 
               onClick={() => setSelectedUser(null)}

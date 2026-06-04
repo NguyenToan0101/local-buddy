@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CreditCard, ShieldCheck, Lock, Bell, User, ArrowLeft, CheckCircle2, ChevronRight, Info } from 'lucide-react';
+import { Calendar, Clock, CreditCard, ShieldCheck, Lock, User, ArrowLeft, CheckCircle2, Info } from 'lucide-react';
 import { buddyService } from '../../services/api';
 import type { Buddy } from '../../services/api';
 import Button from '../../components/ui/Button';
@@ -16,7 +16,6 @@ const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'google'>('card');
   const [buddy, setBuddy] = useState<Buddy | null>(null);
   const [booking, setBooking] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -39,8 +38,6 @@ const Checkout: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching data for checkout:", error);
-      } finally {
-        setLoading(false);
       }
     };
     fetchData();
@@ -124,7 +121,7 @@ const Checkout: React.FC = () => {
                   <span className="text-[10px] font-black text-secondary/20 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-lg">ID: #LB-827C</span>
                </div>
                
-               <div className="bg-white rounded-[40px] shadow-premium p-10 border border-gray-50 flex flex-col md:row items-center gap-10 group hover:shadow-premium-hover transition-all duration-500">
+               <div className="bg-white rounded-[40px] shadow-premium p-10 border border-gray-50 flex flex-col md:flex-row items-center gap-10 group hover:shadow-premium-hover transition-all duration-500">
                   <div className="relative shrink-0">
                     <div className="w-40 h-40 rounded-[32px] overflow-hidden shadow-2xl ring-8 ring-white group-hover:scale-105 transition-transform duration-500">
                        <img src={buddy?.image || "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=400"} alt="Experience" className="w-full h-full object-cover" />
@@ -240,7 +237,7 @@ const Checkout: React.FC = () => {
 
           {/* Price Breakdown Sidebar */}
           <aside className="lg:w-[400px] animate-in fade-in slide-in-from-right-4 duration-1000">
-             <div className="bg-white rounded-[48px] shadow-premium p-12 border border-blue-50/30 sticky top-32 space-y-10 relative overflow-hidden">
+             <div className="bg-white rounded-[48px] shadow-premium p-12 border border-blue-50/30 lg:sticky lg:top-32 space-y-10 overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-primary-dark opacity-80"></div>
                 
                 <h3 className="text-2xl font-black text-secondary tracking-tight">Price Breakdown</h3>

@@ -96,7 +96,7 @@ const BookingDetails: React.FC = () => {
         <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
            
            {/* Cinematic Hero Header */}
-           <header className="relative py-20 px-12 md:px-16 rounded-[64px] overflow-hidden group">
+           <header className="relative py-16 px-6 sm:px-10 md:px-12 lg:px-16 rounded-[64px] overflow-hidden group">
               <div className="absolute inset-0 bg-secondary shadow-card overflow-hidden">
                  <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] -mr-96 -mt-96 animate-pulse"></div>
                  <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '40px 40px' }}></div>
@@ -115,7 +115,7 @@ const BookingDetails: React.FC = () => {
                     </div>
                  </div>
 
-                 <div className="flex flex-col sm:row items-center gap-6">
+                 <div className="flex flex-col sm:flex-row items-center gap-6">
                      <div className="bg-white/5 backdrop-blur-3xl border border-white/10 p-8 rounded-[40px] shadow-2xl text-center min-w-[240px] space-y-4">
                         <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mb-4">Current Status</div>
                         <div className="flex items-center justify-center gap-3 bg-accent-green/20 text-accent-green px-8 py-4 rounded-2xl border border-accent-green/30">
@@ -219,7 +219,7 @@ const BookingDetails: React.FC = () => {
               </div>
 
               {/* Right Column: Pricing & Security */}
-              <aside className="lg:w-[450px] space-y-12">
+              <aside className="lg:w-[450px] w-full space-y-12 lg:sticky lg:top-32">
                  
                  {/* Financial Overview */}
                  <div className="bg-white rounded-[56px] shadow-premium p-12 border border-gray-50 relative overflow-hidden group">

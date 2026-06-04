@@ -145,8 +145,8 @@ const ExperienceDetail: React.FC = () => {
                 </p>
               </div>
               
-              <div className="grid grid-cols-2 gap-8 h-[500px]">
-                <div className="rounded-[48px] overflow-hidden shadow-premium group/memory">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="rounded-[48px] overflow-hidden shadow-premium group/memory h-[360px] sm:h-[420px]">
                   <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-1000" alt="Travel memory" />
                 </div>
                 <div className="grid grid-rows-2 gap-8">

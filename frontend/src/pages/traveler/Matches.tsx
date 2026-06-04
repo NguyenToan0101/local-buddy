@@ -41,10 +41,10 @@ const Matches: React.FC = () => {
       : null;
 
    return (
-      <div className="h-screen bg-surface flex overflow-hidden">
+      <div className="min-h-screen bg-surface flex overflow-hidden flex-col md:flex-row">
 
          {/* Sidebar Navigation */}
-         <aside className="w-20 lg:w-64 bg-white border-r border-gray-100 flex flex-col py-8 px-4 transition-all overflow-hidden whitespace-nowrap">
+         <aside className="w-full md:w-20 lg:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-100 flex flex-row md:flex-col py-4 md:py-8 px-4 md:px-4 transition-all overflow-hidden whitespace-nowrap md:space-y-4">
             <div className="flex items-center gap-3 px-2 mb-12">
                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20 shrink-0">
                   <Heart size={24} className="fill-white" />
@@ -98,7 +98,7 @@ const Matches: React.FC = () => {
 
          {/* Main Content: Match List */}
          <main className="flex-1 bg-white flex flex-col min-w-0 transition-all">
-            <header className="px-12 py-16 border-b border-gray-100 flex flex-col md:row justify-between items-start md:items-center gap-10">
+            <header className="px-6 sm:px-10 lg:px-12 py-12 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
                <div className="space-y-2">
                   <h2 className="heading-section">Your Matches</h2>
                   <p className="text-secondary/30 font-black uppercase tracking-widest text-xs">You have 4 new connections this week</p>
@@ -118,7 +118,7 @@ const Matches: React.FC = () => {
                </div>
             </header>
 
-            <div className="px-12 py-8 border-b border-gray-100 flex gap-4 overflow-x-auto scrollbar-hide">
+            <div className="px-6 sm:px-10 py-8 border-b border-gray-100 flex gap-3 overflow-x-auto scrollbar-hide">
                {['All Matches', 'New (4)', 'Near Me', 'Active Recently', 'Coffee Lovers'].map((filter, i) => (
                   <button key={filter} className={`px-8 py-3 rounded-2xl whitespace-nowrap text-[10px] font-black uppercase tracking-widest transition-all ${i === 0 ? 'bg-primary text-white shadow-primary-glow' : 'bg-primary/5 text-primary hover:bg-primary/10 border border-primary/10'}`}>
                      {filter}
@@ -137,7 +137,7 @@ const Matches: React.FC = () => {
                      <div
                         key={match.id}
                         onClick={() => setSelectedMatchId(match.id)}
-                        className={`group p-10 rounded-[64px] border-2 cursor-pointer transition-all flex flex-col sm:row items-center gap-10 ${selectedMatchId === match.id ? 'bg-white border-primary/20 shadow-premium' : 'bg-white border-gray-50 hover:border-surface-dark hover:shadow-xl'}`}
+                        className={`group p-10 rounded-[64px] border-2 cursor-pointer transition-all flex flex-col sm:flex-row items-center gap-10 ${selectedMatchId === match.id ? 'bg-white border-primary/20 shadow-premium' : 'bg-white border-gray-50 hover:border-surface-dark hover:shadow-xl'}`}
                      >
                         <div className="relative shrink-0">
                            <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-primary-soft shadow-xl group-hover:scale-110 transition-transform duration-500">

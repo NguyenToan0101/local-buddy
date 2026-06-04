@@ -107,7 +107,7 @@ const ReportUser: React.FC = () => {
             </div>
 
             {/* CTA */}
-            <div className="flex flex-col md:row gap-6 pt-12">
+            <div className="flex flex-col md:flex-row gap-6 pt-12">
                <Button className="flex-1 py-6 text-2xl shadow-2xl shadow-primary/30">Submit Report</Button>
                <button className="px-12 py-6 text-secondary/20 font-black uppercase tracking-widest hover:text-secondary transition-all">Cancel</button>
             </div>

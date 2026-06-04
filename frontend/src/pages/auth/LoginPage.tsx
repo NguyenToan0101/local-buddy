@@ -38,7 +38,7 @@ const LoginPage: React.FC = () => {
       <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-12 items-center">
 
         {/* Left Side - Login Form Card */}
-        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[640px]">
+        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-auto md:min-h-[640px]">
           <div className="mb-10">
             <Link to="/" className="inline-flex items-center gap-2 group transition-all hover:opacity-80">
               <div className="w-10 h-10 bg-[#FF7E4B] rounded-xl flex items-center justify-center text-white shadow-[0_4px_12px_rgba(255,126,75,0.3)] group-hover:scale-105 transition-transform">
@@ -117,7 +117,7 @@ const LoginPage: React.FC = () => {
             <div className="flex-grow border-t border-[#E5E7EB]"></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => {
