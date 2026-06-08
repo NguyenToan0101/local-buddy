@@ -4,13 +4,17 @@ import jakarta.validation.Valid;
 import localbuddy.backend.dto.AdminDashboardStatsDto;
 import localbuddy.backend.dto.AdminVerificationDto;
 import localbuddy.backend.dto.AdminVerificationUpdateRequest;
+import localbuddy.backend.dto.BookingDto;
+import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.BuddyProfile;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
+import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AvatarService;
+import localbuddy.backend.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +40,8 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final BookingRepository bookingRepository;
+    private final BookingService bookingService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
@@ -67,6 +73,15 @@ public class AdminController {
                 .verifiedBuddies(buddyProfiles.stream().filter(profile -> profile.getVerificationStatus() == VerificationStatus.VERIFIED).count())
                 .rejectedBuddies(buddyProfiles.stream().filter(profile -> profile.getVerificationStatus() == VerificationStatus.REJECTED).count())
                 .build();
+    }
+
+    @GetMapping("/bookings")
+    public List<BookingDto> getAllBookings() {
+        List<Booking> bookings = bookingRepository.findAll();
+        return bookings.stream()
+                .sorted(Comparator.comparing(Booking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(bookingService::mapToDto)
+                .toList();
     }
 
     @PatchMapping("/buddies/{userId}/verification")

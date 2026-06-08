@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Wallet,
+  Calendar,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -28,6 +29,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const menuItems: Array<{ icon: any; label: string; path: string; badge?: string }> = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
     { icon: UserCheck, label: "Verification", path: "/admin/verification" },
+    { icon: Calendar, label: "Bookings", path: "/admin/bookings" },
     { icon: Wallet, label: "Payouts & Taxes", path: "/admin/payouts" },
   ];
 
