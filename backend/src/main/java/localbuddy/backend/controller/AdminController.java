@@ -40,6 +40,7 @@ public class AdminController {
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
         return userRepository.findAll().stream()
+                .filter(user -> user.getRole() != UserRole.ADMIN)  // Exclude ADMIN users
                 .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::mapVerification)
                 .toList();
@@ -91,6 +92,7 @@ public class AdminController {
     }
 
     private AdminVerificationDto mapVerification(User user, BuddyProfile profile) {
+        String userType = mapUserRoleToType(user.getRole());
         boolean buddy = user.getRole() == UserRole.BUDDY;
         String avatar = AvatarService.getDisplayAvatarUrl(user);
         String front = profile != null ? profile.getIdCardFrontUrl() : null;
@@ -99,7 +101,7 @@ public class AdminController {
         return AdminVerificationDto.builder()
                 .id(user.getId())
                 .name(user.getFullName())
-                .type(buddy ? "Buddy" : "Traveller")
+                .type(userType)
                 .regDate(formatDate(user.getCreatedAt()))
                 .docType(buddy ? "CCCD" : "Passport")
                 .status(resolveStatus(user, profile))
@@ -112,6 +114,14 @@ public class AdminController {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .build();
+    }
+
+    private String mapUserRoleToType(UserRole role) {
+        return switch (role) {
+            case BUDDY -> "Buddy";
+            case ADMIN -> "Admin";
+            case TRAVELER -> "Traveller";
+        };
     }
 
     private String resolveStatus(User user, BuddyProfile profile) {
