@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Compass, Clock, Globe, Check } from 'lucide-react';
 import { experienceService } from '../../services/api';
 import type { Experience } from '../../services/api';
@@ -58,6 +58,55 @@ const ExploreExperiences: React.FC = () => {
       prev.includes(duration) ? prev.filter(d => d !== duration) : [...prev, duration]
     );
   };
+
+  const filteredExperiences = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    const matchesDuration = (experience: Experience) => {
+      if (selectedDuration.length === 0) return true;
+
+      const rawHours = Number((experience as any).hours ?? (experience as any).totalHours);
+      const durationText = String((experience as any).duration || '').toLowerCase();
+
+      return selectedDuration.some((duration) => {
+        const normalizedDuration = duration.toLowerCase();
+
+        if (durationText.includes(normalizedDuration)) return true;
+        if (Number.isFinite(rawHours) && rawHours > 0) {
+          if (normalizedDuration === '< 2 hours') return rawHours < 2;
+          if (normalizedDuration === 'half day') return rawHours >= 2 && rawHours < 6;
+          if (normalizedDuration === 'full day') return rawHours >= 6 && rawHours <= 10;
+          if (normalizedDuration === 'multi-day') return rawHours > 10;
+        }
+
+        return [
+          experience.title,
+          experience.storyContent,
+          experience.location,
+          ...(experience.tags || []),
+        ].join(' ').toLowerCase().includes(normalizedDuration);
+      });
+    };
+
+    return experiences.filter((experience) => {
+      const searchableText = [
+        experience.title,
+        experience.storyContent,
+        experience.location,
+        experience.travelerName,
+        experience.buddyName,
+        ...(experience.tags || []),
+      ].join(' ').toLowerCase();
+
+      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+      const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) =>
+        (experience.tags || []).some((experienceTag) => experienceTag.toLowerCase() === tag.toLowerCase())
+      );
+      const matchesRating = Number(experience.rating || 0) >= rating;
+
+      return matchesSearch && matchesTags && matchesRating && matchesDuration(experience);
+    });
+  }, [experiences, rating, searchQuery, selectedDuration, selectedTags]);
 
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
@@ -198,7 +247,7 @@ const ExploreExperiences: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             experiences.map(exp => (
+             filteredExperiences.map(exp => (
                <div key={exp.id} className="transition-all hover:scale-[1.02]">
                   <ExperienceCard experience={exp} />
                </div>

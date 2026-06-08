@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Users, Globe, Check } from 'lucide-react';
 import { buddyService } from '../../services/api';
 import type { Buddy } from '../../services/api';
@@ -58,6 +58,34 @@ const ExploreBuddies: React.FC = () => {
       prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
     );
   };
+
+  const filteredBuddies = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    return buddies.filter((buddy) => {
+      const searchableText = [
+        buddy.name,
+        buddy.location,
+        buddy.description,
+        ...(buddy.tags || []),
+        ...(buddy.interests || []),
+        ...(buddy.languages || []),
+      ].join(' ').toLowerCase();
+
+      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
+      const matchesInterests = selectedInterests.length === 0 || selectedInterests.some((interest) => {
+        const normalizedInterest = interest.toLowerCase();
+        return (buddy.tags || []).some((tag) => tag.toLowerCase() === normalizedInterest)
+          || (buddy.interests || []).some((item) => item.toLowerCase() === normalizedInterest);
+      });
+      const matchesLanguages = selectedLanguages.length === 0 || selectedLanguages.some((language) =>
+        (buddy.languages || []).some((buddyLanguage) => buddyLanguage.toLowerCase() === language.toLowerCase())
+      );
+      const matchesRating = Number(buddy.rating || 0) >= rating;
+
+      return matchesSearch && matchesInterests && matchesLanguages && matchesRating;
+    });
+  }, [buddies, rating, searchQuery, selectedInterests, selectedLanguages]);
 
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
@@ -201,7 +229,7 @@ const ExploreBuddies: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             buddies.map(buddy => (
+             filteredBuddies.map(buddy => (
                 <div key={buddy.id} className="flex flex-col group h-full transition-all hover:scale-[1.02]">
                    <BuddyCard 
                      {...buddy}
