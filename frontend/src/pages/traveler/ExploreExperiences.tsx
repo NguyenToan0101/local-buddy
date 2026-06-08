@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Compass, Clock, Globe, Check } from 'lucide-react';
 import { experienceService } from '../../services/api';
 import type { Experience } from '../../services/api';
@@ -16,8 +16,9 @@ const ExploreExperiences: React.FC = () => {
   const [selectedDuration, setSelectedDuration] = useState<string[]>([]);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDurationOpen, setIsDurationOpen] = useState(false);
@@ -26,19 +27,6 @@ const ExploreExperiences: React.FC = () => {
   const durationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchExperiences = async () => {
-      try {
-        const data = await experienceService.getAll();
-        setExperiences(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching experiences:", error);
-        setExperiences([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExperiences();
-
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
@@ -50,6 +38,41 @@ const ExploreExperiences: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [rating, searchQuery, selectedDuration, selectedTags]);
+
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      setLoading(true);
+      try {
+        const data = await experienceService.search({
+          searchQuery,
+          tags: selectedTags,
+          duration: selectedDuration,
+          rating,
+          page: currentPage,
+          size: ITEMS_PER_PAGE,
+        });
+        setExperiences(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+        setTotalElements(data.totalElements || 0);
+        if (typeof data.number === 'number' && data.number !== currentPage) {
+          setCurrentPage(data.number);
+        }
+      } catch (error) {
+        console.error("Error fetching experiences:", error);
+        setExperiences([]);
+        setTotalPages(1);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExperiences();
+  }, [currentPage, rating, searchQuery, selectedDuration, selectedTags]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 
@@ -63,76 +86,12 @@ const ExploreExperiences: React.FC = () => {
     );
   };
 
-  const filteredExperiences = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
-    const matchesDuration = (experience: Experience) => {
-      if (selectedDuration.length === 0) return true;
-
-      const rawHours = Number((experience as any).hours ?? (experience as any).totalHours);
-      const durationText = String((experience as any).duration || '').toLowerCase();
-
-      return selectedDuration.some((duration) => {
-        const normalizedDuration = duration.toLowerCase();
-
-        if (durationText.includes(normalizedDuration)) return true;
-        if (Number.isFinite(rawHours) && rawHours > 0) {
-          if (normalizedDuration === '< 2 hours') return rawHours < 2;
-          if (normalizedDuration === 'half day') return rawHours >= 2 && rawHours < 6;
-          if (normalizedDuration === 'full day') return rawHours >= 6 && rawHours <= 10;
-          if (normalizedDuration === 'multi-day') return rawHours > 10;
-        }
-
-        return [
-          experience.title,
-          experience.storyContent,
-          experience.location,
-          ...(experience.tags || []),
-        ].join(' ').toLowerCase().includes(normalizedDuration);
-      });
-    };
-
-    return experiences.filter((experience) => {
-      const searchableText = [
-        experience.title,
-        experience.storyContent,
-        experience.location,
-        experience.travelerName,
-        experience.buddyName,
-        ...(experience.tags || []),
-      ].join(' ').toLowerCase();
-
-      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
-      const matchesTags = selectedTags.length === 0 || selectedTags.some((tag) =>
-        (experience.tags || []).some((experienceTag) => experienceTag.toLowerCase() === tag.toLowerCase())
-      );
-      const matchesRating = Number(experience.rating || 0) >= rating;
-
-      return matchesSearch && matchesTags && matchesRating && matchesDuration(experience);
-    });
-  }, [experiences, rating, searchQuery, selectedDuration, selectedTags]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [rating, searchQuery, selectedDuration, selectedTags]);
-
-  useEffect(() => {
-    const nextTotalPages = Math.max(1, Math.ceil(filteredExperiences.length / ITEMS_PER_PAGE));
-    setTotalPages(nextTotalPages);
-    setCurrentPage((page) => Math.min(page, nextTotalPages));
-  }, [filteredExperiences.length]);
-
-  const paginatedExperiences = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredExperiences.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [currentPage, filteredExperiences]);
-
   const goToPreviousPage = () => {
-    setCurrentPage((page) => Math.max(1, page - 1));
+    setCurrentPage((page) => Math.max(0, page - 1));
   };
 
   const goToNextPage = () => {
-    setCurrentPage((page) => Math.min(totalPages, page + 1));
+    setCurrentPage((page) => Math.min(totalPages - 1, page + 1));
   };
 
   return (
@@ -157,6 +116,9 @@ const ExploreExperiences: React.FC = () => {
                  <h1 className="text-6xl md:text-7xl font-black tracking-tighter italic">
                     <span className="text-secondary">Recent</span> <span className="text-primary not-italic">Experiences</span>
                  </h1>
+                 <p className="text-secondary/40 font-bold text-xl tracking-tight">
+                    Found <span className="text-secondary font-black">{totalElements} experiences</span>
+                 </p>
               </div>
            </div>
         </div>
@@ -274,7 +236,7 @@ const ExploreExperiences: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             paginatedExperiences.map(exp => (
+             experiences.map(exp => (
                <div key={exp.id} className="transition-all hover:scale-[1.02]">
                   <ExperienceCard experience={exp} />
                </div>
@@ -286,26 +248,26 @@ const ExploreExperiences: React.FC = () => {
         <div className="flex justify-center items-center gap-4 pt-20">
            <button
              onClick={goToPreviousPage}
-             disabled={currentPage === 1}
-             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+             disabled={currentPage === 0}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 0 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
            >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
            <div className="flex gap-4 flex-wrap justify-center">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+              {Array.from({ length: totalPages }, (_, index) => index).map(page => (
                  <button
                    key={page}
                    onClick={() => setCurrentPage(page)}
                    className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
                  >
-                    {page}
+                    {page + 1}
                  </button>
               ))}
            </div>
            <button
              onClick={goToNextPage}
-             disabled={currentPage === totalPages}
-             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage === totalPages ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+             disabled={currentPage >= totalPages - 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage >= totalPages - 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
            >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>

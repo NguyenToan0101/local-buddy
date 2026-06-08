@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Users, Globe, Check } from 'lucide-react';
 import { buddyService } from '../../services/api';
 import type { Buddy } from '../../services/api';
@@ -16,8 +16,9 @@ const ExploreBuddies: React.FC = () => {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
@@ -26,19 +27,6 @@ const ExploreBuddies: React.FC = () => {
   const languageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchBuddies = async () => {
-      try {
-        const data = await buddyService.getAll();
-        setBuddies(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching buddies:", error);
-        setBuddies([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBuddies();
-
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
@@ -50,6 +38,41 @@ const ExploreBuddies: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [rating, searchQuery, selectedInterests, selectedLanguages]);
+
+  useEffect(() => {
+    const fetchBuddies = async () => {
+      setLoading(true);
+      try {
+        // TODO: Add selectedLanguages to the backend buddy search API when language filtering is supported server-side.
+        const data = await buddyService.search({
+          searchQuery,
+          tags: selectedInterests,
+          rating,
+          page: currentPage,
+          size: ITEMS_PER_PAGE,
+        });
+        setBuddies(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+        setTotalElements(data.totalElements || 0);
+        if (typeof data.number === 'number' && data.number !== currentPage) {
+          setCurrentPage(data.number);
+        }
+      } catch (error) {
+        console.error("Error fetching buddies:", error);
+        setBuddies([]);
+        setTotalPages(1);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBuddies();
+  }, [currentPage, rating, searchQuery, selectedInterests, selectedLanguages]);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev => 
@@ -63,55 +86,12 @@ const ExploreBuddies: React.FC = () => {
     );
   };
 
-  const filteredBuddies = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
-
-    return buddies.filter((buddy) => {
-      const searchableText = [
-        buddy.name,
-        buddy.location,
-        buddy.description,
-        ...(buddy.tags || []),
-        ...(buddy.interests || []),
-        ...(buddy.languages || []),
-      ].join(' ').toLowerCase();
-
-      const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch);
-      const matchesInterests = selectedInterests.length === 0 || selectedInterests.some((interest) => {
-        const normalizedInterest = interest.toLowerCase();
-        return (buddy.tags || []).some((tag) => tag.toLowerCase() === normalizedInterest)
-          || (buddy.interests || []).some((item) => item.toLowerCase() === normalizedInterest);
-      });
-      const matchesLanguages = selectedLanguages.length === 0 || selectedLanguages.some((language) =>
-        (buddy.languages || []).some((buddyLanguage) => buddyLanguage.toLowerCase() === language.toLowerCase())
-      );
-      const matchesRating = Number(buddy.rating || 0) >= rating;
-
-      return matchesSearch && matchesInterests && matchesLanguages && matchesRating;
-    });
-  }, [buddies, rating, searchQuery, selectedInterests, selectedLanguages]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [rating, searchQuery, selectedInterests, selectedLanguages]);
-
-  useEffect(() => {
-    const nextTotalPages = Math.max(1, Math.ceil(filteredBuddies.length / ITEMS_PER_PAGE));
-    setTotalPages(nextTotalPages);
-    setCurrentPage((page) => Math.min(page, nextTotalPages));
-  }, [filteredBuddies.length]);
-
-  const paginatedBuddies = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredBuddies.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [currentPage, filteredBuddies]);
-
   const goToPreviousPage = () => {
-    setCurrentPage((page) => Math.max(1, page - 1));
+    setCurrentPage((page) => Math.max(0, page - 1));
   };
 
   const goToNextPage = () => {
-    setCurrentPage((page) => Math.min(totalPages, page + 1));
+    setCurrentPage((page) => Math.min(totalPages - 1, page + 1));
   };
 
   return (
@@ -137,7 +117,7 @@ const ExploreBuddies: React.FC = () => {
                     <span className="text-secondary">Explore</span> <span className="text-primary not-italic">Buddies</span>
                  </h1>
                  <p className="text-secondary/40 font-bold text-xl tracking-tight">
-                    Found <span className="text-secondary font-black">128 local guides</span> ready to connect
+                    Found <span className="text-secondary font-black">{totalElements} local guides</span> ready to connect
                  </p>
               </div>
            </div>
@@ -256,7 +236,7 @@ const ExploreBuddies: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             paginatedBuddies.map(buddy => (
+             buddies.map(buddy => (
                 <div key={buddy.id} className="flex flex-col group h-full transition-all hover:scale-[1.02]">
                    <BuddyCard 
                      {...buddy}
@@ -276,26 +256,26 @@ const ExploreBuddies: React.FC = () => {
         <div className="flex justify-center items-center gap-4 pt-20">
            <button
              onClick={goToPreviousPage}
-             disabled={currentPage === 1}
-             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+             disabled={currentPage === 0}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 0 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
            >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
            <div className="flex gap-4 flex-wrap justify-center">
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+              {Array.from({ length: totalPages }, (_, index) => index).map(page => (
                  <button
                    key={page}
                    onClick={() => setCurrentPage(page)}
                    className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
                  >
-                    {page}
+                    {page + 1}
                  </button>
               ))}
            </div>
            <button
              onClick={goToNextPage}
-             disabled={currentPage === totalPages}
-             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage === totalPages ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+             disabled={currentPage >= totalPages - 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage >= totalPages - 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
            >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>

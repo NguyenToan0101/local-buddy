@@ -103,6 +103,45 @@ export interface Buddy {
   verificationStatus?: 'verified' | 'pending' | 'unverified';
 }
 
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+type BuddySearchParams = {
+  searchQuery?: string;
+  tags?: string[];
+  rating?: number;
+  page?: number;
+  size?: number;
+};
+
+type ExperienceSearchParams = {
+  searchQuery?: string;
+  tags?: string[];
+  duration?: string | string[];
+  rating?: number;
+  page?: number;
+  size?: number;
+};
+
+function appendSearchParam(params: URLSearchParams, key: string, value: unknown) {
+  if (value === null || value === undefined) return;
+  if (Array.isArray(value)) {
+    const serialized = value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(',');
+    if (serialized) params.set(key, serialized);
+    return;
+  }
+  const serialized = String(value).trim();
+  if (serialized) params.set(key, serialized);
+}
+
 function normalizeBookingList(data: any) {
   return Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
 }
@@ -117,6 +156,23 @@ export const buddyService = {
       throw new Error('Failed to fetch buddies');
     }
     return await response.json() as Buddy[];
+  },
+  search: async (params: BuddySearchParams = {}) => {
+    const query = new URLSearchParams();
+    appendSearchParam(query, 'searchQuery', params.searchQuery);
+    appendSearchParam(query, 'tags', params.tags);
+    appendSearchParam(query, 'rating', params.rating);
+    appendSearchParam(query, 'page', params.page ?? 0);
+    appendSearchParam(query, 'size', params.size ?? 10);
+
+    const response = await fetch(`${API_BASE_URL}/buddies/search?${query.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to search buddies');
+    }
+    return await response.json() as PageResponse<Buddy>;
   },
   getById: async (id: string) => {
     const token = localStorage.getItem('token');
@@ -452,6 +508,21 @@ export const experienceService = {
     });
     if (!response.ok) throw new Error('Failed to fetch experiences');
     return response.json() as Promise<Experience[]>;
+  },
+  search: async (params: ExperienceSearchParams = {}) => {
+    const query = new URLSearchParams();
+    appendSearchParam(query, 'searchQuery', params.searchQuery);
+    appendSearchParam(query, 'tags', params.tags);
+    appendSearchParam(query, 'duration', params.duration);
+    appendSearchParam(query, 'rating', params.rating);
+    appendSearchParam(query, 'page', params.page ?? 0);
+    appendSearchParam(query, 'size', params.size ?? 10);
+
+    const response = await fetch(`${API_BASE_URL}/experiences/search?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to search experiences');
+    return response.json() as Promise<PageResponse<Experience>>;
   },
   getById: async (id: string) => {
     const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
