@@ -3,11 +3,15 @@ package localbuddy.backend.controller;
 import localbuddy.backend.dto.BuddyProfileDto;
 import localbuddy.backend.service.BuddyProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +22,16 @@ import java.util.UUID;
 public class    BuddyProfileController {
 
     private final BuddyProfileService buddyProfileService;
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<BuddyProfileDto>> searchBuddies(
+            @RequestParam(required = false) String searchQuery,
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) BigDecimal rating,
+            @PageableDefault(page = 0, size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(buddyProfileService.searchBuddies(searchQuery, tags, rating, pageable));
+    }
 
     @GetMapping("/{userId}")
     public ResponseEntity<BuddyProfileDto> getProfile(@PathVariable UUID userId) {
