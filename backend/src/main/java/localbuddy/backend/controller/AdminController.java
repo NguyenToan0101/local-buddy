@@ -4,13 +4,17 @@ import jakarta.validation.Valid;
 import localbuddy.backend.dto.AdminDashboardStatsDto;
 import localbuddy.backend.dto.AdminVerificationDto;
 import localbuddy.backend.dto.AdminVerificationUpdateRequest;
+import localbuddy.backend.dto.BookingDto;
+import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.BuddyProfile;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
+import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AvatarService;
+import localbuddy.backend.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,10 +40,13 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final BookingRepository bookingRepository;
+    private final BookingService bookingService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
         return userRepository.findAll().stream()
+                .filter(user -> user.getRole() != UserRole.ADMIN)  // Exclude ADMIN users
                 .sorted(Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(this::mapVerification)
                 .toList();
@@ -68,6 +75,15 @@ public class AdminController {
                 .build();
     }
 
+    @GetMapping("/bookings")
+    public List<BookingDto> getAllBookings() {
+        List<Booking> bookings = bookingRepository.findAll();
+        return bookings.stream()
+                .sorted(Comparator.comparing(Booking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(bookingService::mapToDto)
+                .toList();
+    }
+
     @PatchMapping("/buddies/{userId}/verification")
     public AdminVerificationDto updateBuddyVerification(
             @PathVariable UUID userId,
@@ -91,6 +107,7 @@ public class AdminController {
     }
 
     private AdminVerificationDto mapVerification(User user, BuddyProfile profile) {
+        String userType = mapUserRoleToType(user.getRole());
         boolean buddy = user.getRole() == UserRole.BUDDY;
         String avatar = AvatarService.getDisplayAvatarUrl(user);
         String front = profile != null ? profile.getIdCardFrontUrl() : null;
@@ -99,7 +116,7 @@ public class AdminController {
         return AdminVerificationDto.builder()
                 .id(user.getId())
                 .name(user.getFullName())
-                .type(buddy ? "Buddy" : "Traveller")
+                .type(userType)
                 .regDate(formatDate(user.getCreatedAt()))
                 .docType(buddy ? "CCCD" : "Passport")
                 .status(resolveStatus(user, profile))
@@ -112,6 +129,14 @@ public class AdminController {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .build();
+    }
+
+    private String mapUserRoleToType(UserRole role) {
+        return switch (role) {
+            case BUDDY -> "Buddy";
+            case ADMIN -> "Admin";
+            case TRAVELER -> "Traveller";
+        };
     }
 
     private String resolveStatus(User user, BuddyProfile profile) {

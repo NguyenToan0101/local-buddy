@@ -325,6 +325,13 @@ export const adminService = {
     if (!response.ok) throw new Error('Failed to fetch admin dashboard stats');
     return response.json();
   },
+  getAllBookings: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch all bookings');
+    return response.json();
+  },
 };
 
 export const matchService = {
@@ -425,7 +432,7 @@ export const messageService = {
   subscribe: (callback: () => void, onStatusChange?: (connected: boolean) => void) => {
     const token = localStorage.getItem('token');
     if (!token) {
-      return () => {};
+      return () => { };
     }
 
     let closedByClient = false;

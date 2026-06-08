@@ -25,8 +25,8 @@ import BuddyDashboard from './pages/buddy/BuddyDashboard';
 import ReportUser from './pages/shared/ReportUser';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminVerification from './pages/admin/AdminVerification';
+import AdminBookings from './pages/admin/AdminBookings';
 import AdminPayoutsTaxes from './pages/admin/AdminPayoutsTaxes';
-import AdminSOSMonitoring from './pages/admin/AdminSOSMonitoring';
 import AdminLogin from './pages/admin/AdminLogin';
 import LiveExperience from './pages/shared/LiveExperience';
 import BuddyPreview from './pages/buddy/BuddyPreview';
@@ -106,8 +106,8 @@ function App() {
       <Route path="/buddy/live/:id" element={<BuddyOnly><BuddyLiveExperience /></BuddyOnly>} />
       <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
       <Route path="/admin/verification" element={<AdminOnly><AdminVerification /></AdminOnly>} />
+      <Route path="/admin/bookings" element={<AdminOnly><AdminBookings /></AdminOnly>} />
       <Route path="/admin/payouts" element={<AdminOnly><AdminPayoutsTaxes /></AdminOnly>} />
-      <Route path="/admin/sos" element={<AdminOnly><AdminSOSMonitoring /></AdminOnly>} />
       {/* Add more routes as needed */}
     </Routes>
   );
