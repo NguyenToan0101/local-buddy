@@ -176,10 +176,11 @@ public class BookingService {
         return 1;
     }
 
-    private OffsetDateTime resolveStartTime(String date, String time) {
-        LocalDate localDate = StringUtils.hasText(date)
-                ? LocalDate.parse(date)
-                : LocalDate.now(BOOKING_ZONE).plusDays(1);
+    private OffsetDateTime resolveStartTime(LocalDate date, String time) {
+        if (date == null) {
+            throw new IllegalArgumentException("Booking date is required.");
+        }
+        LocalDate localDate = date;
         LocalTime localTime = StringUtils.hasText(time)
                 ? LocalTime.parse(time)
                 : LocalTime.of(9, 0);

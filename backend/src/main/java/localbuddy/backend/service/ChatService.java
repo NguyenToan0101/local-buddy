@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -133,7 +134,7 @@ public class ChatService {
         bookingRequest.setActivity(request.getActivity());
         bookingRequest.setDescription(request.getDescription());
         bookingRequest.setLocation(request.getLocation());
-        bookingRequest.setDate(request.getDate());
+        bookingRequest.setDate(StringUtils.hasText(request.getDate()) ? LocalDate.parse(request.getDate()) : null);
         bookingRequest.setTime(request.getTime());
         bookingRequest.setDuration(request.getDuration());
         bookingRequest.setHours(request.getHours());

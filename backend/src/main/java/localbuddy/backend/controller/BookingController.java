@@ -1,5 +1,6 @@
 package localbuddy.backend.controller;
 
+import jakarta.validation.Valid;
 import localbuddy.backend.dto.BookingDto;
 import localbuddy.backend.dto.BookingRequest;
 import localbuddy.backend.service.BookingService;
@@ -33,7 +34,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public ResponseEntity<BookingDto> createBooking(@RequestBody BookingRequest request) {
+    public ResponseEntity<BookingDto> createBooking(@Valid @RequestBody BookingRequest request) {
         return ResponseEntity.ok(bookingService.createBooking(getCurrentUserId(), request));
     }
 
