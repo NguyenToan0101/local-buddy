@@ -6,12 +6,13 @@ import localbuddy.backend.service.BookingService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,8 +23,8 @@ public class BookingController {
     private final BookingService bookingService;
 
     @GetMapping
-    public ResponseEntity<List<BookingDto>> getBookings() {
-        return ResponseEntity.ok(bookingService.getBookings(getCurrentUserId()));
+    public ResponseEntity<Page<BookingDto>> getBookings(Pageable pageable) {
+        return ResponseEntity.ok(bookingService.getBookings(getCurrentUserId(), pageable));
     }
 
     @GetMapping("/{bookingId}")

@@ -7,6 +7,8 @@ import Navbar from '../../components/Navbar';
 import ExperienceCard from '../../components/features/ExperienceCard';
 import Footer from '../../components/Footer';
 
+const ITEMS_PER_PAGE = 10;
+
 const ExploreExperiences: React.FC = () => {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,8 @@ const ExploreExperiences: React.FC = () => {
   const [selectedDuration, setSelectedDuration] = useState<string[]>([]);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDurationOpen, setIsDurationOpen] = useState(false);
@@ -107,6 +111,29 @@ const ExploreExperiences: React.FC = () => {
       return matchesSearch && matchesTags && matchesRating && matchesDuration(experience);
     });
   }, [experiences, rating, searchQuery, selectedDuration, selectedTags]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rating, searchQuery, selectedDuration, selectedTags]);
+
+  useEffect(() => {
+    const nextTotalPages = Math.max(1, Math.ceil(filteredExperiences.length / ITEMS_PER_PAGE));
+    setTotalPages(nextTotalPages);
+    setCurrentPage((page) => Math.min(page, nextTotalPages));
+  }, [filteredExperiences.length]);
+
+  const paginatedExperiences = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredExperiences.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, filteredExperiences]);
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(1, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1));
+  };
 
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
@@ -247,7 +274,7 @@ const ExploreExperiences: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             filteredExperiences.map(exp => (
+             paginatedExperiences.map(exp => (
                <div key={exp.id} className="transition-all hover:scale-[1.02]">
                   <ExperienceCard experience={exp} />
                </div>
@@ -257,18 +284,29 @@ const ExploreExperiences: React.FC = () => {
 
         {/* Pagination */}
         <div className="flex justify-center items-center gap-4 pt-20">
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all rotate-180 hover:shadow-premium group">
+           <button
+             onClick={goToPreviousPage}
+             disabled={currentPage === 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
-           <div className="flex gap-4">
-              {[1, 2, 3].map(page => (
-                 <button key={page} className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === 1 ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}>
+           <div className="flex gap-4 flex-wrap justify-center">
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+                 <button
+                   key={page}
+                   onClick={() => setCurrentPage(page)}
+                   className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
+                 >
                     {page}
                  </button>
               ))}
-              <span className="flex items-center text-secondary/20 font-black px-2 tracking-[0.5em] text-xl">...</span>
            </div>
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all hover:shadow-premium group">
+           <button
+             onClick={goToNextPage}
+             disabled={currentPage === totalPages}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage === totalPages ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>
         </div>

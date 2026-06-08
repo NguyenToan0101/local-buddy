@@ -7,6 +7,8 @@ import Navbar from '../../components/Navbar';
 import BuddyCard from '../../components/features/BuddyCard';
 import Footer from '../../components/Footer';
 
+const ITEMS_PER_PAGE = 10;
+
 const ExploreBuddies: React.FC = () => {
   const [buddies, setBuddies] = useState<Buddy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,8 @@ const ExploreBuddies: React.FC = () => {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
@@ -86,6 +90,29 @@ const ExploreBuddies: React.FC = () => {
       return matchesSearch && matchesInterests && matchesLanguages && matchesRating;
     });
   }, [buddies, rating, searchQuery, selectedInterests, selectedLanguages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rating, searchQuery, selectedInterests, selectedLanguages]);
+
+  useEffect(() => {
+    const nextTotalPages = Math.max(1, Math.ceil(filteredBuddies.length / ITEMS_PER_PAGE));
+    setTotalPages(nextTotalPages);
+    setCurrentPage((page) => Math.min(page, nextTotalPages));
+  }, [filteredBuddies.length]);
+
+  const paginatedBuddies = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredBuddies.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, filteredBuddies]);
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(1, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages, page + 1));
+  };
 
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
@@ -229,7 +256,7 @@ const ExploreBuddies: React.FC = () => {
                <div key={i} className="animate-pulse bg-white rounded-[48px] h-[500px] border border-gray-50 shadow-sm"></div>
              ))
            ) : (
-             filteredBuddies.map(buddy => (
+             paginatedBuddies.map(buddy => (
                 <div key={buddy.id} className="flex flex-col group h-full transition-all hover:scale-[1.02]">
                    <BuddyCard 
                      {...buddy}
@@ -247,18 +274,29 @@ const ExploreBuddies: React.FC = () => {
 
         {/* Enhanced Pagination */}
         <div className="flex justify-center items-center gap-4 pt-20">
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all rotate-180 hover:shadow-premium group">
+           <button
+             onClick={goToPreviousPage}
+             disabled={currentPage === 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
-           <div className="flex gap-4">
-              {[1, 2, 3].map(page => (
-                 <button key={page} className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === 1 ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}>
+           <div className="flex gap-4 flex-wrap justify-center">
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+                 <button
+                   key={page}
+                   onClick={() => setCurrentPage(page)}
+                   className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
+                 >
                     {page}
                  </button>
               ))}
-              <span className="flex items-center text-secondary/20 font-black px-2 tracking-[0.5em] text-xl">...</span>
            </div>
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all hover:shadow-premium group">
+           <button
+             onClick={goToNextPage}
+             disabled={currentPage === totalPages}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage === totalPages ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>
         </div>
