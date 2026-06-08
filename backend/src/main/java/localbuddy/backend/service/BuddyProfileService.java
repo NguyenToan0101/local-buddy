@@ -7,13 +7,21 @@ import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -81,6 +89,71 @@ public class BuddyProfileService {
                 .filter(profile -> Boolean.TRUE.equals(profile.getUser().getIsActive()) && profile.getUser().getRole() == UserRole.BUDDY)
                 .map(profile -> mapToDto(profile, profile.getUser()))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BuddyProfileDto> searchBuddies(String searchQuery, List<String> tags, BigDecimal rating, Pageable pageable) {
+        return buddyProfileRepository.findAll(buildSearchSpecification(searchQuery, tags, rating), pageable)
+                .map(profile -> mapToDto(profile, profile.getUser()));
+    }
+
+    private Specification<BuddyProfile> buildSearchSpecification(String searchQuery, List<String> tags, BigDecimal rating) {
+        return (root, query, cb) -> {
+            Join<BuddyProfile, User> user = root.join("user");
+            List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.isTrue(user.get("isActive")));
+            predicates.add(cb.equal(user.get("role"), UserRole.BUDDY));
+            predicates.add(cb.isNull(user.get("deletedAt")));
+
+            if (StringUtils.hasText(searchQuery)) {
+                String pattern = "%" + searchQuery.trim().toLowerCase() + "%";
+                Expression<String> tagsText = cb.lower(cb.function("array_to_string", String.class, root.get("tags"), cb.literal(",")));
+                Expression<String> interestsText = cb.lower(cb.function("array_to_string", String.class, root.get("interests"), cb.literal(",")));
+                Expression<String> languagesText = cb.lower(cb.function("array_to_string", String.class, root.get("languages"), cb.literal(",")));
+
+                predicates.add(cb.or(
+                        cb.like(cb.lower(user.get("fullName")), pattern),
+                        cb.like(cb.lower(root.get("bio")), pattern),
+                        cb.like(cb.lower(root.get("location")), pattern),
+                        cb.like(tagsText, pattern),
+                        cb.like(interestsText, pattern),
+                        cb.like(languagesText, pattern)
+                ));
+            }
+
+            List<String> normalizedTags = normalizeFilters(tags);
+            if (!normalizedTags.isEmpty()) {
+                Expression<String> tagsText = cb.lower(cb.function("array_to_string", String.class, root.get("tags"), cb.literal(",")));
+                Expression<String> interestsText = cb.lower(cb.function("array_to_string", String.class, root.get("interests"), cb.literal(",")));
+                List<Predicate> tagPredicates = normalizedTags.stream()
+                        .map(tag -> {
+                            String pattern = "%" + tag + "%";
+                            return cb.or(cb.like(tagsText, pattern), cb.like(interestsText, pattern));
+                        })
+                        .toList();
+                predicates.add(cb.or(tagPredicates.toArray(Predicate[]::new)));
+            }
+
+            if (rating != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("rating"), rating));
+            }
+
+            query.orderBy(cb.desc(root.get("rating")), cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    private List<String> normalizeFilters(List<String> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream()
+                .flatMap(value -> List.of(value.split(",")).stream())
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .map(String::toLowerCase)
+                .toList();
     }
 
     private BuddyProfileDto mapToDto(BuddyProfile profile, User user) {

@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashSet;
@@ -46,6 +48,7 @@ public class Experience {
     private Short rating;
 
     @ColumnDefault("'{}'")
+    @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "tags")
     private List<String> tags;
 

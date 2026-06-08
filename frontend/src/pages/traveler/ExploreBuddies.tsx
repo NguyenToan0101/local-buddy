@@ -7,6 +7,8 @@ import Navbar from '../../components/Navbar';
 import BuddyCard from '../../components/features/BuddyCard';
 import Footer from '../../components/Footer';
 
+const ITEMS_PER_PAGE = 10;
+
 const ExploreBuddies: React.FC = () => {
   const [buddies, setBuddies] = useState<Buddy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,9 @@ const ExploreBuddies: React.FC = () => {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
@@ -22,19 +27,6 @@ const ExploreBuddies: React.FC = () => {
   const languageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchBuddies = async () => {
-      try {
-        const data = await buddyService.getAll();
-        setBuddies(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching buddies:", error);
-        setBuddies([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBuddies();
-
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
@@ -47,6 +39,41 @@ const ExploreBuddies: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [rating, searchQuery, selectedInterests, selectedLanguages]);
+
+  useEffect(() => {
+    const fetchBuddies = async () => {
+      setLoading(true);
+      try {
+        // TODO: Add selectedLanguages to the backend buddy search API when language filtering is supported server-side.
+        const data = await buddyService.search({
+          searchQuery,
+          tags: selectedInterests,
+          rating,
+          page: currentPage,
+          size: ITEMS_PER_PAGE,
+        });
+        setBuddies(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+        setTotalElements(data.totalElements || 0);
+        if (typeof data.number === 'number' && data.number !== currentPage) {
+          setCurrentPage(data.number);
+        }
+      } catch (error) {
+        console.error("Error fetching buddies:", error);
+        setBuddies([]);
+        setTotalPages(1);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBuddies();
+  }, [currentPage, rating, searchQuery, selectedInterests, selectedLanguages]);
+
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev => 
       prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
@@ -57,6 +84,14 @@ const ExploreBuddies: React.FC = () => {
     setSelectedLanguages(prev => 
       prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
     );
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(0, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages - 1, page + 1));
   };
 
   return (
@@ -82,7 +117,7 @@ const ExploreBuddies: React.FC = () => {
                     <span className="text-secondary">Explore</span> <span className="text-primary not-italic">Buddies</span>
                  </h1>
                  <p className="text-secondary/40 font-bold text-xl tracking-tight">
-                    Found <span className="text-secondary font-black">128 local guides</span> ready to connect
+                    Found <span className="text-secondary font-black">{totalElements} local guides</span> ready to connect
                  </p>
               </div>
            </div>
@@ -219,18 +254,29 @@ const ExploreBuddies: React.FC = () => {
 
         {/* Enhanced Pagination */}
         <div className="flex justify-center items-center gap-4 pt-20">
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all rotate-180 hover:shadow-premium group">
+           <button
+             onClick={goToPreviousPage}
+             disabled={currentPage === 0}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 0 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
-           <div className="flex gap-4">
-              {[1, 2, 3].map(page => (
-                 <button key={page} className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === 1 ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}>
-                    {page}
+           <div className="flex gap-4 flex-wrap justify-center">
+              {Array.from({ length: totalPages }, (_, index) => index).map(page => (
+                 <button
+                   key={page}
+                   onClick={() => setCurrentPage(page)}
+                   className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
+                 >
+                    {page + 1}
                  </button>
               ))}
-              <span className="flex items-center text-secondary/20 font-black px-2 tracking-[0.5em] text-xl">...</span>
            </div>
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all hover:shadow-premium group">
+           <button
+             onClick={goToNextPage}
+             disabled={currentPage >= totalPages - 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage >= totalPages - 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>
         </div>
