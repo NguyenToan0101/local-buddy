@@ -1,5 +1,6 @@
 package localbuddy.backend.service;
 
+import jakarta.persistence.criteria.Expression;
 import localbuddy.backend.dto.ExperienceDto;
 import localbuddy.backend.model.entity.Experience;
 import localbuddy.backend.model.entity.ExperienceImage;
@@ -7,8 +8,6 @@ import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.ExperienceImageRepository;
 import localbuddy.backend.repository.ExperienceRepository;
 import localbuddy.backend.repository.UserRepository;
-git add .
-        git commit -m "feat: add server-side search for buddies and experiences"import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
