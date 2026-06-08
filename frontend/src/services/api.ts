@@ -417,50 +417,91 @@ export interface Experience {
 
 export const experienceService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'experiences')) as Experience[];
+    const response = await fetch(`${API_BASE_URL}/experiences`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch experiences');
+    return response.json() as Promise<Experience[]>;
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const exp = getById<Experience>(ensureArray(db, 'experiences'), id);
-    if (!exp) throw new Error('Experience not found');
-    return clone(exp) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Experience not found');
+    return response.json() as Promise<Experience>;
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    return clone(exps.filter((e: any) => String(e.buddyId) === String(buddyId))) as Experience[];
+    const response = await fetch(`${API_BASE_URL}/experiences?buddyId=${encodeURIComponent(buddyId)}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch buddy experiences');
+    return response.json() as Promise<Experience[]>;
   },
   update: async (id: string, data: Partial<Experience>) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    const updated = patchById<Experience>(exps, id, data);
-    if (!updated) throw new Error('Experience not found');
-    saveDb(db);
-    return clone(updated) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update experience');
+    return response.json() as Promise<Experience>;
   },
   create: async (data: Omit<Experience, 'id'>) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    const created = { ...data, id: Date.now().toString() };
-    exps.push(created);
-    saveDb(db);
-    return clone(created) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create experience');
+    return response.json() as Promise<Experience>;
+  },
+  delete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to delete experience');
   },
 };
 
 export const notificationService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'notifications'));
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+  getById: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Notification not found');
+    return response.json();
+  },
+  create: async (data: any) => {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create notification');
+    return response.json();
   },
   markAsRead: async (id: string) => {
-    const db = loadDb();
-    const notifs = ensureArray(db, 'notifications');
-    const updated = patchById<any>(notifs, id, { unread: false });
-    if (!updated) throw new Error('Notification not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
+    return response.json();
+  },
+  delete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to delete notification');
   },
 };
 
