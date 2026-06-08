@@ -149,8 +149,8 @@ export const buddyService = {
 };
 
 export const bookingService = {
-  getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/bookings`, {
+  getAll: async (page: number = 0, size: number = 10) => {
+    const response = await fetch(`${API_BASE_URL}/bookings?page=${page}&size=${size}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch bookings');
@@ -172,19 +172,18 @@ export const bookingService = {
     if (!response.ok) throw new Error('Failed to create booking');
     return response.json();
   },
-  getByUserId: async (userId: string) => {
-    const response = await fetch(`${API_BASE_URL}/bookings`, {
+  getMyBookings: async (page: number = 0, size: number = 10) => {
+    const response = await fetch(`${API_BASE_URL}/bookings?page=${page}&size=${size}`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch user bookings');
+    if (!response.ok) throw new Error('Failed to fetch bookings');
     return normalizeBookingList(await response.json());
   },
-  getByBuddyId: async (buddyId: string) => {
-    const response = await fetch(`${API_BASE_URL}/bookings`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch buddy bookings');
-    return normalizeBookingList(await response.json());
+  getByUserId: async (_userId: string, page: number = 0, size: number = 10) => {
+    return bookingService.getMyBookings(page, size);
+  },
+  getByBuddyId: async (_buddyId: string, page: number = 0, size: number = 10) => {
+    return bookingService.getMyBookings(page, size);
   },
   updateStatus: async (id: string, status: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
