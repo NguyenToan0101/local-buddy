@@ -103,6 +103,10 @@ export interface Buddy {
   verificationStatus?: 'verified' | 'pending' | 'unverified';
 }
 
+function normalizeBookingList(data: any) {
+  return Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
+}
+
 export const buddyService = {
   getAll: async () => {
     const response = await fetch(`${API_BASE_URL}/buddies`, {
@@ -150,7 +154,7 @@ export const bookingService = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch bookings');
-    return response.json();
+    return normalizeBookingList(await response.json());
   },
   getById: async (id: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
@@ -169,12 +173,18 @@ export const bookingService = {
     return response.json();
   },
   getByUserId: async (userId: string) => {
-    const bookings = await bookingService.getAll();
-    return bookings.filter((b: any) => String(b.userId) === String(userId));
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch user bookings');
+    return normalizeBookingList(await response.json());
   },
   getByBuddyId: async (buddyId: string) => {
-    const bookings = await bookingService.getAll();
-    return bookings.filter((b: any) => String(b.buddyId) === String(buddyId));
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch buddy bookings');
+    return normalizeBookingList(await response.json());
   },
   updateStatus: async (id: string, status: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
