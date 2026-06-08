@@ -206,24 +206,35 @@ export const bookingService = {
 };
 
 export const userService = {
+  getMe: async () => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch current user');
+    return response.json();
+  },
+  updateMe: async (payload: any) => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to update current user');
+    return response.json();
+  },
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'users'));
+    const me = await userService.getMe();
+    return [me];
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const users = ensureArray(db, 'users');
-    const found = getById<any>(users, id);
-    if (!found) throw new Error('User not found');
-    return clone(found);
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('User not found');
+    return response.json();
   },
   patchById: async (id: string, patch: any) => {
-    const db = loadDb();
-    const users = ensureArray(db, 'users');
-    const updated = patchById<any>(users, id, patch);
-    if (!updated) throw new Error('User not found');
-    saveDb(db);
-    return clone(updated);
+    return userService.updateMe(patch);
   },
 };
 
@@ -268,35 +279,45 @@ export const matchService = {
 };
 
 export const earningService = {
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/earnings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch earnings');
+    return response.json();
+  },
+  getSummary: async () => {
+    const response = await fetch(`${API_BASE_URL}/earnings/summary`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch earnings summary');
+    return response.json();
+  },
   getStats: async () => {
-    const db = loadDb();
-    return clone(db.earnings || { transactions: [] });
+    return earningService.getAll();
   },
   setTransactions: async (transactions: any[]) => {
-    const db = loadDb();
-    db.earnings = { ...(db.earnings || {}), transactions };
-    saveDb(db);
-    return clone(db.earnings);
+    return { transactions };
   },
   appendTransaction: async (tx: any) => {
-    const db = loadDb();
-    const current = (db.earnings?.transactions || []) as any[];
-    const next = [...current, tx];
-    db.earnings = { ...(db.earnings || {}), transactions: next };
-    saveDb(db);
-    return clone(db.earnings);
+    const earnings = await earningService.getAll();
+    return {
+      ...earnings,
+      transactions: [...(earnings.transactions || []), tx],
+    };
   },
 };
 
 export const transactionService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone((db.earnings?.transactions || []) as any[]);
+    const response = await fetch(`${API_BASE_URL}/transactions`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch transactions');
+    return response.json();
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const tx = (db.earnings?.transactions || []) as any[];
-    return clone(tx.filter((t: any) => String(t.buddyId) === String(buddyId)));
+    return transactionService.getAll();
   },
 };
 
