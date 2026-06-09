@@ -11,6 +11,7 @@ import localbuddy.backend.model.entity.User;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AuthService;
 import localbuddy.backend.service.AvatarService;
+import localbuddy.backend.service.CloudinaryService;
 import localbuddy.backend.service.JwtService;
 import localbuddy.backend.service.PasswordResetService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.entity.BuddyProfile;
@@ -41,6 +43,7 @@ public class AuthController {
     private final AuthService authService;
     private final BuddyProfileRepository buddyProfileRepository;
     private final PasswordResetService passwordResetService;
+    private final CloudinaryService cloudinaryService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
@@ -162,7 +165,11 @@ public class AuthController {
             user.setFullName((String) updates.get("name"));
         }
         if (updates.containsKey("avatar")) {
-            user.setAvatarUrl((String) updates.get("avatar"));
+            String avatar = (String) updates.get("avatar");
+            user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    avatar,
+                    "local-buddy/users/" + user.getId() + "/avatar"
+            ));
         }
         if (updates.containsKey("phone")) {
             user.setPhone((String) updates.get("phone"));
@@ -191,6 +198,33 @@ public class AuthController {
             }
         }
 
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/avatar", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadAvatar(Principal principal, @RequestParam("file") MultipartFile file) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        String avatarUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + user.getId() + "/avatar");
+        user.setAvatarUrl(avatarUrl);
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        User savedUser = userRepository.save(user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", savedUser.getId());
+        response.put("email", savedUser.getEmail());
+        response.put("fullName", savedUser.getFullName());
+        response.put("avatarUrl", avatarUrl);
+        response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(savedUser));
+        response.put("googleAvatarUrl", savedUser.getGoogleAvatarUrl());
+        response.put("role", savedUser.getRole().name());
+        response.put("phone", savedUser.getPhone());
         return ResponseEntity.ok(response);
     }
 }

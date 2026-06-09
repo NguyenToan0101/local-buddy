@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +46,14 @@ public class ExperienceController {
     @PostMapping
     public ResponseEntity<ExperienceDto> createExperience(@RequestBody ExperienceDto dto) {
         return ResponseEntity.ok(experienceService.createExperience(getCurrentUserId(), dto));
+    }
+
+    @PostMapping(value = "/{experienceId}/image", consumes = "multipart/form-data")
+    public ResponseEntity<ExperienceDto> uploadExperienceImage(
+            @PathVariable UUID experienceId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(experienceService.updateExperienceImage(getCurrentUserId(), experienceId, file));
     }
 
     @PutMapping("/{experienceId}")

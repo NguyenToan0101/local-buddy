@@ -229,6 +229,37 @@ export const authService = {
     };
   },
 
+  uploadAvatar: async (file: File): Promise<User> => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/auth/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to upload avatar');
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
+      phone: data.phone,
+      verificationStatus: data.verificationStatus,
+    };
+  },
+
   forgotPassword: async (email: string): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: 'POST',

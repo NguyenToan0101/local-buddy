@@ -19,11 +19,16 @@ const SettingsTab: React.FC = () => {
   const backInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const getBuddyId = () => {
+    let buddyId = user?.id || '';
+    if (buddyId.startsWith('buddy-')) buddyId = buddyId.replace('buddy-', '');
+    return buddyId;
+  };
+
   useEffect(() => {
     const fetchBuddy = async () => {
       if (!user) return;
-      let buddyId = user.id;
-      if (buddyId.startsWith('buddy-')) buddyId = buddyId.replace('buddy-', '');
+      const buddyId = getBuddyId();
       
       try {
         const data = await buddyService.getById(buddyId);
@@ -36,37 +41,6 @@ const SettingsTab: React.FC = () => {
     };
     fetchBuddy();
   }, [user]);
-
-  const compressImage = (base64Str: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = base64Str;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 600;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress more for ID cards
-      };
-    });
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -85,16 +59,20 @@ const SettingsTab: React.FC = () => {
     if (buddyData.verificationStatus === 'verified') return;
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Str = reader.result as string;
-        const compressed = await compressImage(base64Str);
-        setBuddyData(prev => ({ 
-          ...prev, 
-          [side === 'front' ? 'idCardFront' : 'idCardBack']: compressed 
-        }));
-      };
-      reader.readAsDataURL(file);
+      const field = side === 'front' ? 'idCardFront' : 'idCardBack';
+      const previousValue = buddyData[field];
+      if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
+        URL.revokeObjectURL(previousValue);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      setBuddyData(prev => ({ ...prev, [field]: previewUrl }));
+      try {
+        const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
+        setBuddyData(prev => ({ ...prev, ...updated }));
+      } catch (error) {
+        console.error("Error uploading ID card:", error);
+        setBuddyData(prev => ({ ...prev, [field]: previousValue }));
+      }
     }
   };
 
@@ -103,24 +81,26 @@ const SettingsTab: React.FC = () => {
     if (buddyData.verificationStatus === 'verified') return;
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Str = reader.result as string;
-        const compressed = await compressImage(base64Str);
-        setBuddyData(prev => ({ 
-          ...prev, 
-          image: compressed 
-        }));
-      };
-      reader.readAsDataURL(file);
+      const previousImage = buddyData.image;
+      if (typeof previousImage === 'string' && previousImage.startsWith('blob:')) {
+        URL.revokeObjectURL(previousImage);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      setBuddyData(prev => ({ ...prev, image: previewUrl }));
+      try {
+        const updated = await buddyService.uploadAvatar(getBuddyId(), file);
+        setBuddyData(prev => ({ ...prev, ...updated }));
+      } catch (error) {
+        console.error("Error uploading avatar:", error);
+        setBuddyData(prev => ({ ...prev, image: previousImage }));
+      }
     }
   };
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    let buddyId = user.id;
-    if (buddyId.startsWith('buddy-')) buddyId = buddyId.replace('buddy-', '');
+    const buddyId = getBuddyId();
 
     try {
       // Logic for verification status
@@ -257,7 +237,7 @@ const SettingsTab: React.FC = () => {
                 ref={avatarInputRef} 
                 onChange={handleAvatarUpload} 
                 className="hidden" 
-                accept="image/*" 
+                accept="image/jpeg,image/jpg,image/png,image/webp" 
               />
             </div>
 
@@ -451,7 +431,7 @@ const SettingsTab: React.FC = () => {
                           <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Select photo</p>
                         </>
                       )}
-                      <input type="file" ref={frontInputRef} onChange={(e) => handleFileUpload(e, 'front')} className="hidden" accept="image/*" />
+                      <input type="file" ref={frontInputRef} onChange={(e) => handleFileUpload(e, 'front')} className="hidden" accept="image/jpeg,image/jpg,image/png,image/webp" />
                     </div>
                   </div>
 
@@ -477,7 +457,7 @@ const SettingsTab: React.FC = () => {
                           <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Select photo</p>
                         </>
                       )}
-                      <input type="file" ref={backInputRef} onChange={(e) => handleFileUpload(e, 'back')} className="hidden" accept="image/*" />
+                      <input type="file" ref={backInputRef} onChange={(e) => handleFileUpload(e, 'back')} className="hidden" accept="image/jpeg,image/jpg,image/png,image/webp" />
                     </div>
                   </div>
                 </div>

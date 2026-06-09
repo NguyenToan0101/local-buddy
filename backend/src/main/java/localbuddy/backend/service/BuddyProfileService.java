@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -32,6 +33,7 @@ public class BuddyProfileService {
 
     private final BuddyProfileRepository buddyProfileRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional(readOnly = true)
     public BuddyProfileDto getProfileByUserId(UUID userId) {
@@ -57,7 +59,12 @@ public class BuddyProfileService {
         // 1. Update User details
         if (dto.getName() != null) user.setFullName(dto.getName());
         if (dto.getPhone() != null) user.setPhone(dto.getPhone());
-        if (dto.getImage() != null) user.setAvatarUrl(dto.getImage());
+        if (dto.getImage() != null) {
+            user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getImage(),
+                    "local-buddy/users/" + userId + "/avatar"
+            ));
+        }
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
 
@@ -69,8 +76,18 @@ public class BuddyProfileService {
         if (dto.getLanguages() != null) buddyProfile.setLanguages(dto.getLanguages());
         if (dto.getTags() != null) buddyProfile.setTags(dto.getTags());
         if (dto.getInterests() != null) buddyProfile.setInterests(dto.getInterests());
-        if (dto.getIdCardFront() != null) buddyProfile.setIdCardFrontUrl(dto.getIdCardFront());
-        if (dto.getIdCardBack() != null) buddyProfile.setIdCardBackUrl(dto.getIdCardBack());
+        if (dto.getIdCardFront() != null) {
+            buddyProfile.setIdCardFrontUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getIdCardFront(),
+                    "local-buddy/users/" + userId + "/verification"
+            ));
+        }
+        if (dto.getIdCardBack() != null) {
+            buddyProfile.setIdCardBackUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getIdCardBack(),
+                    "local-buddy/users/" + userId + "/verification"
+            ));
+        }
 
         if (currentUserAdmin && dto.getVerificationStatus() != null) {
             try {
@@ -81,6 +98,43 @@ public class BuddyProfileService {
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
 
         return mapToDto(savedProfile, user);
+    }
+
+    @Transactional
+    public BuddyProfileDto updateAvatar(UUID userId, MultipartFile file, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        User user = buddyProfile.getUser();
+        String avatarUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/avatar");
+        user.setAvatarUrl(avatarUrl);
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        return mapToDto(buddyProfile, user);
+    }
+
+    @Transactional
+    public BuddyProfileDto updateIdCard(UUID userId, String side, MultipartFile file, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        String normalizedSide = side == null ? "" : side.trim().toLowerCase();
+        String imageUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/verification");
+        if ("front".equals(normalizedSide)) {
+            buddyProfile.setIdCardFrontUrl(imageUrl);
+        } else if ("back".equals(normalizedSide)) {
+            buddyProfile.setIdCardBackUrl(imageUrl);
+        } else {
+            throw new IllegalArgumentException("ID card side must be front or back.");
+        }
+        buddyProfile.setVerificationStatus(VerificationStatus.PENDING);
+        buddyProfile.setUpdatedAt(OffsetDateTime.now());
+        BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+        return mapToDto(savedProfile, savedProfile.getUser());
     }
 
     @Transactional(readOnly = true)

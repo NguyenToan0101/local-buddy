@@ -202,6 +202,32 @@ export const buddyService = {
     }
     return await response.json() as Buddy;
   },
+  uploadAvatar: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/avatar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload buddy avatar');
+    }
+    return await response.json() as Buddy;
+  },
+  uploadIdCard: async (id: string, side: 'front' | 'back', file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/id-card/${side}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload ID card image');
+    }
+    return await response.json() as Buddy;
+  },
 };
 
 export const bookingService = {
@@ -569,6 +595,17 @@ export const experienceService = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to delete experience');
+  },
+  uploadImage: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}/image`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Failed to upload experience image');
+    return response.json() as Promise<Experience>;
   },
 };
 

@@ -8,11 +8,13 @@ import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AvatarService;
+import localbuddy.backend.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +28,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final CloudinaryService cloudinaryService;
 
     @GetMapping("/me")
     public ResponseEntity<UserDto> getMe() {
@@ -67,7 +70,11 @@ public class UserController {
                 user.setPhone((String) request.get("phone"));
             }
             if (request.containsKey("avatar")) {
-                user.setAvatarUrl((String) request.get("avatar"));
+                String avatar = (String) request.get("avatar");
+                user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                        avatar,
+                        "local-buddy/users/" + userId + "/avatar"
+                ));
             }
             
             User savedUser = userRepository.save(user);
@@ -95,7 +102,10 @@ public class UserController {
     public ResponseEntity<?> updateAvatar(@RequestBody Map<String, String> request) {
         try {
             UUID userId = getCurrentUserId();
-            String avatarUrl = request.get("avatarUrl");
+            String avatarUrl = cloudinaryService.uploadBase64ImageIfNeeded(
+                    request.get("avatarUrl"),
+                    "local-buddy/users/" + userId + "/avatar"
+            );
             
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -115,6 +125,24 @@ public class UserController {
             error.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    @PostMapping(value = "/avatar", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        UUID userId = getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String avatarUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/avatar");
+        user.setAvatarUrl(avatarUrl);
+        user.setUpdatedAt(java.time.OffsetDateTime.now());
+        userRepository.save(user);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Avatar uploaded successfully");
+        response.put("avatarUrl", avatarUrl);
+        response.put("displayAvatarUrl", AvatarService.getDisplayAvatarUrl(user));
+        return ResponseEntity.ok(response);
     }
 
     private UUID getCurrentUserId() {
@@ -145,9 +173,15 @@ public class UserController {
             user.setPhone(request.getPhone());
         }
         if (request.getAvatar() != null) {
-            user.setAvatarUrl(request.getAvatar());
+            user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    request.getAvatar(),
+                    "local-buddy/users/" + user.getId() + "/avatar"
+            ));
         } else if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
+            user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    request.getAvatarUrl(),
+                    "local-buddy/users/" + user.getId() + "/avatar"
+            ));
         }
     }
 
