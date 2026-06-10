@@ -10,6 +10,7 @@ import java.util.UUID;
 public class AdminVerificationDto {
     private UUID id;
     private String name;
+    private Integer age;
     private String type;
     private String regDate;
     private String docType;

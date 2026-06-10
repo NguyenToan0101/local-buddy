@@ -38,13 +38,14 @@ interface VerificationRecord {
   rejectionReason?: string | null;
   autoVerificationMessage?: string | null;
   ocrScore?: number | null;
+  age?: number;
 }
 
 type FilterStatus = 'All' | 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
 type TabType = 'Traveller' | 'Buddy';
 
 const AdminVerification: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('Traveller');
+  const [activeTab, setActiveTab] = useState<TabType>('Buddy');
   const [filter, setFilter] = useState<FilterStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<VerificationRecord | null>(null);
@@ -54,6 +55,31 @@ const AdminVerification: React.FC = () => {
   const [allVerifications, setAllVerifications] = useState<VerificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const calculateAgeFromOcrDob = (dobStr?: string | null): number | null => {
+    if (!dobStr) return null;
+    const parts = dobStr.split(/[\/\-]/);
+    if (parts.length === 3) {
+      let birthYear = 0;
+      if (parts[2].length === 4) {
+        birthYear = parseInt(parts[2], 10);
+      } else if (parts[0].length === 4) {
+        birthYear = parseInt(parts[0], 10);
+      }
+      if (birthYear > 0) {
+        return new Date().getFullYear() - birthYear;
+      }
+    }
+    return null;
+  };
+
+  const selectedOcrAge = selectedUser ? calculateAgeFromOcrDob(selectedUser.extractedDateOfBirth) : null;
+  const nameMismatch = selectedUser?.extractedFullName && selectedUser?.name
+    ? selectedUser.name.trim().toLowerCase() !== selectedUser.extractedFullName.trim().toLowerCase()
+    : false;
+  const ageMismatch = selectedOcrAge !== null && selectedUser?.age !== undefined
+    ? Math.abs(selectedOcrAge - selectedUser.age) > 1
+    : false;
 
   // Fetch all users from backend (backend already excludes ADMIN)
   useEffect(() => {
@@ -510,20 +536,26 @@ const AdminVerification: React.FC = () => {
 
                 <div className="grid grid-cols-1 gap-6">
                   {[
-                    { icon: User, label: 'Official Name', value: selectedUser.name },
+                    { icon: User, label: 'Official Name', value: selectedUser.name, warning: nameMismatch ? `OCR Name mismatch: "${selectedUser.extractedFullName || 'None'}"` : null },
+                    { icon: User, label: 'Registered Age', value: selectedUser.age ? `${selectedUser.age} years old` : 'Not provided', warning: ageMismatch ? `DOB mismatch: suggests ${selectedOcrAge} years old` : null },
                     { icon: FileText, label: 'Email Address', value: selectedUser.email },
                     { icon: FileText, label: 'Phone Number', value: selectedUser.phone || 'Not provided' },
                     { icon: Calendar, label: 'Joined Platform', value: new Date(selectedUser.regDate).toLocaleDateString() },
                   ].map((info, i) => (
                     <div key={i} className="flex gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-admin-surface border border-admin flex items-center justify-center text-admin-muted shrink-0">
+                      <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${info.warning ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' : 'bg-admin-surface border-admin text-admin-muted'}`}>
                         <info.icon size={20} />
                       </div>
                       <div className="flex flex-col justify-center min-w-0">
                         <p className="text-[10px] font-black text-admin-muted uppercase tracking-[0.2em] mb-1">
                           {info.label}
                         </p>
-                        <p className="text-sm font-black text-admin-main truncate">{info.value}</p>
+                        <p className={`text-sm font-black truncate ${info.warning ? 'text-rose-500' : 'text-admin-main'}`}>{info.value}</p>
+                        {info.warning && (
+                          <p className="text-[10px] font-black uppercase text-rose-500 mt-1 tracking-tight animate-pulse flex items-center gap-1">
+                            ⚠️ {info.warning}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -547,14 +579,14 @@ const AdminVerification: React.FC = () => {
                     ))}
                   </div>
                   <div className="space-y-2 text-xs font-bold text-admin-muted">
-                    <p>OCR name: <span className="text-admin-main">{selectedUser.extractedFullName || '-'}</span></p>
+                    <p className={nameMismatch ? 'text-rose-500' : ''}>OCR name: <span className={nameMismatch ? 'text-rose-600 font-black' : 'text-admin-main'}>{selectedUser.extractedFullName || '-'}</span> {nameMismatch && '⚠️'}</p>
                     <p>ID number: <span className="text-admin-main">{selectedUser.extractedIdNumber || '-'}</span></p>
-                    <p>DOB: <span className="text-admin-main">{selectedUser.extractedDateOfBirth || '-'}</span></p>
+                    <p className={ageMismatch ? 'text-rose-500' : ''}>DOB: <span className={ageMismatch ? 'text-rose-600 font-black' : 'text-admin-main'}>{selectedUser.extractedDateOfBirth || '-'}</span> {ageMismatch && '⚠️'}</p>
                     {selectedUser.autoVerificationMessage && <p>{selectedUser.autoVerificationMessage}</p>}
                     {selectedUser.riskReason && <p>{selectedUser.riskReason}</p>}
                     {selectedUser.duplicateDetected && (
-                      <p className="text-amber-500">
-                        Duplicate warning: identity overlaps with {selectedUser.duplicateUserId || 'another user'}.
+                      <p className="text-amber-500 font-black uppercase tracking-wider text-[10px] bg-amber-500/10 p-2.5 rounded-xl border border-amber-200/30 mt-2">
+                        ⚠️ Duplicate warning: identity overlaps with {selectedUser.duplicateUserId || 'another user'}.
                       </p>
                     )}
                     {selectedUser.rejectionReason && <p className="text-rose-500">{selectedUser.rejectionReason}</p>}

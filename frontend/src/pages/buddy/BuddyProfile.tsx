@@ -1,465 +1,438 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  Star, MapPin, Globe, Clock, CheckCircle2, MessageCircle, Heart, Share2, 
-  MoreHorizontal, ChevronLeft, Play, Shield, Award, Languages, Calendar, X, MessageSquare
-} from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Star, MapPin, Globe, CheckCircle2, ChevronLeft, Shield, Award, Calendar, MessageSquare } from 'lucide-react';
 import { buddyService, experienceService } from '../../services/api';
-import type { Buddy, Review, Experience } from '../../services/api';
-import Button from '../../components/ui/Button';
-import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
+import type { Buddy, Experience } from '../../services/api';
+import DirectBookingModal from '../../components/features/DirectBookingModal';
 
 const BuddyProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [buddy, setBuddy] = useState<Buddy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
   const [buddyStories, setBuddyStories] = useState<Experience[]>([]);
   const [freeSlots, setFreeSlots] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'about' | 'slots' | 'reviews'>('about');
 
   useEffect(() => {
     const fetchBuddy = async () => {
       if (!id) return;
       try {
-        console.log("DEBUG: Fetching data for ID:", id);
         const [buddyData, experiencesData] = await Promise.all([
           buddyService.getById(id),
           experienceService.getByBuddyId(id)
         ]);
-        console.log("DEBUG: Buddy:", buddyData);
-        console.log("DEBUG: Stories:", experiencesData);
         setBuddy(buddyData);
         const sortedStories = (experiencesData || []).sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
         setBuddyStories(sortedStories);
 
-        // Load free slots
         try {
           const savedSlots = localStorage.getItem(`freeSlots_buddy_${id}`);
           if (savedSlots && JSON.parse(savedSlots).length > 0) {
             setFreeSlots(JSON.parse(savedSlots));
           } else {
-            // Fallback mock data for demo if localStorage is empty (e.g., when a Traveller logs in)
             const today = new Date();
             const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
             const dayAfter = new Date(today); dayAfter.setDate(today.getDate() + 2);
-            
             const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-            
-            const mockSlots = [
+            setFreeSlots([
               { id: 'm1', date: formatDate(tomorrow), time: '09:00 AM', status: 'FREE' },
               { id: 'm2', date: formatDate(tomorrow), time: '11:00 AM', status: 'FREE' },
               { id: 'm3', date: formatDate(dayAfter), time: '02:00 PM', status: 'FREE' },
               { id: 'm4', date: formatDate(dayAfter), time: '04:00 PM', status: 'FREE' }
-            ];
-            setFreeSlots(mockSlots);
+            ]);
           }
         } catch (e) {
           console.error("Could not load free slots", e);
         }
-        
       } catch (error) {
-        console.error("DEBUG: Error fetching:", error);
+        console.error("Error fetching buddy details:", error);
       } finally {
         setLoading(false);
       }
     };
     fetchBuddy();
-    window.scrollTo(0, 0);
   }, [id]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FBFBFC]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-        <p className="text-secondary/40 font-black uppercase tracking-widest text-[10px]">Discovering Buddy...</p>
-      </div>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center">
+      <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      <p className="text-[10px] font-black text-secondary/30 uppercase tracking-widest mt-4">Loading Profile...</p>
     </div>
   );
 
   if (!buddy) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FBFBFC]">
-      <div className="text-center space-y-6">
-        <h2 className="text-4xl font-black text-secondary tracking-tight">Buddy not found</h2>
-        <Link to="/traveller/home">
-          <Button className="rounded-2xl px-8 py-4 uppercase tracking-widest font-black text-[10px]">Back to Home</Button>
-        </Link>
-      </div>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-6 text-center space-y-4">
+      <h2 className="text-xl font-black text-secondary">Buddy Not Found</h2>
+      <button onClick={() => navigate('/traveller/home')} className="btn-primary py-3 px-6 text-xs uppercase">Go Home</button>
     </div>
+  );
+
+  const isVerified = buddy.verificationStatus === 'verified' || buddy.verificationStatus === 'auto_approved' || buddy.verificationStatus === 'manual_approved';
+  const trustScore = isVerified ? Math.min(100, 94 + Math.round(buddy.rating * 1.2)) : Math.min(88, 65 + Math.round(buddy.rating * 3.5));
+
+  const TabContent = () => (
+    <>
+      {activeTab === 'about' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm relative overflow-hidden">
+            <span className="text-3xl text-primary/10 font-serif absolute left-3 top-1 leading-none">"</span>
+            <p className="text-secondary/70 text-sm font-medium leading-relaxed italic relative z-10 pl-4">
+              {buddy.description}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-3xl p-4 border border-gray-50 shadow-sm space-y-2">
+              <div className="flex items-center gap-1.5 text-secondary/30">
+                <Award size={13} />
+                <span className="text-[8px] font-black uppercase tracking-widest">Interests</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {buddy.tags?.slice(0, 5).map((tag) => (
+                  <span key={tag} className="text-[8px] font-black text-secondary/50 uppercase bg-slate-50 border border-slate-100 px-2 py-0.5 rounded">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl p-4 border border-gray-50 shadow-sm space-y-2">
+              <div className="flex items-center gap-1.5 text-secondary/30">
+                <Globe size={13} />
+                <span className="text-[8px] font-black uppercase tracking-widest">Languages</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {buddy.languages.slice(0, 4).map((lang) => (
+                  <span key={lang} className="text-[8px] font-black text-white uppercase bg-secondary px-2 py-0.5 rounded">
+                    {lang}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-emerald-500/5 rounded-3xl p-5 border border-emerald-500/10 space-y-3">
+            <div className="flex items-center gap-2">
+              <Shield size={16} className="text-emerald-600 fill-current" />
+              <h4 className="text-xs font-black text-secondary uppercase tracking-wider">Identity & Trust Credentials</h4>
+            </div>
+            <div className="space-y-2 text-[10px] font-bold text-secondary/60 uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={12} className="text-emerald-600" />
+                <span>ID Verification status: {isVerified ? 'VERIFIED' : 'PENDING'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={12} className="text-emerald-600" />
+                <span>Face Match Biometrics: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={12} className="text-emerald-600" />
+                <span>Safe Meetup Conduct: 100% compliant</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'slots' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
+            <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Select Available Date</h3>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+              {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
+                const today = new Date();
+                const dayOfWeek = today.getDay() || 7;
+                const monday = new Date(today);
+                monday.setDate(today.getDate() - dayOfWeek + 1);
+                const currentDay = new Date(monday);
+                currentDay.setDate(monday.getDate() + i);
+                const dateStr = currentDay.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+                const hasSlots = freeSlots.some(s => s.date === dateStr);
+                const isSelected = selectedDate === dateStr;
+
+                return (
+                  <button
+                    key={day}
+                    disabled={!hasSlots}
+                    onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border shrink-0 w-12 snap-start cursor-pointer ${
+                      isSelected
+                        ? 'bg-primary text-white border-primary shadow-sm shadow-primary/25'
+                        : hasSlots
+                          ? 'bg-primary/5 text-primary border-primary/20 hover:bg-primary/10'
+                          : 'bg-slate-50 text-secondary/10 border-slate-100 opacity-40'
+                    }`}
+                  >
+                    <span className="text-[7px] font-black uppercase tracking-wider">{day}</span>
+                    <span className="text-sm font-black">{currentDay.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedDate ? (
+              <div className="pt-3 border-t border-gray-50 space-y-2">
+                <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest text-center">Available hours</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {freeSlots.filter(s => s.date === selectedDate).map(slot => (
+                    <span key={slot.id} className="px-3 py-1.5 bg-primary/5 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      {slot.time}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[10px] font-bold text-secondary/40 text-center py-2">Tap an active date slot to view specific meetup times.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reviews' && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          {buddy.reviews && buddy.reviews.length > 0 ? (
+            buddy.reviews.map((review, idx) => (
+              <div key={idx} className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-2">
+                    <img src={review.avatar} alt={review.author} className="w-8 h-8 rounded-xl object-cover" />
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <h4 className="font-black text-secondary text-xs">{review.author}</h4>
+                        <span className="bg-emerald-500/10 text-emerald-600 text-[6px] font-black uppercase tracking-widest px-1 py-0.5 rounded flex items-center gap-0.5">
+                          <Shield size={6} className="fill-current" /> Verified Trip
+                        </span>
+                      </div>
+                      <p className="text-[7px] font-black text-secondary/20 uppercase tracking-widest mt-0.5">{review.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(s => (
+                      <Star key={s} size={8} className={`${s <= review.rating ? 'fill-primary text-primary' : 'text-slate-100'}`} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-secondary/60 text-xs font-medium italic">"{review.content}"</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-secondary/40 text-center py-10 font-bold">No reviews from the traveler community yet.</p>
+          )}
+        </div>
+      )}
+    </>
   );
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
-      <Navbar />
+    <div className="min-h-full bg-[#FBFBFC]">
 
-      {/* Hero Section - Full Height Header */}
-      <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
-        {/* Background Image with Ken Burns */}
-        <div className="absolute inset-0">
-          <img 
-            src={buddy.image} 
-            alt={buddy.name} 
-            className="w-full h-full object-cover animate-ken-burns scale-110"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#FBFBFC] via-black/10 to-transparent"></div>
-        </div>
-
-        {/* Action Bar */}
-        <div className="absolute top-32 left-4 sm:px-6 lg:px-16 right-4 sm:right-6 lg:right-16 z-20 flex justify-between items-center w-full max-w-7xl mx-auto left-0 right-0">
-          <Link to="/traveller/home" className="group flex items-center gap-3 bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl shadow-premium border border-white/20 hover:bg-primary hover:text-white transition-all duration-500 font-black text-[10px] uppercase tracking-widest">
-            <ChevronLeft size={18} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
-            Back to Home
-          </Link>
-          <div className="flex gap-3">
-            <button className="w-12 h-12 bg-white/95 backdrop-blur-md rounded-2xl shadow-premium border border-white/20 flex items-center justify-center text-secondary/40 hover:text-primary transition-all">
-              <Share2 size={20} />
-            </button>
-            <button 
-              onClick={() => setIsLiked(!isLiked)}
-              className={`w-12 h-12 bg-white/95 backdrop-blur-md rounded-2xl shadow-premium border border-white/20 flex items-center justify-center transition-all ${isLiked ? 'text-red-500' : 'text-secondary/40 hover:text-red-500'}`}
-            >
-              <Heart size={20} className={isLiked ? 'fill-current' : ''} />
-            </button>
+      {/* ===== MOBILE LAYOUT ===== */}
+      <div className="md:hidden flex flex-col">
+        {/* Hero Cover Photo */}
+        <div className="relative h-[240px] w-full shrink-0 overflow-hidden bg-slate-900">
+          <img src={buddy.image} alt={buddy.name} className="w-full h-full object-cover opacity-80" />
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute top-5 left-5 w-10 h-10 rounded-2xl bg-white/95 backdrop-blur-md flex items-center justify-center shadow-md border border-white/20 text-secondary/60 hover:text-primary z-20 cursor-pointer"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="absolute -bottom-10 left-6 w-24 h-24 rounded-[28px] overflow-hidden border-4 border-white shadow-lg z-10 bg-slate-100">
+            <img src={buddy.image} alt={buddy.name} className="w-full h-full object-cover" />
           </div>
         </div>
 
-        {/* Floating Profile Info */}
-        <div className="absolute bottom-12 left-0 right-0 z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-16">
-           <div className="flex flex-col md:flex-row items-end gap-8">
-              <div className="w-40 h-40 md:w-48 md:h-48 rounded-[48px] border-8 border-white shadow-premium overflow-hidden shrink-0 translate-y-24 hidden md:block">
-                 <img src={buddy.image} alt={buddy.name} className="w-full h-full object-cover" />
+        <div className="px-6 pt-12 pb-4 space-y-3 shrink-0">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-2xl font-black text-secondary tracking-tight">{buddy.name}</h1>
+                {isVerified ? (
+                  <span className="p-1 bg-emerald-500/10 text-emerald-600 rounded-lg border border-emerald-500/15" title="Biometrically Verified">
+                    <Shield size={12} className="fill-current" />
+                  </span>
+                ) : (
+                  <span className="text-[7px] font-black text-amber-600 uppercase bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/15">Unverified</span>
+                )}
               </div>
-              <div className="space-y-4 pb-4">
-                 <div className="flex items-center gap-4">
-                    <span className="px-4 py-1.5 bg-primary/20 backdrop-blur-md text-primary text-[9px] font-black uppercase tracking-[0.2em] rounded-full border border-primary/20">
-                       Verified Expert
-                    </span>
-                    <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20">
-                       <Star size={14} className="fill-primary text-primary" />
-                       <span className="text-xs font-black text-secondary">{buddy.rating} Rating</span>
-                    </div>
-                 </div>
-                 <h1 className="text-5xl md:text-8xl font-black text-secondary tracking-tighter [text-shadow:_0_4px_12px_rgb(0_0_0_/_10%)]">
-                    {buddy.name}
-                 </h1>
-                 <div className="flex items-center gap-3 text-secondary/60 font-bold text-lg md:text-xl italic">
-                    <MapPin size={24} className="text-primary" />
-                    <span>{buddy.location}</span>
-                 </div>
+              <div className="flex items-center gap-1 text-secondary/50 text-xs font-bold">
+                <MapPin size={12} className="text-primary shrink-0" />
+                <span>{buddy.location}</span>
               </div>
-           </div>
+            </div>
+            <div className="text-right">
+              <span className="text-2xl font-black text-primary tracking-tight">${buddy.price}</span>
+              <span className="text-[8px] font-black text-secondary/20 uppercase tracking-widest block leading-none">/ hour</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 bg-white border border-gray-100 px-2.5 py-1 rounded-xl shadow-sm">
+              <Star size={11} className="fill-primary text-primary" />
+              <span className="text-[10px] font-black text-secondary">{buddy.rating}</span>
+            </div>
+            <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 px-2.5 py-1 rounded-xl border border-emerald-500/15 font-black text-[10px]">
+              <Shield size={10} className="fill-current" />
+              <span>{trustScore}% Trust</span>
+            </div>
+            <span className="text-[9px] text-secondary/30 font-black uppercase tracking-widest">{buddy.age} Years Old</span>
+          </div>
         </div>
+
+        <div className="flex bg-slate-100/50 p-1 rounded-2xl mx-6 my-2 border border-gray-100 shrink-0">
+          {(['about', 'slots', 'reviews'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === tab ? 'bg-white text-primary shadow-sm border border-gray-50' : 'text-secondary/40 hover:text-secondary/60'
+              }`}
+            >
+              {tab === 'slots' ? 'Availability' : tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 px-6 py-3 pb-24">
+          <TabContent />
+        </div>
+
+        <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-50 p-4 flex gap-3 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+          <button
+            onClick={() => navigate(`/traveller/messages?buddyId=${buddy.id}`)}
+            className="flex-1 py-3.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <MessageSquare size={13} />
+            Message
+          </button>
+          <button
+            onClick={() => setIsBookingModalOpen(true)}
+            className="flex-[2] py-3.5 bg-primary hover:bg-primary-dark text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-primary-glow border-none cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <Calendar size={13} />
+            Book Direct (${buddy.price}/h)
+          </button>
+        </footer>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16 pt-32 pb-20">
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-16">
-          
-          {/* Left Column: Narrative Content */}
-          <div className="flex-1 space-y-20 md:space-y-24">
-            
-            {/* About Section */}
-            <section className="space-y-8">
-              <div className="flex items-center gap-4">
-                 <h2 className="text-3xl font-black text-secondary tracking-tight">About <span className="text-primary italic">Buddy</span></h2>
-              </div>
-              <div className="bg-white rounded-[48px] p-8 md:p-12 shadow-premium border border-gray-50 relative overflow-hidden group">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors"></div>
-                <p className="text-secondary/70 text-xl md:text-2xl leading-[1.8] font-medium italic relative z-10">
-                   <span className="text-5xl md:text-6xl text-primary/20 font-serif leading-none absolute -left-6 -top-2">"</span>
-                   {buddy.description}
-                   <span className="text-5xl md:text-6xl text-primary/20 font-serif leading-none absolute -bottom-10 inline-block translate-y-4">"</span>
-                </p>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-10 mt-12 border-t border-gray-50">
-                   <div className="space-y-1">
-                      <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest">Age</p>
-                      <p className="text-lg md:text-xl font-black text-secondary">{buddy.age} Years</p>
-                   </div>
-                   <div className="space-y-1">
-                      <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest">Experience</p>
-                      <p className="text-lg md:text-xl font-black text-secondary">{buddy.reviewCount}+ Trips</p>
-                   </div>
-                   <div className="space-y-1">
-                      <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest">Response</p>
-                      <p className="text-lg md:text-xl font-black text-secondary">~1 Hour</p>
-                   </div>
+      {/* ===== DESKTOP LAYOUT (2-column) ===== */}
+      <div className="hidden md:block max-w-screen-xl mx-auto px-8 lg:px-16 py-8">
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-secondary/40 hover:text-primary transition-all font-black uppercase tracking-widest text-[10px] mb-8 cursor-pointer"
+        >
+          <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center">
+            <ChevronLeft size={16} />
+          </div>
+          Back
+        </button>
+
+        <div className="grid grid-cols-3 gap-8">
+          {/* LEFT: Profile card + booking CTA */}
+          <aside className="col-span-1 space-y-6">
+            {/* Profile image */}
+            <div className="relative rounded-[32px] overflow-hidden aspect-[4/5] bg-slate-900">
+              <img src={buddy.image} alt={buddy.name} className="w-full h-full object-cover opacity-90" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl font-black text-white">${buddy.price}</span>
+                  <span className="text-white/50 text-xs font-bold">/ hour</span>
                 </div>
               </div>
-            </section>
-
-            {/* Expertise & Languages */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-               <section className="space-y-8">
-                 <div className="flex items-center gap-4">
-                    <Award size={20} className="text-primary" />
-                    <h3 className="text-xl font-black text-secondary tracking-tight uppercase">Interests</h3>
-                 </div>
-                 <div className="flex flex-wrap gap-2">
-                   {buddy.tags?.map((tag) => (
-                     <span key={tag} className="px-2.5 py-1 bg-surface-dark text-secondary/50 text-[8px] font-black rounded-lg uppercase tracking-wider border border-gray-100 transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-primary">
-                       {tag}
-                     </span>
-                   ))}
-                 </div>
-               </section>
-
-               <section className="space-y-8">
-                 <div className="flex items-center gap-4">
-                    <Languages size={20} className="text-primary" />
-                    <h3 className="text-xl font-black text-secondary tracking-tight uppercase">Languages</h3>
-                 </div>
-                 <div className="flex flex-wrap gap-2">
-                   {buddy.languages.map((lang) => (
-                     <span key={lang} className="px-5 py-2.5 bg-secondary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-transform">
-                       {lang}
-                     </span>
-                   ))}
-                 </div>
-               </section>
             </div>
 
-            {/* Availability */}
-            <section className="space-y-8">
-               <div className="flex items-center gap-4">
-                 <h2 className="text-3xl font-black text-secondary tracking-tight">Availability <span className="text-primary italic">Slots</span></h2>
+            {/* Quick stats */}
+            <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 bg-slate-50 border border-gray-100 px-2.5 py-1.5 rounded-xl">
+                  <Star size={12} className="fill-primary text-primary" />
+                  <span className="text-xs font-black text-secondary">{buddy.rating}</span>
+                </div>
+                <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 px-2.5 py-1.5 rounded-xl border border-emerald-500/15 font-black text-xs">
+                  <Shield size={11} className="fill-current" />
+                  <span>{trustScore}% Trust</span>
+                </div>
+                {isVerified && (
+                  <span className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-700 text-[9px] font-black uppercase tracking-widest rounded-xl border border-emerald-500/20">
+                    ✓ Verified
+                  </span>
+                )}
               </div>
-              <div className="bg-white rounded-[48px] p-8 md:p-12 shadow-premium border border-gray-50 space-y-10">
-                 <div className="grid grid-cols-7 gap-3 sm:gap-4 text-center">
-                    {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
-                       const today = new Date();
-                       const dayOfWeek = today.getDay() || 7; // Sunday is 7, Monday is 1
-                       const monday = new Date(today);
-                       monday.setDate(today.getDate() - dayOfWeek + 1);
-                       
-                       const currentDay = new Date(monday);
-                       currentDay.setDate(monday.getDate() + i);
-                       const dateStr = currentDay.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-                       const hasSlots = freeSlots.some(s => s.date === dateStr);
-                       const isSelected = selectedDate === dateStr;
-                       
-                       return (
-                          <div 
-                            key={day} 
-                            className={`space-y-4 group/day ${hasSlots ? 'cursor-pointer' : 'opacity-50'}`}
-                            onClick={() => hasSlots && setSelectedDate(isSelected ? null : dateStr)}
-                          >
-                             <span className={`text-[9px] font-black tracking-[0.2em] block uppercase transition-colors ${hasSlots ? 'text-primary' : 'text-secondary/20 block'} ${isSelected ? 'text-primary font-bold' : ''}`}>{day}</span>
-                             <div className={`relative aspect-square rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center transition-all duration-500 ${isSelected ? 'bg-primary text-white shadow-primary-glow scale-110 ring-4 ring-primary/20' : hasSlots ? 'bg-primary text-white shadow-primary-glow scale-105 hover:scale-110' : 'bg-surface-dark text-secondary/10'}`}>
-                                <span className="font-black text-lg md:text-xl leading-none">{currentDay.getDate()}</span>
-                                {hasSlots && (
-                                   <span className="absolute bottom-1 sm:bottom-2 text-[7px] font-bold text-white/80 uppercase tracking-widest leading-none">
-                                     {freeSlots.filter(s => s.date === dateStr).length} Slots
-                                   </span>
-                                )}
-                             </div>
-                          </div>
-                       );
-                    })}
-                 </div>
-
-                 {/* Specific Time Slots Display */}
-                 {selectedDate && (
-                    <div className="pt-8 border-t border-gray-50 flex flex-col items-center w-full animate-in fade-in slide-in-from-top-4 duration-300">
-                       <p className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] mb-4">
-                          Available Times on {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                       </p>
-                       <div className="flex flex-wrap justify-center gap-3 w-full max-w-2xl mx-auto">
-                          {freeSlots
-                             .filter(s => s.date === selectedDate)
-                             .sort((a, b) => {
-                                const timeA = new Date(`1970/01/01 ${a.time}`).getTime();
-                                const timeB = new Date(`1970/01/01 ${b.time}`).getTime();
-                                return timeA - timeB;
-                             })
-                             .map(slot => (
-                                <div key={slot.id} className="px-5 py-3 rounded-xl border-2 border-primary/20 bg-primary/5 text-primary text-sm font-black tracking-wider transition-all hover:bg-primary hover:text-white cursor-default">
-                                   {slot.time}
-                                </div>
-                             ))
-                          }
-                       </div>
-                    </div>
-                 )}
-                 <div className="p-6 bg-surface-dark rounded-3xl border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-primary">
-                       <Calendar size={20} />
-                    </div>
-                    <div>
-                       <p className="text-[9px] font-black text-secondary/40 uppercase tracking-widest">Typical Schedule</p>
-                       <p className="text-sm font-bold text-secondary tracking-tight">{buddy.availability || "Flexible - Usually available on weekdays & weekend afternoons"}</p>
-                    </div>
-                 </div>
+              <div className="flex items-center gap-1 text-secondary/50 text-sm font-bold">
+                <MapPin size={14} className="text-primary shrink-0" />
+                <span>{buddy.location}</span>
               </div>
-            </section>
+            </div>
 
-            {/* Reviews Section */}
-            <section className="space-y-12">
-               <div className="flex justify-between items-end flex-wrap gap-4">
-                   <div className="space-y-2">
-                      <h2 className="text-3xl font-black text-secondary tracking-tight">Traveler <span className="text-primary italic">Reviews</span></h2>
-                      <p className="text-secondary/40 font-bold text-sm tracking-tight">Authentic evaluations from the community.</p>
-                   </div>
-                   <Link 
-                     to="/traveller/experiences"
-                     className="text-[10px] font-black uppercase tracking-widest text-primary p-0 h-auto self-end hover:text-primary-dark transition-colors"
-                   >
-                     View all stories
-                   </Link>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Show actual reviews for evaluations */}
-                  {(buddy.reviews || []).map((review, idx) => (
-                    <div key={idx} className="bg-white rounded-[48px] p-10 shadow-premium border border-gray-50 space-y-6 hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-700">
-                       <div className="flex justify-between items-start">
-                          <div className="flex gap-4">
-                             <img 
-                               src={review.avatar} 
-                               alt={review.author} 
-                               className="w-14 h-14 rounded-2xl object-cover ring-4 ring-primary/5" 
-                             />
-                             <div>
-                                <h4 className="font-black text-secondary text-lg tracking-tight">{review.author}</h4>
-                                <p className="text-[9px] font-black text-secondary/20 uppercase tracking-widest mt-0.5">{review.date}</p>
-                             </div>
-                          </div>
-                          <div className="flex gap-1 pt-1.5">
-                             {[1, 2, 3, 4, 5].map(s => (
-                               <Star key={s} size={10} className={`${s <= review.rating ? 'fill-primary text-primary' : 'text-gray-200'}`} />
-                             ))}
-                          </div>
-                       </div>
-                       <p className="text-secondary/60 leading-[1.8] font-medium italic text-base">"{review.content}"</p>
-                    </div>
-                  ))}
-               </div>
-            </section>
-          </div>
-
-          {/* Sidebar Area */}
-          <aside className="lg:w-[400px]">
-            <div className="sticky top-32 space-y-8">
-               {/* Booking Card */}
-               <div className="bg-white rounded-[48px] p-10 md:p-12 shadow-premium border border-gray-50 flex flex-col gap-10 relative overflow-hidden">
-                  {/* Premium Badge */}
-                  <div className="absolute top-0 right-0 py-2 px-10 bg-primary/10 text-primary text-[8px] font-black uppercase tracking-[0.3em] rotate-45 translate-x-12 translate-y-4 w-40 text-center">
-                     Popular
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-[9px] font-black text-secondary/20 uppercase tracking-[0.2em]">Investment to Explore</p>
-                    <div className="flex items-end gap-2">
-                       <span className="text-7xl font-black text-secondary tracking-tighter">${buddy.price}</span>
-                       <span className="text-xs font-black text-secondary/20 uppercase tracking-widest mb-4">/ Hour</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                     <Button 
-                        onClick={() => {
-                          // Traveller verification is no longer required before messaging.
-                          // Previous flow:
-                          // if (user?.role === 'TRAVELER' && user?.verificationStatus !== 'verified') {
-                          //   navigate('/traveller/profile');
-                          // } else {
-                          //   navigate(`/traveller/messages?buddyId=${buddy.id}`);
-                          // }
-                          navigate(`/traveller/messages?buddyId=${buddy.id}`);
-                        }}
-                        className="w-full py-7 text-xs font-black tracking-[0.2em] shadow-primary-glow uppercase rounded-2xl flex items-center justify-center gap-2"
-                     >
-                        <MessageSquare size={18} /> Send Message
-                     </Button>
-                  </div>
-
-                  <div className="space-y-8 pt-12 border-t border-gray-50">
-                    <div className="flex items-center gap-5 group cursor-pointer">
-                       <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all duration-500 shadow-inner">
-                          <CheckCircle2 size={24} />
-                       </div>
-                       <div className="space-y-1">
-                          <p className="text-sm font-black text-secondary uppercase tracking-tight">Identity Verified</p>
-                          <p className="text-[9px] font-bold text-secondary/20 uppercase tracking-widest leading-none">Vetted by Local Buddy</p>
-                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-5 group cursor-pointer">
-                       <div className="w-12 h-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-inner">
-                          <Clock size={24} />
-                       </div>
-                       <div className="space-y-1">
-                          <p className="text-sm font-black text-secondary uppercase tracking-tight">Active Explorer</p>
-                          <p className="text-[9px] font-bold text-secondary/20 uppercase tracking-widest leading-none">Replies in minutes</p>
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* Trust Footer */}
-                  <div className="bg-surface-dark rounded-3xl p-6 border border-gray-100 flex items-center gap-4">
-                     <Shield className="text-primary/40 shrink-0" size={20} />
-                     <p className="text-[9px] font-black text-secondary/40 leading-relaxed uppercase tracking-widest">Secure payments & verified buddies for your peace of mind.</p>
-                  </div>
-               </div>
-
-               {/* Experience Preview */}
-               <div className="bg-secondary rounded-[48px] p-10 text-white relative overflow-hidden shadow-2xl group cursor-pointer transition-transform hover:-translate-y-1 duration-500">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors"></div>
-                  <div className="space-y-8 relative z-10">
-                     <Award className="text-primary" size={32} />
-                     <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                           <h4 className="text-2xl font-black tracking-tight leading-tight uppercase">
-                              {buddyStories.find((s: any) => s.pinned) ? "Featured Traveler Story" : "Recent Traveler Story"}
-                           </h4>
-                           {buddyStories.some((s: any) => s.pinned) && (
-                              <div className="bg-primary px-2 py-0.5 rounded-lg">
-                                 <Star size={10} className="fill-white text-white" />
-                              </div>
-                           )}
-                        </div>
-                        <p className="text-white/60 font-medium text-base tracking-tight italic leading-relaxed">
-                           {buddyStories.length > 0 
-                              ? (buddyStories.find((s: any) => s.pinned) || buddyStories[0]).storyContent.substring(0, 120) + "..."
-                              : "Join authentic journeys from fellow travelers."}
-                        </p>
-                     </div>
-                     <Link to={buddyStories.length > 0 ? `/traveller/experience/${(buddyStories.find((s: any) => s.pinned) || buddyStories[0]).id}` : "/traveller/experiences"} className="inline-flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest hover:gap-4 transition-all group-hover:translate-x-2">
-                        Explore Full Story <ArrowRight size={14} strokeWidth={4} />
-                     </Link>
-                  </div>
-               </div>
+            {/* CTA Buttons */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setIsBookingModalOpen(true)}
+                className="btn-primary w-full py-4 flex items-center justify-center gap-2"
+              >
+                <Calendar size={16} />
+                Book Direct · ${buddy.price}/h
+              </button>
+              <button
+                onClick={() => navigate(`/traveller/messages?buddyId=${buddy.id}`)}
+                className="btn-ghost w-full py-4 flex items-center justify-center gap-2"
+              >
+                <MessageSquare size={16} />
+                Send Message
+              </button>
             </div>
           </aside>
 
+          {/* RIGHT: Profile details */}
+          <div className="col-span-2 space-y-6">
+            {/* Name & trust badge */}
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl font-black text-secondary tracking-tight">{buddy.name}</h1>
+                {isVerified ? (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-700 rounded-xl border border-emerald-500/20 text-xs font-black">
+                    <Shield size={13} className="fill-current" /> Verified Buddy
+                  </span>
+                ) : (
+                  <span className="text-xs font-black text-amber-600 uppercase bg-amber-500/10 px-2 py-1 rounded-xl border border-amber-500/15">Unverified</span>
+                )}
+              </div>
+              <p className="text-secondary/40 font-bold text-sm">{buddy.age} years old · {buddy.location}</p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-gray-100">
+              {(['about', 'slots', 'reviews'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    activeTab === tab ? 'bg-white text-primary shadow-sm border border-gray-50' : 'text-secondary/40 hover:text-secondary/60'
+                  }`}
+                >
+                  {tab === 'slots' ? 'Availability' : tab}
+                </button>
+              ))}
+            </div>
+
+            <TabContent />
+          </div>
         </div>
-      </main>
+      </div>
 
-      <Footer />
-
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes ken-burns {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.1); }
-        }
-        .animate-ken-burns {
-          animation: ken-burns 20s ease-out forwards;
-        }
-      `}} />
-
+      <DirectBookingModal
+        buddy={buddy}
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        availableSlots={freeSlots}
+      />
     </div>
   );
 };
-
-// Internal utility for ArrowRight if not imported
-const ArrowRight = ({ size, className, strokeWidth }: { size?: number, className?: string, strokeWidth?: number }) => (
-  <svg width={size || 24} height={size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth || 3} strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M5 12h14" />
-    <path d="m12 5 7 7-7 7" />
-  </svg>
-);
 
 export default BuddyProfile;

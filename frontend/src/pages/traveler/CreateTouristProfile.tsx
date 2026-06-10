@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import Navbar from '../../components/Navbar';
 import TouristProfileForm from '../../components/forms/TouristProfileForm';
 import { touristProfileService } from '../../services/tourist-profile';
 import type { TouristProfileRequest } from '../../types/tourist-profile';
@@ -88,9 +87,8 @@ const CreateTouristProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#FBFBFC]">
-            <Navbar />
 
-            <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-16 max-w-4xl mx-auto">
+            <main className="pt-6 pb-20 px-4 sm:px-6 lg:px-16 max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
                     <Link

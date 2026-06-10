@@ -464,6 +464,15 @@ export const transactionService = {
   getByBuddyId: async (buddyId: string) => {
     return transactionService.getAll();
   },
+  createTransaction: async (buddyId: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}/transactions`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ ...data, buddyId }),
+    });
+    if (!response.ok) throw new Error('Failed to create transaction');
+    return response.json();
+  },
 };
 
 export const messageService = {

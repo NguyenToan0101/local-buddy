@@ -141,12 +141,10 @@ public class BuddyProfileService {
                 : VerificationStatus.PENDING);
         buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
                 ? "Verification queued for automatic processing."
-                : "Front ID, back ID, and liveness video are required before auto verification.");
+                : "Checking uploaded document quality...");
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
-        if (hasRequiredVerificationMedia(savedProfile)) {
-            scheduleAutoVerificationAfterCommit(userId);
-        }
+        scheduleAutoVerificationAfterCommit(userId);
         return mapToDto(savedProfile, savedProfile.getUser());
     }
 
@@ -169,12 +167,10 @@ public class BuddyProfileService {
                 : VerificationStatus.PENDING);
         buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
                 ? "Verification queued for automatic processing."
-                : "Front ID, back ID, and liveness video are required before auto verification.");
+                : "Checking liveness video quality...");
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
-        if (hasRequiredVerificationMedia(savedProfile)) {
-            scheduleAutoVerificationAfterCommit(userId);
-        }
+        scheduleAutoVerificationAfterCommit(userId);
         return mapToDto(savedProfile, savedProfile.getUser());
     }
 

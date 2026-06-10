@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import Navbar from '../../components/Navbar';
 import TouristProfileForm from '../../components/forms/TouristProfileForm';
 import { touristProfileService } from '../../services/tourist-profile';
 import type { TouristProfileRequest, TouristProfileResponse } from '../../types/tourist-profile';
@@ -83,8 +82,7 @@ const EditTouristProfile: React.FC = () => {
     if (isLoadingProfile) {
         return (
             <div className="min-h-screen bg-[#FBFBFC]">
-                <Navbar />
-                <div className="pt-32 flex items-center justify-center">
+                <div className="pt-6 flex items-center justify-center">
                     <div className="text-center">
                         <Loader2 size={48} className="animate-spin text-primary mx-auto mb-4" />
                         <p className="text-lg font-medium text-secondary">Loading your profile...</p>
@@ -96,9 +94,8 @@ const EditTouristProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#FBFBFC]">
-            <Navbar />
 
-            <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-16 max-w-4xl mx-auto">
+            <main className="pt-6 pb-20 px-4 sm:px-6 lg:px-16 max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
                     <Link
