@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_ROUTE_BY_ROLE } from '../../utils/authRoutes';
 
 const OAuth2RedirectHandler: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -14,11 +15,7 @@ const OAuth2RedirectHandler: React.FC = () => {
     if (token) {
       loginWithToken(token)
         .then((user) => {
-          if (user.role === 'BUDDY') {
-            navigate('/buddy/dashboard');
-          } else {
-            navigate('/traveller/home');
-          }
+          navigate(DEFAULT_ROUTE_BY_ROLE[user.role], { replace: true });
         })
         .catch((err) => {
           console.error(err);

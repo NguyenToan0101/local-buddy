@@ -17,7 +17,7 @@ const LandingPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/traveller/home');
+      navigate(user.role === 'BUDDY' ? '/buddy/dashboard' : user.role === 'ADMIN' ? '/admin/dashboard' : '/traveller/home');
       return;
     }
     const fetchBuddies = async () => {
@@ -83,10 +83,10 @@ const LandingPage: React.FC = () => {
             <img
               src="https://images.unsplash.com/photo-1528127269322-539801943592?q=80&w=800"
               alt="Vietnam Travel"
-              className="w-full h-[500px] object-cover transform group-hover:scale-105 transition-transform duration-1000"
+              className="w-full h-[360px] sm:h-[460px] md:h-[520px] object-cover transform group-hover:scale-105 transition-transform duration-1000"
             />
           </div>
-          <div className="absolute bottom-10 left-10 bg-white/95 backdrop-blur-md p-5 rounded-[28px] shadow-2xl flex items-center gap-4 border border-white group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
+          <div className="absolute bottom-10 left-4 sm:left-10 right-4 sm:right-auto bg-white/95 backdrop-blur-md p-5 rounded-[28px] shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-white group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform duration-500">
             <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center shadow-inner">
               <Shield size={28} />
             </div>

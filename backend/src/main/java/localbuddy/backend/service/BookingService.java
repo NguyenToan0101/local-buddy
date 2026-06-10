@@ -12,6 +12,8 @@ import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -22,7 +24,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,11 +39,9 @@ public class BookingService {
     private final BuddyProfileRepository buddyProfileRepository;
 
     @Transactional(readOnly = true)
-    public List<BookingDto> getBookings(UUID currentUserId) {
-        return bookingRepository.findByTravelerIdOrBuddyIdOrderByStartTimeDesc(currentUserId, currentUserId)
-                .stream()
-                .map(this::mapToDto)
-                .toList();
+    public Page<BookingDto> getBookings(UUID currentUserId, Pageable pageable) {
+        return bookingRepository.findByTravelerIdOrBuddyIdOrderByStartTimeDesc(currentUserId, currentUserId, pageable)
+                .map(this::mapToDto);
     }
 
     @Transactional(readOnly = true)
@@ -177,10 +176,11 @@ public class BookingService {
         return 1;
     }
 
-    private OffsetDateTime resolveStartTime(String date, String time) {
-        LocalDate localDate = StringUtils.hasText(date)
-                ? LocalDate.parse(date)
-                : LocalDate.now(BOOKING_ZONE).plusDays(1);
+    private OffsetDateTime resolveStartTime(LocalDate date, String time) {
+        if (date == null) {
+            throw new IllegalArgumentException("Booking date is required.");
+        }
+        LocalDate localDate = date;
         LocalTime localTime = StringUtils.hasText(time)
                 ? LocalTime.parse(time)
                 : LocalTime.of(9, 0);

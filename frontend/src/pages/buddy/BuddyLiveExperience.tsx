@@ -6,12 +6,12 @@ import {
   ShieldAlert, 
   ShieldCheck, 
   Clock, 
-  ChevronLeft
+  ChevronLeft,
+  AlertTriangle
 } from 'lucide-react';
 import { bookingService } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
-import { AlertTriangle } from 'lucide-react';
 
 const BuddyLiveExperience: React.FC = () => {
   const { id } = useParams();
@@ -63,9 +63,7 @@ const BuddyLiveExperience: React.FC = () => {
   };
 
   const confirmSOS = () => {
-    // alert("Emergency alert sent! Support is on the way.");
     setSosSent(true);
-    // Actual SOS integration would go here
   };
 
   if (loading) return (
@@ -78,85 +76,98 @@ const BuddyLiveExperience: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] relative">
-      {/* Floating Exit Button */}
-      <div className="fixed top-8 left-8 z-[100]">
+    <div className="min-h-screen bg-[#FBFBFC] relative pb-12">
+      {/* Floating Exit header */}
+      <div className="fixed top-8 left-8 z-[100] hidden md:block">
          <button 
            onClick={() => navigate('/buddy/dashboard/trips')}
-           className="flex items-center gap-3 bg-secondary text-white px-8 py-4 rounded-2xl shadow-2xl hover:bg-primary transition-all duration-500 font-black text-[10px] uppercase tracking-widest border-none group"
+           className="flex items-center gap-2 bg-secondary hover:bg-primary text-white px-6 py-3.5 rounded-xl shadow-md transition-all duration-300 font-black text-[10px] uppercase tracking-widest border-none cursor-pointer group"
          >
-           <ChevronLeft size={18} strokeWidth={3} className="group-hover:-translate-x-1 transition-transform" />
+           <ChevronLeft size={14} strokeWidth={3} className="group-hover:-translate-x-0.5 transition-transform" />
            Back to Dashboard
          </button>
       </div>
 
-      {/* Live Badge Overlay */}
+      {/* Floating mobile back */}
+      <div className="fixed top-4 left-4 z-[100] md:hidden">
+         <button 
+           onClick={() => navigate('/buddy/dashboard/trips')}
+           className="w-10 h-10 rounded-xl bg-white/95 backdrop-blur-md flex items-center justify-center text-secondary/60 hover:text-primary transition-all border border-gray-100/50 shadow-md cursor-pointer"
+         >
+           <ChevronLeft size={20} />
+         </button>
+      </div>
+
+      {/* Live active beacon */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-red-500 z-[101]"></div>
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-red-500/10 backdrop-blur-xl border border-red-500/20 px-6 py-2 rounded-full shadow-2xl pointer-events-none flex items-center gap-3">
-         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-         <p className="text-[9px] font-black text-red-600 uppercase tracking-[0.4em]">Live Session Mode</p>
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-red-500/10 backdrop-blur-md border border-red-500/20 px-5 py-1.5 rounded-full shadow-md pointer-events-none flex items-center gap-2 shrink-0">
+         <span className="relative flex h-1.5 w-1.5 shrink-0">
+           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+         </span>
+         <p className="text-[8px] font-black text-red-600 uppercase tracking-[0.25em] leading-none mt-0.5">Live hosting session</p>
       </div>
       
-      <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-16 max-w-5xl mx-auto space-y-12">
-        {/* Header Section */}
-        <section className="space-y-6 text-center">
-           <div className="space-y-2">
-              <h1 className="text-5xl font-black text-secondary tracking-tighter">Buddy Live Hub</h1>
-              <p className="text-secondary/40 font-bold text-lg italic">Your safety and experience are monitored in real-time.</p>
-           </div>
+      <main className="pt-20 pb-12 px-6 max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <section className="space-y-1 text-center">
+          <h1 className="text-3xl font-black text-secondary tracking-tight">Buddy Live Hub</h1>
+          <p className="text-secondary/40 font-bold text-xs">Your security coordinates are monitored in real-time</p>
         </section>
 
-        {/* Traveler Status Card */}
-        <section className="bg-white rounded-[48px] p-8 shadow-premium border border-gray-50 flex flex-col md:flex-row items-center justify-between gap-8">
-           <div className="flex items-center gap-6">
+        {/* Traveler Details Card */}
+        <section className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100/80 flex items-center justify-between gap-4">
+           <div className="flex items-center gap-3">
               <div className="relative">
-                 <div className="w-24 h-24 rounded-[32px] overflow-hidden shadow-2xl ring-4 ring-primary/5">
+                 <div className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-primary/5">
                     <img src={booking?.travelerAvatar || `https://i.pravatar.cc/150?u=${booking?.userId}`} alt="Traveler" className="w-full h-full object-cover" />
                  </div>
-                 <div className="absolute -right-1 -bottom-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-lg"></div>
+                 <div className="absolute -right-1 -bottom-1 w-4.5 h-4.5 bg-green-500 rounded-full border-4 border-white shadow-sm"></div>
               </div>
-              <div className="space-y-1 text-center md:text-left">
-                 <h2 className="text-2xl font-black text-secondary tracking-tight">{booking?.traveler || "Traveler"}</h2>
-                 <div className="flex items-center justify-center md:justify-start gap-2 text-primary font-bold text-xs uppercase tracking-widest">
-                    <ShieldCheck size={14} strokeWidth={3} /> Trusted Explorer
+              <div>
+                 <h2 className="text-base font-black text-secondary tracking-tight leading-snug">{booking?.traveler || "Traveler"}</h2>
+                 <div className="flex items-center gap-1.5 text-primary font-bold text-[9px] uppercase tracking-wider mt-0.5">
+                    <ShieldCheck size={12} strokeWidth={3} /> Trusted Traveler
                  </div>
               </div>
            </div>
            
-           <button className="w-16 h-16 bg-surface rounded-[24px] flex items-center justify-center text-secondary/40 hover:text-primary transition-all border-none cursor-pointer">
-              <MessageCircle size={28} />
+           <button 
+             onClick={() => navigate('/buddy/dashboard/messages')}
+             className="w-12 h-12 bg-surface hover:bg-gray-50 rounded-xl flex items-center justify-center text-secondary/35 hover:text-primary transition-all border-none cursor-pointer"
+           >
+              <MessageCircle size={20} />
            </button>
         </section>
 
-        {/* Timer Countdown Grid */}
-        <section className="grid grid-cols-3 gap-6">
+        {/* Stepper Countdowns */}
+        <section className="grid grid-cols-3 gap-4">
            {[
              { label: 'HOURS', value: time.h },
              { label: 'MINUTES', value: time.m },
              { label: 'SECONDS', value: time.s }
            ].map(t => (
-             <div key={t.label} className="bg-primary/5 rounded-[48px] p-10 text-center border-2 border-primary/5 relative overflow-hidden group">
-                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/40 transition-colors"></div>
-                <div className="relative z-10 space-y-2">
-                   <p className="text-5xl md:text-7xl font-black text-primary tracking-tighter tabular-nums leading-none">{t.value}</p>
-                   <p className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em]">{t.label}</p>
+             <div key={t.label} className="bg-primary/5 rounded-2xl p-6 text-center border border-primary/10 relative overflow-hidden group">
+                <div className="relative z-10 space-y-1">
+                   <p className="text-3xl sm:text-4xl font-black text-primary tracking-tighter tabular-nums leading-none">{t.value}</p>
+                   <p className="text-[8px] font-black text-primary/40 uppercase tracking-[0.2em]">{t.label}</p>
                 </div>
              </div>
            ))}
         </section>
 
-        {/* Action & Info Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-           {/* Left: Meeting Area */}
-           <div className="bg-white rounded-[56px] p-10 shadow-premium border border-gray-50 flex flex-col group h-full">
-              <div className="flex items-center gap-3 mb-6">
-                 <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary">
-                    <MapPin size={20} />
+        {/* Map & Timeline Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           {/* Active Maps */}
+           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100/80 flex flex-col group h-[480px]">
+              <div className="flex items-center gap-2.5 mb-4">
+                 <div className="w-8 h-8 bg-primary/5 rounded-lg flex items-center justify-center text-primary">
+                    <MapPin size={16} />
                  </div>
-                 <h5 className="text-xl font-black text-secondary tracking-tight">Active Location</h5>
+                 <h5 className="font-black text-secondary text-sm">Active GPS Tracking</h5>
               </div>
               
-              <div className="flex-1 min-h-[400px] rounded-[36px] overflow-hidden bg-gray-100 relative shadow-inner grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700">
+              <div className="flex-1 rounded-2xl overflow-hidden bg-gray-100 relative shadow-inner">
                  <iframe 
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3723.924403920925!2d105.846875!3d21.032669!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135abbf5ccdc67b%3A0xee23b03f0813c990!2sSt.%20Joseph's%20Cathedral!5e0!3m2!1sen!2s!4v1710550000000!5m2!1sen!2s" 
                     width="100%" 
@@ -169,131 +180,128 @@ const BuddyLiveExperience: React.FC = () => {
                  ></iframe>
               </div>
               
-              <p className="text-sm font-bold text-secondary/40 mt-6 italic tracking-tight">{booking?.location || "Hanoi Old Quarter"}</p>
+              <p className="text-xs font-bold text-secondary/40 mt-4 italic tracking-tight">{booking?.location || "Hanoi Old Quarter"}</p>
            </div>
 
-           {/* Right: Itinerary Timeline */}
-           <div className="bg-white rounded-[56px] p-10 md:p-12 shadow-premium border border-gray-50 flex flex-col gap-10">
-              <div className="flex items-center gap-4">
-                 <div className="w-1.5 h-8 bg-primary rounded-full"></div>
-                 <h3 className="text-2xl font-black text-secondary tracking-tight uppercase italic">Itinerary Timeline</h3>
+           {/* Itinerary timeline details */}
+           <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-sm border border-gray-100/80 flex flex-col gap-6">
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-6 bg-primary rounded-full"></div>
+                 <h3 className="text-sm font-black text-secondary uppercase tracking-wider">Itinerary Details</h3>
               </div>
 
-              <div className="space-y-12 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-primary/10 before:border-l-2 before:border-dashed before:border-primary/20">
-                 {/* Meeting Point */}
-                 <div className="relative pl-12">
-                    <div className="absolute left-0 top-1.5 w-4 h-4 bg-white border-4 border-primary rounded-full z-10"></div>
-                    <div className="space-y-2">
-                       <div className="flex items-center gap-2 text-primary/40">
-                          <MapPin size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Meeting Point</span>
+              <div className="space-y-8 relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-primary/15 before:border-l before:border-dashed">
+                 {/* Start */}
+                 <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-2.5 h-2.5 bg-white border-2 border-primary rounded-full z-10"></div>
+                    <div className="space-y-1">
+                       <div className="flex items-center gap-1.5 text-primary/40">
+                          <MapPin size={10} />
+                          <span className="text-[7px] font-black uppercase tracking-widest">Meeting Point</span>
                        </div>
-                       <h4 className="text-xl font-black text-secondary tracking-tight leading-tight">St. Joseph's Cathedral, Old Quarter</h4>
-                       <p className="text-sm font-bold text-secondary/40 italic leading-relaxed">Wait near the side entrance. I'll be wearing a Local Buddy orange lanyard.</p>
+                       <h4 className="font-black text-secondary text-sm leading-snug">St. Joseph's Cathedral, Old Quarter</h4>
+                       <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">Wait near the side entrance. I'll be wearing a Local Buddy orange lanyard.</p>
+                    </div>
+                  </div>
+
+                 {/* Focus */}
+                 <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-2.5 h-2.5 bg-white border-2 border-primary rounded-full z-10"></div>
+                    <div className="space-y-1">
+                       <div className="flex items-center gap-1.5 text-primary/40">
+                          <Clock size={10} />
+                          <span className="text-[7px] font-black uppercase tracking-widest">Highlight Activity</span>
+                       </div>
+                       <h4 className="font-black text-secondary text-sm leading-snug">Exploring Hidden Train Street Cafe</h4>
+                       <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">We'll secure a safe spot for photos and enjoy the signature egg coffee.</p>
                     </div>
                  </div>
 
-                 {/* Action Highlight */}
-                 <div className="relative pl-12">
-                    <div className="absolute left-0 top-1.5 w-4 h-4 bg-white border-4 border-primary rounded-full z-10 shadow-lg shadow-primary/20"></div>
-                    <div className="space-y-2">
-                       <div className="flex items-center gap-2 text-primary/40">
-                          <Clock size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Action Highlight</span>
+                 {/* End */}
+                 <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-2.5 h-2.5 bg-white border-2 border-gray-300 rounded-full z-10"></div>
+                    <div className="space-y-1">
+                       <div className="flex items-center gap-1.5 text-secondary/35">
+                          <MapPin size={10} />
+                          <span className="text-[7px] font-black uppercase tracking-widest">Conclusion End</span>
                        </div>
-                       <h4 className="text-xl font-black text-secondary tracking-tight leading-tight">Exploring Hidden Train Street Cafe</h4>
-                       <p className="text-sm font-bold text-secondary/40 italic leading-relaxed">We'll secure a safe spot for photos and enjoy the signature egg coffee while talking about local railways history.</p>
-                    </div>
-                 </div>
-
-                 {/* End Point */}
-                 <div className="relative pl-12">
-                    <div className="absolute left-0 top-1.5 w-4 h-4 bg-gray-100 border-4 border-gray-200 rounded-full z-10"></div>
-                    <div className="space-y-2">
-                       <div className="flex items-center gap-2 text-secondary/20">
-                          <MapPin size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">End Point</span>
-                       </div>
-                       <h4 className="text-xl font-black text-secondary/40 tracking-tight leading-tight">Long Bien Bridge Sunset</h4>
-                       <p className="text-sm font-bold text-secondary/20 italic leading-relaxed">Session concludes with a panoramic sunset view over the Red River.</p>
+                       <h4 className="font-black text-secondary/50 text-sm leading-snug">Long Bien Bridge Sunset</h4>
+                       <p className="text-[11px] font-bold text-secondary/20 italic leading-normal">Session concludes with a sunset view over the Red River.</p>
                     </div>
                  </div>
               </div>
            </div>
         </div>
 
-        {/* Safety Controls Bar */}
-        <section className="bg-red-50/30 rounded-[64px] p-12 border border-red-100/50 space-y-8 animate-in slide-in-from-bottom-10 duration-1000">
-           <div className="flex items-center gap-4">
-              <ShieldAlert size={24} className="text-red-500" />
-              <div className="space-y-1">
-                 <h4 className="text-2xl font-black text-red-600 tracking-tight uppercase italic leading-none">Emergency Hub</h4>
-                 <p className="text-[10px] font-bold text-red-400">Immediate access to Local Buddy support team and emergency services.</p>
+        {/* SOS Emergency hub bar */}
+        <section className="bg-red-500/5 rounded-3xl p-6 border border-red-500/10 space-y-4">
+           <div className="flex items-center gap-2">
+              <ShieldAlert size={20} className="text-red-500 shrink-0" />
+              <div className="space-y-0.5">
+                 <h4 className="text-sm font-black text-red-600 uppercase tracking-wider">Panic SOS Beacon</h4>
+                 <p className="text-[9px] font-bold text-red-500/60 uppercase tracking-widest leading-none">Instant coordinate broadcast to Local Buddy support team</p>
               </div>
            </div>
 
-           <div className="flex flex-col gap-6">
-              <button 
-                onClick={handleSOS}
-                className="w-full bg-red-600 hover:bg-red-700 text-white rounded-[32px] py-10 flex items-center justify-center gap-4 shadow-xl border-none font-black text-xl italic tracking-tighter transition-all active:scale-95 group"
-              >
-                 <div className="w-4 h-4 bg-white rounded-full animate-ping"></div>
-                 SOS EMERGENCY
-              </button>
-           </div>
+           <button 
+             onClick={handleSOS}
+             className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-4 flex items-center justify-center gap-2 shadow-sm border-none font-black text-sm uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+           >
+              Trigger SOS Emergency
+           </button>
         </section>
       </main>
 
-       {/* SOS Confirmation Modal */}
+      {/* SOS Modal popup */}
       <Modal 
         isOpen={isSOSModalOpen} 
         onClose={() => setIsSOSModalOpen(false)}
-        title={sosSent ? "SOS Alert Sent" : "Trigger Emergency SOS?"}
+        title={sosSent ? "SOS Broadcast Active" : "Trigger Emergency SOS?"}
         maxWidth="max-w-md"
       >
-        <div className="p-8 space-y-8">
+        <div className="p-6 space-y-6">
           {sosSent ? (
-            <div className="flex flex-col items-center text-center space-y-6">
-               <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center text-green-600">
-                  <ShieldCheck size={48} />
+            <div className="flex flex-col items-center text-center space-y-4">
+               <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600 shadow-sm">
+                  <ShieldCheck size={36} />
                </div>
-               <div className="space-y-3">
-                  <h4 className="text-2xl font-black text-secondary tracking-tight">Support is on the way!</h4>
-                  <p className="text-sm font-bold text-secondary/40 leading-relaxed italic">
-                     Your emergency alert has been broadcast. Our safety team is now tracking your session and coordinating with local services.
+               <div className="space-y-2">
+                  <h4 className="text-base font-black text-secondary uppercase tracking-tight">Signal Broadcast Successful</h4>
+                  <p className="text-[11px] font-bold text-secondary/40 leading-relaxed italic max-w-xs mx-auto">
+                     Emergency coordinators have been notified. Real-time GPS tracking is broadcast to active security services.
                   </p>
                </div>
                <button 
                  onClick={() => setIsSOSModalOpen(false)}
-                 className="w-full bg-secondary text-white rounded-2xl py-6 font-black text-[10px] uppercase tracking-widest transition-all"
+                 className="w-full bg-secondary text-white rounded-xl py-3.5 font-black text-[9px] uppercase tracking-widest transition-all border-none cursor-pointer"
                >
-                  Close / Monitor Session
+                  Close / Keep Monitoring
                </button>
             </div>
           ) : (
             <>
               <div className="flex flex-col items-center text-center space-y-4">
-                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-600 animate-pulse">
-                    <AlertTriangle size={40} />
+                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-600 animate-pulse">
+                    <AlertTriangle size={32} />
                  </div>
                  <div className="space-y-2">
-                    <h4 className="text-xl font-black text-secondary tracking-tight">Critical Action Required</h4>
-                    <p className="text-sm font-bold text-secondary/40 leading-relaxed italic">
-                       Are you sure you want to trigger an emergency alert? This will immediately notify **Local Buddy Support** and **Local Emergency Services**.
+                    <h4 className="text-base font-black text-secondary uppercase tracking-tight">Confirm Signal Broadcast?</h4>
+                    <p className="text-[11px] font-bold text-secondary/40 leading-relaxed italic max-w-xs mx-auto">
+                       Are you sure you want to broadcast a panic beacon? Local Buddy security and local emergency dispatch services will be contacted instantly.
                     </p>
                  </div>
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2.5">
                  <button 
                    onClick={confirmSOS}
-                   className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl py-6 font-black text-lg tracking-tight shadow-xl shadow-red-200 transition-all active:scale-95 italic"
+                   className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3.5 font-black text-xs uppercase tracking-widest shadow-sm transition-all active:scale-95 border-none cursor-pointer"
                  >
-                    CONFIRM SOS ALERT
+                    CONFIRM SOS BEACON
                  </button>
                  <button 
                    onClick={() => setIsSOSModalOpen(false)}
-                   className="w-full bg-surface-dark hover:bg-gray-200 text-secondary/60 rounded-2xl py-6 font-black text-[10px] uppercase tracking-widest transition-all"
+                   className="w-full bg-surface-dark hover:bg-gray-200 text-secondary/60 rounded-xl py-3.5 font-black text-[9px] uppercase tracking-widest transition-all border-none cursor-pointer"
                  >
                     Cancel / I'm Safe
                  </button>

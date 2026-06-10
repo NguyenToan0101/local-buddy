@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Check, Calendar, Clock, Trash, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { bookingService, availabilityService } from '../../services/api';
 
 const HOURS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"];
 
-// Parse "09:00 AM" -> 24h number
 const parseHour = (timeStr: string): number => {
   const [timePart, period] = (timeStr || '').split(' ');
   let h = parseInt(timePart?.split(':')[0] || '0');
@@ -15,10 +14,8 @@ const parseHour = (timeStr: string): number => {
   return h;
 };
 
-// "08:00" -> 24h number
 const slotToHour = (slot: string) => parseInt(slot.split(':')[0]);
 
-// 24h number -> "08:00 AM" / "02:00 PM"
 const hourToStr12 = (h: number) => {
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
@@ -31,18 +28,51 @@ const ScheduleTab: React.FC = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   const buddyId = user?.id || "1";
   const [generatedSlots, setGeneratedSlots] = useState<any[]>([]);
 
-  // Modal State
+  // Modal States
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [timeFrom, setTimeFrom] = useState('08:00');
   const [timeTo, setTimeTo] = useState('16:00');
+
+  const getMonday = (d: Date) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  };
+
+  const monday = getMonday(currentDate);
+  const mondayStr = monday.toDateString();
+  const weekDays = React.useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      return {
+        name: day.toLocaleDateString('en-US', { weekday: 'long' }),
+        shortName: day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        date: day.getDate(),
+        fullDate: day.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+        dateLabel: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        dateObj: day,
+        isToday: day.toDateString() === new Date().toDateString(),
+      };
+    });
+  }, [mondayStr]);
+
+  // Set default selected date to today or Monday of current week when week changes
+  useEffect(() => {
+    if (weekDays.length > 0) {
+      const todayObj = weekDays.find(d => d.isToday);
+      setSelectedDate(todayObj ? todayObj.fullDate : weekDays[0].fullDate);
+    }
+  }, [mondayStr]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,28 +100,6 @@ const ScheduleTab: React.FC = () => {
     fetchData();
   }, [buddyId, user]);
 
-  const getMonday = (d: Date) => {
-    const date = new Date(d);
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(date.setDate(diff));
-  };
-
-  const monday = getMonday(currentDate);
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(monday);
-    day.setDate(monday.getDate() + i);
-    return {
-      name: day.toLocaleDateString('en-US', { weekday: 'long' }),
-      shortName: day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-      date: day.getDate(),
-      fullDate: day.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-      dateLabel: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      dateObj: day,
-      isToday: day.toDateString() === new Date().toDateString(),
-    };
-  });
-
   const changeWeek = (dir: number) => {
     const d = new Date(currentDate);
     d.setDate(d.getDate() + dir * 7);
@@ -101,11 +109,9 @@ const ScheduleTab: React.FC = () => {
   const getMonthYearString = () =>
     currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  // Get slot status for a given day + slot hour
   const getSlotInfo = (fullDate: string, slotHour: number) => {
     const slotStr12 = hourToStr12(slotHour);
 
-    // Check real booking (duration-aware)
     const booking = bookings.find(b => {
       if (b.date !== fullDate) return false;
       const start = parseHour(b.time);
@@ -117,7 +123,6 @@ const ScheduleTab: React.FC = () => {
       return { type: 'booked', booking, isFirst };
     }
 
-    // Check generated free slot
     const free = generatedSlots.find(s => s.date === fullDate && s.time === slotStr12);
     if (free) return { type: 'free', slot: free };
 
@@ -139,17 +144,14 @@ const ScheduleTab: React.FC = () => {
     const tempId = `temp-${Date.now()}`;
     const tempSlot = { id: tempId, date, time, status: 'FREE', title: 'Available' };
 
-    // Optimistically add to UI instantly
     setGeneratedSlots(prev => [...prev, tempSlot]);
 
     availabilityService.addAvailability(cleanBuddyId, {
       date, time, status: 'FREE', title: 'Available'
     }).then(newSlot => {
-      // Replace temporary slot with real one from database
       setGeneratedSlots(prev => prev.map(s => s.id === tempId ? newSlot : s));
     }).catch(error => {
       console.error("Failed to add slot:", error);
-      // Revert change
       setGeneratedSlots(prev => prev.filter(s => s.id !== tempId));
     });
   };
@@ -161,12 +163,10 @@ const ScheduleTab: React.FC = () => {
     const slotToRemove = generatedSlots.find(s => s.id === id);
     if (!slotToRemove) return;
 
-    // Optimistically remove from UI instantly
     setGeneratedSlots(prev => prev.filter(s => s.id !== id));
 
     availabilityService.deleteAvailability(cleanBuddyId, id).catch(error => {
       console.error("Failed to remove slot:", error);
-      // Revert change (add the slot back)
       setGeneratedSlots(prev => [...prev, slotToRemove]);
     });
   };
@@ -214,245 +214,276 @@ const ScheduleTab: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-[400px] flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+    <div className="flex justify-center items-center py-20">
+      <div className="w-10 h-10 border-4 border-primary/25 border-t-primary rounded-full animate-spin"></div>
     </div>
   );
 
+  const activeDayObj = weekDays.find(d => d.fullDate === selectedDate) || weekDays[0];
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-4xl font-black text-secondary tracking-tighter italic">Schedule</h3>
-          <p className="text-secondary/40 font-bold text-sm">Manage your availability — green slots are visible to travellers for booking.</p>
+    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-xl font-black text-secondary tracking-tight">Availability Schedule</h3>
+          <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">Select a day below to set your available session slots</p>
         </div>
         <button
           onClick={() => setShowQuickAdd(true)}
-          className="bg-primary px-8 py-4 rounded-[24px] text-white text-[11px] font-black uppercase tracking-widest shadow-primary-glow flex items-center gap-3 hover:scale-105 active:scale-95 transition-all border-none"
+          className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1.5 border-none cursor-pointer shrink-0"
         >
-          <Plus size={16} strokeWidth={3} /> Quick Add Slots
+          <Plus size={14} strokeWidth={3} /> Bulk Add Slots
         </button>
       </div>
 
-      {/* Week nav */}
-      <div className="flex items-center justify-between">
+      {/* Week Navigator */}
+      <div className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <button onClick={() => changeWeek(-1)} className="w-10 h-10 border border-gray-100 rounded-xl flex items-center justify-center text-secondary/30 hover:text-primary hover:border-primary/30 transition-all bg-white">
-            <ChevronLeft size={18} />
+          <button onClick={() => changeWeek(-1)} className="w-8 h-8 border border-gray-100 rounded-lg flex items-center justify-center text-secondary/35 hover:text-primary transition-colors bg-white cursor-pointer">
+            <ChevronLeft size={16} />
           </button>
-          <h4 className="text-lg font-black text-secondary tracking-tight">{getMonthYearString()}</h4>
-          <button onClick={() => changeWeek(1)} className="w-10 h-10 border border-gray-100 rounded-xl flex items-center justify-center text-secondary/30 hover:text-primary hover:border-primary/30 transition-all bg-white">
-            <ChevronRight size={18} />
+          <h4 className="text-xs font-black text-secondary uppercase tracking-wider">{getMonthYearString()}</h4>
+          <button onClick={() => changeWeek(1)} className="w-8 h-8 border border-gray-100 rounded-lg flex items-center justify-center text-secondary/35 hover:text-primary transition-colors bg-white cursor-pointer">
+            <ChevronRight size={16} />
           </button>
         </div>
-        <button onClick={() => setCurrentDate(new Date())} className="px-5 h-10 border border-gray-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary/40 hover:text-primary hover:border-primary/30 transition-all bg-white">
+        <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 border border-gray-100 rounded-lg text-[9px] font-black uppercase tracking-widest text-secondary/40 hover:text-primary transition-all bg-white cursor-pointer">
           Today
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest">
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md bg-green-400"></div><span className="text-secondary/50">Free Slot</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md bg-secondary"></div><span className="text-secondary/50">Booked</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md bg-amber-400"></div><span className="text-secondary/50">Pending</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-md border-2 border-dashed border-gray-200"></div><span className="text-secondary/50">Empty (click to add)</span></div>
+      {/* Weekly Date Strip Selector */}
+      <div className="grid grid-cols-7 gap-2">
+        {weekDays.map((day) => {
+          const isSelected = selectedDate === day.fullDate;
+          
+          // Calculate counts of free & booked slots
+          const dailyFreeCount = generatedSlots.filter(s => s.date === day.fullDate).length;
+          const dailyBookedCount = bookings.filter(b => b.date === day.fullDate).length;
+
+          return (
+            <button
+              key={day.fullDate}
+              onClick={() => setSelectedDate(day.fullDate)}
+              className={`p-3 rounded-2xl flex flex-col items-center justify-between gap-2 border transition-all cursor-pointer min-h-[90px] ${
+                isSelected 
+                ? 'bg-secondary border-secondary text-white shadow-md scale-[1.02]' 
+                : day.isToday 
+                  ? 'bg-primary/5 border-primary/20 text-primary hover:bg-primary/10'
+                  : 'bg-white border-gray-100 text-secondary hover:border-primary/20 hover:shadow-premium'
+              }`}
+            >
+              <span className={`text-[8px] font-black uppercase tracking-wider ${isSelected ? 'text-white/60' : 'text-secondary/40'}`}>
+                {day.shortName}
+              </span>
+              <span className="text-base font-black leading-none">{day.date}</span>
+              
+              {/* Dot indicators */}
+              <div className="flex gap-1 justify-center min-h-[6px]">
+                {dailyBookedCount > 0 && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-primary' : 'bg-secondary'}`} title={`${dailyBookedCount} Booked`}></span>
+                )}
+                {dailyFreeCount > 0 && (
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-green-500'}`} title={`${dailyFreeCount} Free`}></span>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Time header */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-        <div className="grid gap-0" style={{ gridTemplateColumns: '120px 1fr' }}>
-          {/* Hour labels row */}
-          <div className="bg-gray-50 border-b border-gray-100 p-3 flex items-center">
-            <span className="text-[9px] font-black uppercase tracking-widest text-secondary/20">Day / Time</span>
-          </div>
-          <div className="border-b border-gray-100 bg-gray-50 grid" style={{ gridTemplateColumns: `repeat(${HOURS.length}, 1fr)` }}>
-            {HOURS.map(h => (
-              <div key={h} className="p-2 text-center border-l border-gray-100 first:border-l-0">
-                <span className="text-[9px] font-black text-secondary/30 uppercase tracking-wide">{h}</span>
-              </div>
-            ))}
-          </div>
+      {/* Slots Timeline list for the active selected day */}
+      <div className="space-y-4 pt-4 border-t border-gray-100">
+        <div className="flex justify-between items-baseline px-1">
+          <h4 className="text-xs font-black text-secondary uppercase tracking-wider">
+            Schedule for {activeDayObj.name}, {activeDayObj.dateLabel}
+          </h4>
+          <span className="text-[8px] font-bold text-secondary/35 uppercase tracking-widest">
+            {activeDayObj.isToday ? 'Today' : 'Upcoming'}
+          </span>
+        </div>
 
-          {/* Day rows */}
-          {weekDays.map((day, dayIdx) => (
-            <React.Fragment key={day.fullDate}>
-              {/* Day label */}
-              <div className={`p-4 border-b border-gray-100 flex flex-col justify-center ${day.isToday ? 'bg-primary/5' : 'bg-white'} ${dayIdx === weekDays.length - 1 ? 'border-b-0' : ''}`}>
-                <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${day.isToday ? 'text-primary' : 'text-secondary/30'}`}>{day.shortName}</span>
-                <span className={`text-lg font-black leading-tight ${day.isToday ? 'text-primary' : 'text-secondary'}`}>{day.date}</span>
-                <span className="text-[9px] text-secondary/30 font-bold">{day.dateLabel}</span>
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {HOURS.map((hourStr) => {
+            const slotHour = slotToHour(hourStr);
+            const info = getSlotInfo(selectedDate, slotHour);
 
-              {/* Slots */}
-              <div
-                className={`border-b border-gray-100 grid ${dayIdx === weekDays.length - 1 ? 'border-b-0' : ''}`}
-                style={{ gridTemplateColumns: `repeat(${HOURS.length}, 1fr)` }}
-              >
-                {HOURS.map(hourStr => {
-                  const slotHour = slotToHour(hourStr);
-                  const slotKey = `${day.fullDate}-${hourStr}`;
-                  const info = getSlotInfo(day.fullDate, slotHour);
-                  const isHovered = hoveredSlot === slotKey;
-
-                  if (info.type === 'booked') {
-                    const { booking, isFirst } = info;
-                    const isPending = booking.status === 'PENDING';
-                    return (
-                      <div
-                        key={slotKey}
-                        onClick={() => navigate(`/buddy/dashboard/trips/${booking.id}`)}
-                        className={`relative border-l border-white/20 min-h-[64px] cursor-pointer hover:opacity-90 transition-opacity ${isPending ? 'bg-amber-500' : 'bg-secondary'} ${isFirst ? 'rounded-l-xl' : ''}`}
-                        title={`${booking.title} — ${booking.traveler} (click to view detail)`}
-                      >
-                        {isFirst && (
-                          <div className="p-2 h-full flex flex-col justify-between">
-                            <span className={`text-[7px] font-black uppercase tracking-widest ${isPending ? 'text-amber-900/60' : 'text-white/50'}`}>{booking.status}</span>
-                            <div>
-                              <span className={`text-[9px] font-black leading-tight block truncate ${isPending ? 'text-amber-950' : 'text-white'}`}>{booking.title}</span>
-                              <span className={`text-[8px] font-bold ${isPending ? 'text-amber-900/70' : 'text-white/60'}`}>{booking.traveler}</span>
-                            </div>
-                          </div>
-                        )}
-                        {!isFirst && (
-                          <div className="h-full w-full flex items-center justify-center opacity-30">
-                            <div className="w-1 h-8 bg-white/50 rounded-full"></div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  if (info.type === 'free') {
-                    return (
-                      <div
-                        key={slotKey}
-                        onMouseEnter={() => setHoveredSlot(slotKey)}
-                        onMouseLeave={() => setHoveredSlot(null)}
-                        className="relative border-l border-gray-100 min-h-[64px] bg-green-50 border-t-2 border-t-green-400 group cursor-pointer"
-                      >
-                        <div className="p-2 h-full flex flex-col items-center justify-center">
-                          <Check size={12} className="text-green-500 mb-1" />
-                          <span className="text-[7px] font-black uppercase tracking-widest text-green-600">Free</span>
-                        </div>
-                        {/* Remove button on hover */}
-                        <button
-                          onClick={() => handleRemoveFreeSlot(info.slot.id)}
-                          className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm border-none"
-                        >
-                          <X size={8} strokeWidth={3} />
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  // Empty slot
-                  return (
-                    <div
-                      key={slotKey}
-                      onMouseEnter={() => setHoveredSlot(slotKey)}
-                      onMouseLeave={() => setHoveredSlot(null)}
-                      onClick={() => handleAddSingleSlot(day.fullDate, slotHour)}
-                      className="relative border-l border-gray-100 min-h-[64px] hover:bg-green-50/60 cursor-pointer transition-colors group"
-                    >
-                      {isHovered && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="flex flex-col items-center gap-1 opacity-60">
-                            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Plus size={12} className="text-primary" />
-                            </div>
-                          </div>
-                        </div>
-                      )}
+            if (info.type === 'booked') {
+              const { booking, isFirst } = info;
+              const isPending = booking.status === 'PENDING';
+              return (
+                <div
+                  key={hourStr}
+                  onClick={() => navigate(`/buddy/dashboard/trips/${booking.id}`)}
+                  className={`p-4.5 rounded-2xl flex flex-col justify-between min-h-[110px] cursor-pointer hover:shadow-premium transition-all relative group overflow-hidden border ${
+                    isPending 
+                    ? 'bg-amber-50 border-amber-200 text-secondary' 
+                    : 'bg-secondary border-secondary text-white'
+                  }`}
+                >
+                  <div className="absolute top-[-20px] right-[-20px] w-16 h-16 opacity-5 bg-white rounded-full"></div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider">
+                      <Clock size={10} /> {hourStr}
                     </div>
-                  );
-                })}
-              </div>
-            </React.Fragment>
-          ))}
+                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                      isPending ? 'bg-amber-500/15 text-amber-600' : 'bg-primary/20 text-primary'
+                    }`}>
+                      {booking.status}
+                    </span>
+                  </div>
+
+                  <div className="mt-4">
+                    <p className={`text-xs font-black tracking-tight leading-snug truncate ${isPending ? 'text-secondary' : 'text-white'}`}>
+                      {booking.title}
+                    </p>
+                    <p className={`text-[10px] font-bold mt-1 ${isPending ? 'text-secondary/50' : 'text-white/60'}`}>
+                      Guest: {booking.traveler}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            if (info.type === 'free') {
+              return (
+                <div
+                  key={hourStr}
+                  className="p-4.5 rounded-2xl bg-green-500/5 border border-green-200/60 flex items-center justify-between min-h-[90px] group transition-all"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-[9px] font-black text-green-600 uppercase tracking-wider">
+                      <Clock size={10} /> {hourStr}
+                    </div>
+                    <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mt-1.5 flex items-center gap-1">
+                      <Check size={12} strokeWidth={2.5} /> Available
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => handleRemoveFreeSlot(info.slot.id)}
+                    className="w-9 h-9 rounded-xl bg-white hover:bg-red-50 text-red-500 border border-gray-100 hover:border-red-200 shadow-sm flex items-center justify-center transition-all cursor-pointer"
+                    title="Remove Slot"
+                  >
+                    <Trash size={14} />
+                  </button>
+                </div>
+              );
+            }
+
+            // Empty slot (click to add available)
+            return (
+              <button
+                key={hourStr}
+                onClick={() => handleAddSingleSlot(selectedDate, slotHour)}
+                className="p-4.5 rounded-2xl bg-white hover:bg-green-500/[0.03] border-2 border-dashed border-gray-200 hover:border-green-300 flex items-center justify-between min-h-[90px] text-left transition-colors cursor-pointer group"
+              >
+                <div className="space-y-1 select-none">
+                  <div className="flex items-center gap-1.5 text-[9px] font-black text-secondary/30 uppercase tracking-wider group-hover:text-green-600/60 transition-colors">
+                    <Clock size={10} /> {hourStr}
+                  </div>
+                  <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest mt-1.5 group-hover:text-green-600 transition-colors">
+                    Click to Open
+                  </p>
+                </div>
+
+                <div className="w-8 h-8 rounded-xl bg-gray-50 group-hover:bg-green-500/10 text-secondary/20 group-hover:text-green-600 flex items-center justify-center transition-colors">
+                  <Plus size={16} />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <span className="text-[9px] font-black text-secondary/30 uppercase tracking-widest block mb-1">This Week</span>
-          <span className="text-2xl font-black text-secondary">{bookings.filter(b => weekDays.some(d => d.fullDate === b.date)).length}</span>
-          <span className="text-xs text-secondary/40 font-bold block">Bookings</span>
-        </div>
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <span className="text-[9px] font-black text-secondary/30 uppercase tracking-widest block mb-1">Free Slots</span>
-          <span className="text-2xl font-black text-green-500">{generatedSlots.filter(s => weekDays.some(d => d.fullDate === s.date)).length}</span>
-          <span className="text-xs text-secondary/40 font-bold block">This week</span>
-        </div>
-        <div className="bg-secondary rounded-2xl p-6 shadow-sm">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Total Trips</span>
-          <span className="text-2xl font-black text-white">{bookings.length}</span>
-          <span className="text-xs text-white/40 font-bold block">All time</span>
-        </div>
-      </div>
-
-      {/* Quick Add Modal */}
+      {/* Bulk Slot Add Modal */}
       {showQuickAdd && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-secondary/80 backdrop-blur-sm" onClick={() => setShowQuickAdd(false)}></div>
-          <div className="bg-white rounded-[48px] p-12 max-w-2xl w-full relative z-10 shadow-2xl space-y-8">
-            <div className="flex justify-between items-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-secondary/70 backdrop-blur-sm" onClick={() => setShowQuickAdd(false)}></div>
+          <div className="bg-white rounded-[32px] p-8 max-w-lg w-full relative z-10 shadow-2xl space-y-6">
+            <div className="flex justify-between items-center border-b border-gray-50 pb-4">
               <div>
-                <h3 className="text-3xl font-black text-secondary tracking-tighter italic">Quick Add Slots</h3>
-                <p className="text-secondary/40 font-bold text-xs">Generate multiple available slots instantly.</p>
+                <h3 className="text-lg font-black text-secondary tracking-tight">Bulk Add Blocks</h3>
+                <p className="text-[9px] font-bold text-secondary/40 uppercase tracking-widest">Generate available slots over date range</p>
               </div>
-              <button onClick={() => setShowQuickAdd(false)} className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-secondary/40 hover:text-primary transition-all border-none">
-                <X size={24} />
+              <button 
+                onClick={() => setShowQuickAdd(false)} 
+                className="w-8 h-8 bg-surface rounded-xl flex items-center justify-center text-secondary/35 hover:text-primary transition-colors border-none cursor-pointer"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">Start Date</label>
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                    className="w-full bg-surface border-none rounded-2xl px-6 py-4 text-sm font-bold text-secondary focus:ring-2 focus:ring-primary outline-none" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black text-secondary uppercase tracking-wider ml-1">Start Date</label>
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10" 
+                  />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">End Date</label>
-                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                    className="w-full bg-surface border-none rounded-2xl px-6 py-4 text-sm font-bold text-secondary focus:ring-2 focus:ring-primary outline-none" />
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black text-secondary uppercase tracking-wider ml-1">End Date</label>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10" 
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">Days of Week</label>
-                <div className="flex gap-2 flex-wrap">
+              <div className="space-y-1.5">
+                <label className="text-[8px] font-black text-secondary uppercase tracking-wider ml-1">Days of Week</label>
+                <div className="flex gap-1.5 flex-wrap">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                    <button key={day} onClick={() => handleDaySelect(index)}
-                      className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border-none ${selectedDays.includes(index) ? 'bg-secondary text-white shadow-lg' : 'bg-surface text-secondary/40 hover:bg-gray-100'}`}>
+                    <button 
+                      key={day} 
+                      onClick={() => handleDaySelect(index)}
+                      className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
+                        selectedDays.includes(index) 
+                        ? 'bg-secondary text-white shadow-sm' 
+                        : 'bg-surface text-secondary/40 hover:bg-gray-100'
+                      }`}
+                    >
                       {day}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 pb-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">From</label>
-                  <select value={timeFrom} onChange={e => setTimeFrom(e.target.value)}
-                    className="w-full bg-surface border-none rounded-2xl px-6 py-4 text-sm font-bold text-secondary focus:ring-2 focus:ring-primary outline-none cursor-pointer">
+              <div className="grid grid-cols-2 gap-4 pb-2">
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black text-secondary uppercase tracking-wider ml-1">Time From</label>
+                  <select 
+                    value={timeFrom} 
+                    onChange={e => setTimeFrom(e.target.value)}
+                    className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none cursor-pointer"
+                  >
                     {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">To</label>
-                  <select value={timeTo} onChange={e => setTimeTo(e.target.value)}
-                    className="w-full bg-surface border-none rounded-2xl px-6 py-4 text-sm font-bold text-secondary focus:ring-2 focus:ring-primary outline-none cursor-pointer">
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black text-secondary uppercase tracking-wider ml-1">Time To</label>
+                  <select 
+                    value={timeTo} 
+                    onChange={e => setTimeTo(e.target.value)}
+                    className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none cursor-pointer"
+                  >
                     {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
               </div>
 
-              <button onClick={generateSlots}
+              <button 
+                onClick={generateSlots}
                 disabled={!startDate || !endDate || selectedDays.length === 0}
-                className="w-full bg-primary text-white py-5 rounded-[24px] font-black text-[12px] uppercase tracking-widest shadow-primary-glow hover:scale-[1.02] active:scale-95 transition-all border-none disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed">
+                className="w-full bg-primary hover:bg-primary-dark disabled:bg-secondary/20 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-sm transition-all border-none cursor-pointer disabled:cursor-not-allowed"
+              >
                 Generate Free Slots
               </button>
             </div>

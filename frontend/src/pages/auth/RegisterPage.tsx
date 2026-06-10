@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Compass, Shield, Star, Facebook, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Compass, Shield, Star, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
@@ -77,7 +77,7 @@ const RegisterPage: React.FC = () => {
       <div className="max-w-6xl w-full flex flex-col lg:flex-row-reverse gap-12 items-center">
         
         {/* Left Side - Register Form Card */}
-        <div className="w-full lg:w-[480px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[720px]">
+        <div className="w-full lg:w-[480px] bg-white rounded-[40px] p-8 sm:p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[620px] md:min-h-[720px]">
           <div className="mb-10">
             <Link to="/" className="inline-flex items-center gap-2 group transition-all hover:opacity-80">
               <div className="w-10 h-10 bg-[#FF7E4B] rounded-xl flex items-center justify-center text-white shadow-[0_4px_12px_rgba(255,126,75,0.3)] group-hover:scale-105 transition-transform">
@@ -320,14 +320,16 @@ const RegisterPage: React.FC = () => {
                   <div className="flex-grow border-t border-[#E5E7EB]"></div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <button className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5">
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = `/oauth2/authorization/google`;
+                    }}
+                    className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  >
                     <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
                     <span className="text-sm">Google</span>
-                  </button>
-                  <button className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5">
-                    <Facebook size={20} className="text-[#1877F2] fill-[#1877F2]" />
-                    <span className="text-sm">Facebook</span>
                   </button>
                 </div>
               </>

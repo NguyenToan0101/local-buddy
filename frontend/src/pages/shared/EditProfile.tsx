@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, User, Sparkles, Loader2 } from 'lucide-react';
-import Button from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import SmartSelect from '../../components/ui/SmartSelect';
 import { touristProfileService } from '../../services/tourist-profile';
+import { authService } from '../../services/auth';
 import { COUNTRIES, COMMON_LANGUAGES, COMMON_INTERESTS } from '../../types/tourist-profile';
 import type { TouristProfileRequest, TouristProfileResponse } from '../../types/tourist-profile';
 
@@ -45,6 +45,7 @@ const EditProfile: React.FC = () => {
   const [touristProfile, setTouristProfile] = useState<TouristProfileResponse | null>(null);
   const [hasTouristProfile, setHasTouristProfile] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   // Load tourist profile data
   useEffect(() => {
@@ -99,47 +100,14 @@ const EditProfile: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const compressImage = (base64Str: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = base64Str;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 400;
-        const MAX_HEIGHT = 400;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // Compress to 70% quality
-      };
-    });
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Str = reader.result as string;
-        const compressed = await compressImage(base64Str);
-        setFormData(prev => ({ ...prev, avatar: compressed }));
-      };
-      reader.readAsDataURL(file);
+      if (formData.avatar.startsWith('blob:')) {
+        URL.revokeObjectURL(formData.avatar);
+      }
+      setAvatarFile(file);
+      setFormData(prev => ({ ...prev, avatar: URL.createObjectURL(file) }));
     }
   };
 
@@ -147,9 +115,15 @@ const EditProfile: React.FC = () => {
     if (!user) return;
     try {
       // Prepare user data (only basic fields that exist in User entity)
+      let avatarUrl = formData.avatar;
+      if (avatarFile) {
+        const uploadedUser = await authService.uploadAvatar(avatarFile);
+        avatarUrl = uploadedUser.avatar || avatarUrl;
+      }
+
       const userPayload: any = {
         name: formData.name,
-        avatar: formData.avatar,
+        avatar: avatarUrl,
         phone: formData.phone
       };
 
@@ -220,6 +194,10 @@ const EditProfile: React.FC = () => {
                     src={formData.avatar || `https://i.pravatar.cc/200?u=${user.id}`}
                     alt="Profile"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.src = `https://i.pravatar.cc/200?u=${user.id}`;
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Camera className="text-white" size={32} />
@@ -233,7 +211,7 @@ const EditProfile: React.FC = () => {
                   ref={fileInputRef}
                   onChange={handleFileChange}
                   className="hidden"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
                 />
               </div>
 
@@ -244,20 +222,21 @@ const EditProfile: React.FC = () => {
                 </p>
               </div>
 
-              <div className="w-full pt-10 space-y-4">
-                <Button
+              <div className="w-full pt-8 space-y-3">
+                <button
+                  type="button"
                   onClick={handleSave}
-                  className="w-full py-5 shadow-primary-glow text-[11px] font-black uppercase tracking-[0.2em] rounded-24 transition-all hover:scale-[1.02] active:scale-95"
+                  className="w-full btn-primary"
                 >
                   Save Changes
-                </Button>
-                <Button
-                  variant="ghost"
+                </button>
+                <button
+                  type="button"
                   onClick={() => navigate('/traveller/profile')}
-                  className="w-full py-5 border-2 border-gray-100 hover:bg-white text-[11px] font-black uppercase tracking-[0.2em] rounded-24 transition-all"
+                  className="w-full btn-ghost"
                 >
                   Discard
-                </Button>
+                </button>
               </div>
             </div>
 

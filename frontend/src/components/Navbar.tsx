@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Compass, MessageSquare, Bell, Calendar } from 'lucide-react';
+import { Compass, Bell } from 'lucide-react';
 import Button from './ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
@@ -16,7 +16,13 @@ const Navbar: React.FC = () => {
   const [activeBooking, setActiveBooking] = useState<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const hideMarketingLinks = location.pathname.startsWith('/traveller/');
+  const isTraveler = user?.role === 'TRAVELER';
+  const isBuddy = user?.role === 'BUDDY';
+  const isAdmin = user?.role === 'ADMIN';
+  const homePath = isBuddy ? '/buddy/dashboard' : isAdmin ? '/admin/dashboard' : user ? '/traveller/home' : '/';
+  const messagesPath = isBuddy ? '/buddy/dashboard/messages' : '/traveller/messages';
+  const profilePath = isBuddy ? '/buddy/dashboard/settings' : isAdmin ? '/admin/dashboard' : '/traveller/profile';
+  const hideMarketingLinks = user || location.pathname.startsWith('/traveller/');
 
   const handleLogout = () => {
     logout();
@@ -34,7 +40,7 @@ const Navbar: React.FC = () => {
     try {
       await bookingService.updateMeetupStatus(activeBooking.id, 'IN_PROGRESS');
       setShowScanner(false);
-      navigate(`/traveller/experience/live/${activeBooking.id}`);
+      navigate(isBuddy ? `/buddy/live/${activeBooking.id}` : `/traveller/experience/live/${activeBooking.id}`);
     } catch (error) {
       console.error("Error starting trip from scanner:", error);
     }
@@ -53,9 +59,9 @@ const Navbar: React.FC = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-gray-50 shadow-premium">
-      <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16">
-        <div className="flex justify-between items-center h-24">
-          <Link to={user ? "/traveller/home" : "/"} className="flex items-center gap-3 transition-transform hover:-translate-y-0.5">
+      <div className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 relative">
+        <div className="flex items-center justify-between h-24">
+          <Link to={homePath} className="flex items-center gap-3 transition-transform hover:-translate-y-0.5">
             <div className="w-12 h-12 bg-primary rounded-[18px] flex items-center justify-center text-white shadow-primary-glow">
               <Compass size={28} strokeWidth={2.5} />
             </div>
@@ -63,12 +69,14 @@ const Navbar: React.FC = () => {
           </Link>
 
           <div className="hidden md:flex items-center gap-10">
-            <Link
-              to={user ? "/traveller/buddies" : "/login"}
-              className="text-[11px] font-black text-secondary/40 hover:text-primary uppercase tracking-[0.25em] transition-all"
-            >
-              Explore
-            </Link>
+            {(!user || isTraveler) && (
+              <Link
+                to={user ? "/traveller/buddies" : "/login"}
+                className="text-[11px] font-black text-secondary/40 hover:text-primary uppercase tracking-[0.25em] transition-all"
+              >
+                Explore
+              </Link>
+            )}
             {!hideMarketingLinks && (
               <a
                 href="/#how-it-works"
@@ -81,14 +89,14 @@ const Navbar: React.FC = () => {
             {user && (
               <>
                 <Link
-                  to={user.role === 'BUDDY' ? "/buddy/dashboard" : "/traveller/booking"}
+                  to={isBuddy ? "/buddy/dashboard/trips" : isAdmin ? "/admin/dashboard" : "/traveller/booking"}
                   className="text-[11px] font-black text-secondary/40 hover:text-primary uppercase tracking-[0.25em] transition-all"
                 >
-                  My Bookings
+                  {isBuddy ? 'Trips' : isAdmin ? 'Admin' : 'My Bookings'}
                 </Link>
 
                 <Link
-                  to="/traveller/messages"
+                  to={messagesPath}
                   className="text-[11px] font-black text-secondary/40 hover:text-primary uppercase tracking-[0.2em] transition-all relative group"
                 >
                   Messages
@@ -118,36 +126,72 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-6">
-            {user ? (
-              <div className="flex items-center gap-4">
-                <div className="text-right hidden sm:block">
-                  <Link to={user.role === 'BUDDY' ? "/buddy/dashboard" : "/traveller/profile"} className="block hover:text-primary transition-colors">
-                    <p className="text-xs font-black text-secondary uppercase tracking-widest">{user.name}</p>
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-tighter">{user.role}</p>
-                  </Link>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-surface-dark overflow-hidden border-2 border-primary/10">
-                  <img src={user.avatar || `https://i.pravatar.cc/100?u=${user.id}`} alt={user.name} />
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-secondary/40 hover:text-red-500 transition-colors">
-                  Logout
-                </Button>
+          <div className="flex items-center gap-4">
+            {/* Show notifications for logged-in mobile users directly in navbar header */}
+            {user && (
+              <div ref={containerRef} className="relative md:hidden">
+                <button
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  className={`w-10 h-10 rounded-2xl border border-gray-200 bg-white text-secondary/60 hover:text-primary transition-all flex items-center justify-center relative`}
+                >
+                  <Bell size={18} />
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full shadow-sm"></span>
+                </button>
+                <NotificationPopover
+                  isOpen={isNotifOpen}
+                  onClose={() => setIsNotifOpen(false)}
+                  onScanStart={handleScanStart}
+                />
               </div>
-            ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" className="text-[11px] font-black text-secondary/60 hover:text-primary uppercase tracking-[0.2em]">Sign In</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="bg-primary text-white px-10 py-4 text-xs font-black uppercase tracking-widest shadow-primary-glow scale-105">Get Started</Button>
-                </Link>
-              </>
+            )}
+
+            <div className="hidden sm:flex items-center gap-6">
+              {user ? (
+                <>
+                  <div className="text-right hidden sm:block">
+                    <Link to={profilePath} className="block hover:text-primary transition-colors">
+                      <p className="text-xs font-black text-secondary uppercase tracking-widest">{user.name}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-tighter">{user.role}</p>
+                    </Link>
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-surface-dark overflow-hidden border-2 border-primary/10">
+                    <img
+                      src={user.avatar || `https://i.pravatar.cc/100?u=${user.id}`}
+                      alt={user.name}
+                      referrerPolicy="no-referrer"
+                      onError={(event) => {
+                        event.currentTarget.src = `https://i.pravatar.cc/100?u=${user.id}`;
+                      }}
+                    />
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={handleLogout} className="text-secondary/40 hover:text-red-500 transition-colors">
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login">
+                    <Button variant="ghost" className="text-[11px] font-black text-secondary/60 hover:text-primary uppercase tracking-[0.2em]">Sign In</Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button className="bg-primary text-white px-10 py-4 text-xs font-black uppercase tracking-widest shadow-primary-glow scale-105">Get Started</Button>
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Quick Login button on Mobile for Guests */}
+            {!user && (
+              <Link to="/login" className="sm:hidden">
+                <Button size="sm" className="bg-primary text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 rounded-xl">
+                  Sign In
+                </Button>
+              </Link>
             )}
           </div>
         </div>
       </div>
-      
+
       <ScannerModal 
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}

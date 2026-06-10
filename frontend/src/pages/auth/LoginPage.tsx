@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Compass, Star, Facebook } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Compass, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
+import { DEFAULT_ROUTE_BY_ROLE } from '../../utils/authRoutes';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,11 +22,7 @@ const LoginPage: React.FC = () => {
 
     try {
       const loggedInUser = await login(email.trim(), password);
-      if (loggedInUser.role === 'BUDDY') {
-        navigate('/buddy/dashboard');
-      } else {
-        navigate('/traveller/home');
-      }
+      navigate(DEFAULT_ROUTE_BY_ROLE[loggedInUser.role]);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
     } finally {
@@ -38,7 +35,7 @@ const LoginPage: React.FC = () => {
       <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-12 items-center">
 
         {/* Left Side - Login Form Card */}
-        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[640px]">
+        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-auto md:min-h-[640px]">
           <div className="mb-10">
             <Link to="/" className="inline-flex items-center gap-2 group transition-all hover:opacity-80">
               <div className="w-10 h-10 bg-[#FF7E4B] rounded-xl flex items-center justify-center text-white shadow-[0_4px_12px_rgba(255,126,75,0.3)] group-hover:scale-105 transition-transform">
@@ -117,21 +114,17 @@ const LoginPage: React.FC = () => {
             <div className="flex-grow border-t border-[#E5E7EB]"></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <button
               type="button"
               onClick={() => {
                 
                 window.location.href = `/oauth2/authorization/google`;
               }}
-              className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5"
+              className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
               <span className="text-sm">Google</span>
-            </button>
-            <button className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5">
-              <Facebook size={20} className="text-[#1877F2] fill-[#1877F2]" />
-              <span className="text-sm">Facebook</span>
             </button>
           </div>
 

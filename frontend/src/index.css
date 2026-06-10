@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,6 +6,16 @@
 
 @layer base {
   :root {
+    --primary: #ff385c;
+    --primary-dark: #e02447;
+    --secondary: #0f172a;
+    --secondary-light: #1e293b;
+    --secure-green: #10b981;
+    --alert-amber: #f59e0b;
+    --surface-light: #fdfdff;
+    --surface-dark: #f8fafc;
+    --border-color: #f1f5f9;
+
     --admin-bg: #f8fafc;
     --admin-sidebar: #ffffff;
     --admin-card: #ffffff;
@@ -31,12 +41,70 @@
     --admin-input-bg: #0f172a;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply font-sans antialiased;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    @apply antialiased text-secondary bg-[#fdfdff];
+    min-height: 100vh;
+  }
+
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    display: none;
+    pointer-events: none;
   }
 }
 
 @layer components {
+  /* Design System Buttons */
+  .btn-primary {
+    @apply px-6 py-4 bg-primary hover:bg-primary-dark text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-primary-glow hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 flex items-center justify-center gap-2 select-none border-none cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-4 bg-secondary hover:bg-secondary-light text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 flex items-center justify-center gap-2 select-none border-none cursor-pointer;
+  }
+
+  .btn-ghost {
+    @apply px-6 py-4 bg-transparent border-2 border-slate-100 hover:border-primary/20 text-secondary hover:text-primary rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 flex items-center justify-center gap-2 select-none cursor-pointer;
+  }
+
+  /* Premium Form Inputs */
+  .input-premium {
+    @apply w-full bg-slate-50 border border-slate-100 focus:border-primary/10 rounded-2xl px-6 py-4 font-bold text-sm text-secondary shadow-inner focus:shadow-premium hover:bg-white focus:bg-white outline-none focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-secondary/20;
+  }
+
+  /* Badges & Trust Metrics */
+  .badge-trust {
+    @apply px-3 py-1.5 bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-wider rounded-xl border border-emerald-500/20 flex items-center gap-1.5;
+  }
+
+  .badge-warning {
+    @apply px-3 py-1.5 bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase tracking-wider rounded-xl border border-amber-500/20 flex items-center gap-1.5;
+  }
+
+  .badge-danger {
+    @apply px-3 py-1.5 bg-rose-500/10 text-rose-600 text-[10px] font-black uppercase tracking-wider rounded-xl border border-rose-500/20 flex items-center gap-1.5;
+  }
+
+  /* Spacing Grid System Helpers */
+  .layout-gap-y {
+    @apply space-y-6 md:space-y-8;
+  }
+
+  .layout-padding {
+    @apply p-6 md:p-8;
+  }
+
+  /* Admin components */
   .admin-layout-bg {
     background-color: var(--admin-bg);
     color: var(--admin-text-main);
@@ -76,7 +144,7 @@
   .text-admin-muted { color: var(--admin-text-muted); }
   .border-admin { border-color: var(--admin-border); }
   .bg-admin-surface { background-color: var(--admin-surface-muted); }
-}
+
   .heading-mega {
     @apply text-5xl md:text-6xl font-black leading-tight;
   }
@@ -88,6 +156,7 @@
   .heading-section {
     @apply text-2xl md:text-4xl font-black leading-tight;
   }
+}
 
 @layer utilities {
   .text-gradient {

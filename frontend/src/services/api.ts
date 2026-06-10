@@ -6,6 +6,19 @@ const DB_SYNC_KEY = 'mock_db_v1_sync';
 const MESSAGE_CHANNEL = 'local_buddy_messages';
 // const API_BASE_URL = 'http://localhost:8080';
 const API_BASE_URL = '/api';
+
+function getWebSocketUrl(path: string) {
+  const token = localStorage.getItem('token');
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+
+  if (API_BASE_URL.startsWith('http')) {
+    return `${API_BASE_URL.replace(/^http/, 'ws')}${path}${query}`;
+  }
+
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProtocol}//${window.location.host}${API_BASE_URL}${path}${query}`;
+}
+
 function getAuthHeaders(extraHeaders: Record<string, string> = {}) {
   const token = localStorage.getItem('token');
   return {
@@ -87,7 +100,66 @@ export interface Buddy {
   phone?: string;
   idCardFront?: string;
   idCardBack?: string;
-  verificationStatus?: 'verified' | 'pending' | 'unverified';
+  selfieUrl?: string;
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
+  extractedFullName?: string;
+  extractedIdNumber?: string;
+  extractedDateOfBirth?: string;
+  faceMatchScore?: number;
+  livenessScore?: number;
+  verificationScore?: number;
+  rejectionReason?: string;
+  autoVerificationMessage?: string;
+  qualityScore?: number;
+  antiSpoofScore?: number;
+  riskScore?: number;
+  riskReason?: string;
+  duplicateDetected?: boolean;
+  livenessDetails?: string;
+  antiSpoofDetails?: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+type BuddySearchParams = {
+  searchQuery?: string;
+  tags?: string[];
+  rating?: number;
+  page?: number;
+  size?: number;
+};
+
+type ExperienceSearchParams = {
+  searchQuery?: string;
+  tags?: string[];
+  duration?: string | string[];
+  rating?: number;
+  page?: number;
+  size?: number;
+};
+
+function appendSearchParam(params: URLSearchParams, key: string, value: unknown) {
+  if (value === null || value === undefined) return;
+  if (Array.isArray(value)) {
+    const serialized = value
+      .map((item) => String(item).trim())
+      .filter(Boolean)
+      .join(',');
+    if (serialized) params.set(key, serialized);
+    return;
+  }
+  const serialized = String(value).trim();
+  if (serialized) params.set(key, serialized);
+}
+
+function normalizeBookingList(data: any) {
+  return Array.isArray(data) ? data : Array.isArray(data?.content) ? data.content : [];
 }
 
 export const buddyService = {
@@ -100,6 +172,23 @@ export const buddyService = {
       throw new Error('Failed to fetch buddies');
     }
     return await response.json() as Buddy[];
+  },
+  search: async (params: BuddySearchParams = {}) => {
+    const query = new URLSearchParams();
+    appendSearchParam(query, 'searchQuery', params.searchQuery);
+    appendSearchParam(query, 'tags', params.tags);
+    appendSearchParam(query, 'rating', params.rating);
+    appendSearchParam(query, 'page', params.page ?? 0);
+    appendSearchParam(query, 'size', params.size ?? 10);
+
+    const response = await fetch(`${API_BASE_URL}/buddies/search?${query.toString()}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to search buddies');
+    }
+    return await response.json() as PageResponse<Buddy>;
   },
   getById: async (id: string) => {
     const token = localStorage.getItem('token');
@@ -129,15 +218,73 @@ export const buddyService = {
     }
     return await response.json() as Buddy;
   },
+  uploadAvatar: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/avatar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload buddy avatar');
+    }
+    return await response.json() as Buddy;
+  },
+  uploadIdCard: async (id: string, side: 'front' | 'back', file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/id-card/${side}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload ID card image');
+    }
+    return await response.json() as Buddy;
+  },
+  uploadSelfie: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/selfie`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload liveness video');
+    }
+    return await response.json() as Buddy;
+  },
+  getVerificationResult: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/verifications/${id}/result`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch verification result');
+    }
+    return response.json();
+  },
+  retryAutoVerification: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/verifications/${id}/retry-auto-verification`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to retry auto verification');
+    }
+    return response.json() as Promise<Buddy>;
+  },
 };
 
 export const bookingService = {
-  getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/bookings`, {
+  getAll: async (page: number = 0, size: number = 10) => {
+    const response = await fetch(`${API_BASE_URL}/bookings?page=${page}&size=${size}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch bookings');
-    return response.json();
+    return normalizeBookingList(await response.json());
   },
   getById: async (id: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
@@ -155,13 +302,18 @@ export const bookingService = {
     if (!response.ok) throw new Error('Failed to create booking');
     return response.json();
   },
-  getByUserId: async (userId: string) => {
-    const bookings = await bookingService.getAll();
-    return bookings.filter((b: any) => String(b.userId) === String(userId));
+  getMyBookings: async (page: number = 0, size: number = 10) => {
+    const response = await fetch(`${API_BASE_URL}/bookings?page=${page}&size=${size}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch bookings');
+    return normalizeBookingList(await response.json());
   },
-  getByBuddyId: async (buddyId: string) => {
-    const bookings = await bookingService.getAll();
-    return bookings.filter((b: any) => String(b.buddyId) === String(buddyId));
+  getByUserId: async (_userId: string, page: number = 0, size: number = 10) => {
+    return bookingService.getMyBookings(page, size);
+  },
+  getByBuddyId: async (_buddyId: string, page: number = 0, size: number = 10) => {
+    return bookingService.getMyBookings(page, size);
   },
   updateStatus: async (id: string, status: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}/status`, {
@@ -223,24 +375,83 @@ export const paymentService = {
 };
 
 export const userService = {
+  getMe: async () => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch current user');
+    return response.json();
+  },
+  updateMe: async (payload: any) => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error('Failed to update current user');
+    return response.json();
+  },
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'users'));
+    const me = await userService.getMe();
+    return [me];
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const users = ensureArray(db, 'users');
-    const found = getById<any>(users, id);
-    if (!found) throw new Error('User not found');
-    return clone(found);
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('User not found');
+    return response.json();
   },
   patchById: async (id: string, patch: any) => {
-    const db = loadDb();
-    const users = ensureArray(db, 'users');
-    const updated = patchById<any>(users, id, patch);
-    if (!updated) throw new Error('User not found');
-    saveDb(db);
-    return clone(updated);
+    return userService.updateMe(patch);
+  },
+};
+
+export const adminService = {
+  getUsers: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch admin users');
+    return response.json();
+  },
+  getVerifications: async (status?: string) => {
+    const path = status ? `/admin/verifications?status=${encodeURIComponent(status)}` : '/admin/verifications';
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch verification records');
+    return response.json();
+  },
+  getPendingBuddyVerifications: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/buddies/pending`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch pending buddy verifications');
+    return response.json();
+  },
+  updateBuddyVerification: async (buddyId: string, status: 'pending' | 'verified' | 'rejected' | 'manual_approved' | 'manual_rejected' | 'manual_review', reason?: string) => {
+    const response = await fetch(`${API_BASE_URL}/admin/buddies/${buddyId}/verification`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status, reason }),
+    });
+    if (!response.ok) throw new Error('Failed to update buddy verification');
+    return response.json();
+  },
+  getDashboardStats: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch admin dashboard stats');
+    return response.json();
+  },
+  getAllBookings: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/bookings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch all bookings');
+    return response.json();
   },
 };
 
@@ -252,35 +463,54 @@ export const matchService = {
 };
 
 export const earningService = {
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/earnings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch earnings');
+    return response.json();
+  },
+  getSummary: async () => {
+    const response = await fetch(`${API_BASE_URL}/earnings/summary`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch earnings summary');
+    return response.json();
+  },
   getStats: async () => {
-    const db = loadDb();
-    return clone(db.earnings || { transactions: [] });
+    return earningService.getAll();
   },
   setTransactions: async (transactions: any[]) => {
-    const db = loadDb();
-    db.earnings = { ...(db.earnings || {}), transactions };
-    saveDb(db);
-    return clone(db.earnings);
+    return { transactions };
   },
   appendTransaction: async (tx: any) => {
-    const db = loadDb();
-    const current = (db.earnings?.transactions || []) as any[];
-    const next = [...current, tx];
-    db.earnings = { ...(db.earnings || {}), transactions: next };
-    saveDb(db);
-    return clone(db.earnings);
+    const earnings = await earningService.getAll();
+    return {
+      ...earnings,
+      transactions: [...(earnings.transactions || []), tx],
+    };
   },
 };
 
 export const transactionService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone((db.earnings?.transactions || []) as any[]);
+    const response = await fetch(`${API_BASE_URL}/transactions`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch transactions');
+    return response.json();
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const tx = (db.earnings?.transactions || []) as any[];
-    return clone(tx.filter((t: any) => String(t.buddyId) === String(buddyId)));
+    return transactionService.getAll();
+  },
+  createTransaction: async (buddyId: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}/transactions`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ ...data, buddyId }),
+    });
+    if (!response.ok) throw new Error('Failed to create transaction');
+    return response.json();
   },
 };
 
@@ -332,7 +562,7 @@ export const messageService = {
   subscribe: (callback: () => void, onStatusChange?: (connected: boolean) => void) => {
     const token = localStorage.getItem('token');
     if (!token) {
-      return () => {};
+      return () => { };
     }
 
     let closedByClient = false;
@@ -340,12 +570,7 @@ export const messageService = {
     let socket: WebSocket | null = null;
 
     const connect = () => {
-      let wsUrl: string;
-      if (API_BASE_URL.startsWith('http')) {
-        wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/ws/chat?token=${encodeURIComponent(token)}`;
-      } else {
-        wsUrl = `${API_BASE_URL}/ws/chat?token=${encodeURIComponent(token)}`;
-      }
+      const wsUrl = getWebSocketUrl('/ws/chat');
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => onStatusChange?.(true);
@@ -415,50 +640,117 @@ export interface Experience {
 
 export const experienceService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'experiences')) as Experience[];
+    const response = await fetch(`${API_BASE_URL}/experiences`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch experiences');
+    return response.json() as Promise<Experience[]>;
+  },
+  search: async (params: ExperienceSearchParams = {}) => {
+    const query = new URLSearchParams();
+    appendSearchParam(query, 'searchQuery', params.searchQuery);
+    appendSearchParam(query, 'tags', params.tags);
+    appendSearchParam(query, 'duration', params.duration);
+    appendSearchParam(query, 'rating', params.rating);
+    appendSearchParam(query, 'page', params.page ?? 0);
+    appendSearchParam(query, 'size', params.size ?? 10);
+
+    const response = await fetch(`${API_BASE_URL}/experiences/search?${query.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to search experiences');
+    return response.json() as Promise<PageResponse<Experience>>;
   },
   getById: async (id: string) => {
-    const db = loadDb();
-    const exp = getById<Experience>(ensureArray(db, 'experiences'), id);
-    if (!exp) throw new Error('Experience not found');
-    return clone(exp) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Experience not found');
+    return response.json() as Promise<Experience>;
   },
   getByBuddyId: async (buddyId: string) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    return clone(exps.filter((e: any) => String(e.buddyId) === String(buddyId))) as Experience[];
+    const response = await fetch(`${API_BASE_URL}/experiences?buddyId=${encodeURIComponent(buddyId)}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch buddy experiences');
+    return response.json() as Promise<Experience[]>;
   },
   update: async (id: string, data: Partial<Experience>) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    const updated = patchById<Experience>(exps, id, data);
-    if (!updated) throw new Error('Experience not found');
-    saveDb(db);
-    return clone(updated) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update experience');
+    return response.json() as Promise<Experience>;
   },
   create: async (data: Omit<Experience, 'id'>) => {
-    const db = loadDb();
-    const exps = ensureArray(db, 'experiences');
-    const created = { ...data, id: Date.now().toString() };
-    exps.push(created);
-    saveDb(db);
-    return clone(created) as Experience;
+    const response = await fetch(`${API_BASE_URL}/experiences`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create experience');
+    return response.json() as Promise<Experience>;
+  },
+  delete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to delete experience');
+  },
+  uploadImage: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}/image`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Failed to upload experience image');
+    return response.json() as Promise<Experience>;
   },
 };
 
 export const notificationService = {
   getAll: async () => {
-    const db = loadDb();
-    return clone(ensureArray(db, 'notifications'));
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    return response.json();
+  },
+  getById: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Notification not found');
+    return response.json();
+  },
+  create: async (data: any) => {
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create notification');
+    return response.json();
   },
   markAsRead: async (id: string) => {
-    const db = loadDb();
-    const notifs = ensureArray(db, 'notifications');
-    const updated = patchById<any>(notifs, id, { unread: false });
-    if (!updated) throw new Error('Notification not found');
-    saveDb(db);
-    return clone(updated);
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
+    return response.json();
+  },
+  delete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to delete notification');
   },
 };
 

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Compass, Clock, Globe, Check } from 'lucide-react';
 import { experienceService } from '../../services/api';
 import type { Experience } from '../../services/api';
 import Button from '../../components/ui/Button';
-import Navbar from '../../components/Navbar';
 import ExperienceCard from '../../components/features/ExperienceCard';
 import Footer from '../../components/Footer';
+
+const ITEMS_PER_PAGE = 10;
 
 const ExploreExperiences: React.FC = () => {
   const [experiences, setExperiences] = useState<Experience[]>([]);
@@ -14,6 +15,9 @@ const ExploreExperiences: React.FC = () => {
   const [selectedDuration, setSelectedDuration] = useState<string[]>([]);
   const [rating, setRating] = useState(4);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isDurationOpen, setIsDurationOpen] = useState(false);
@@ -22,19 +26,6 @@ const ExploreExperiences: React.FC = () => {
   const durationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchExperiences = async () => {
-      try {
-        const data = await experienceService.getAll();
-        setExperiences(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching experiences:", error);
-        setExperiences([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchExperiences();
-
     const handleClickOutside = (event: MouseEvent) => {
       if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) {
         setIsCategoryOpen(false);
@@ -46,6 +37,41 @@ const ExploreExperiences: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [rating, searchQuery, selectedDuration, selectedTags]);
+
+  useEffect(() => {
+    const fetchExperiences = async () => {
+      setLoading(true);
+      try {
+        const data = await experienceService.search({
+          searchQuery,
+          tags: selectedTags,
+          duration: selectedDuration,
+          rating,
+          page: currentPage,
+          size: ITEMS_PER_PAGE,
+        });
+        setExperiences(Array.isArray(data.content) ? data.content : []);
+        setTotalPages(Math.max(1, data.totalPages || 1));
+        setTotalElements(data.totalElements || 0);
+        if (typeof data.number === 'number' && data.number !== currentPage) {
+          setCurrentPage(data.number);
+        }
+      } catch (error) {
+        console.error("Error fetching experiences:", error);
+        setExperiences([]);
+        setTotalPages(1);
+        setTotalElements(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExperiences();
+  }, [currentPage, rating, searchQuery, selectedDuration, selectedTags]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => 
@@ -59,11 +85,18 @@ const ExploreExperiences: React.FC = () => {
     );
   };
 
+  const goToPreviousPage = () => {
+    setCurrentPage((page) => Math.max(0, page - 1));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((page) => Math.min(totalPages - 1, page + 1));
+  };
+
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
-      <Navbar />
       
-      <main className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 pt-32 pb-20 space-y-12">
+      <main className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 pt-6 pb-20 space-y-12">
         
         {/* Banner Section */}
         <div className="bg-white rounded-[64px] p-16 shadow-premium border border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-10 relative overflow-hidden">
@@ -81,16 +114,19 @@ const ExploreExperiences: React.FC = () => {
                  <h1 className="text-6xl md:text-7xl font-black tracking-tighter italic">
                     <span className="text-secondary">Recent</span> <span className="text-primary not-italic">Experiences</span>
                  </h1>
+                 <p className="text-secondary/40 font-bold text-xl tracking-tight">
+                    Found <span className="text-secondary font-black">{totalElements} experiences</span>
+                 </p>
               </div>
            </div>
         </div>
 
         {/* PROPERLY ALIGNED Horizontal Filter Bar */}
-        <div className="bg-white/90 backdrop-blur-2xl rounded-full p-2.5 shadow-premium border border-gray-50 flex items-center gap-3 sticky top-28 z-40 max-w-7xl mx-auto h-20">
+        <div className="bg-white/90 backdrop-blur-2xl rounded-full p-4 shadow-premium border border-gray-50 flex flex-col sm:flex-row flex-wrap items-center justify-between gap-3 sticky top-28 z-40 max-w-7xl mx-auto">
            
            {/* Search Input - Strict Height */}
-           <div className="relative flex-1 group min-w-[240px] h-full">
-              <div className="absolute left-6 top-1/2 -translate-y-1/2 text-secondary/20 group-focus-within:text-primary transition-all z-10">
+           <div className="relative flex-1 group min-w-[240px] h-14">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20 group-focus-within:text-primary transition-all z-10">
                  <Search size={22} strokeWidth={2.5} />
               </div>
               <input 
@@ -98,17 +134,17 @@ const ExploreExperiences: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="SEARCH EXPERIENCES, TOPICS..." 
-                className="w-full h-full bg-surface-dark border-2 border-transparent focus:border-primary/10 rounded-full pl-16 pr-6 font-black text-[11px] uppercase tracking-widest text-secondary outline-none transition-all placeholder:text-secondary/20"
+                className="w-full h-full bg-surface-dark border-2 border-transparent focus:border-primary/10 rounded-full pl-14 pr-6 font-black text-[11px] uppercase tracking-widest text-secondary outline-none transition-all placeholder:text-secondary/20"
               />
            </div>
 
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Category Dropdown - Strict Height */}
-           <div className="relative h-full" ref={categoryRef}>
+           <div className="relative h-14" ref={categoryRef}>
               <button 
                 onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsDurationOpen(false); }}
-                className={`h-full flex items-center gap-5 px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedTags.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
+                className={`h-14 flex items-center gap-4 px-5 sm:px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedTags.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
               >
                  <Filter size={18} strokeWidth={2.5} className={selectedTags.length > 0 ? 'text-primary' : 'text-secondary/30'} />
                  <span>{selectedTags.length > 0 ? `${selectedTags.length} CATEGORIES` : 'CATEGORIES'}</span>
@@ -140,10 +176,10 @@ const ExploreExperiences: React.FC = () => {
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Duration Dropdown - Strict Height */}
-           <div className="relative h-full" ref={durationRef}>
+           <div className="relative h-14" ref={durationRef}>
               <button 
                 onClick={() => { setIsDurationOpen(!isDurationOpen); setIsCategoryOpen(false); }}
-                className={`h-full flex items-center gap-5 px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedDuration.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
+                className={`h-14 flex items-center gap-4 px-5 sm:px-10 rounded-full border border-transparent transition-all font-black text-[11px] uppercase tracking-widest whitespace-nowrap ${selectedDuration.length > 0 ? 'bg-primary/5 text-primary shadow-sm' : 'bg-surface-dark text-secondary/40 hover:bg-gray-100'}`}
               >
                  <Clock size={18} strokeWidth={2.5} className={selectedDuration.length > 0 ? 'text-primary' : 'text-secondary/30'} />
                  <span>{selectedDuration.length > 0 ? selectedDuration[0].toUpperCase() : 'DURATION'}</span>
@@ -174,7 +210,7 @@ const ExploreExperiences: React.FC = () => {
            <div className="h-10 w-px bg-gray-100 hidden lg:block"></div>
 
            {/* Rating Filter - Strict Height */}
-           <div className="h-full bg-surface-dark px-10 rounded-full flex items-center gap-8 border border-transparent hover:border-gray-100 transition-all group">
+           <div className="h-14 bg-surface-dark px-5 sm:px-10 rounded-full flex items-center gap-5 border border-transparent hover:border-gray-100 transition-all group">
               <div className="flex items-center gap-1.5">
                  {[1, 2, 3, 4, 5].map(star => (
                     <button key={star} onClick={() => setRating(star)} className="transition-transform active:scale-125">
@@ -186,7 +222,7 @@ const ExploreExperiences: React.FC = () => {
            </div>
 
            {/* SEARCH Button - Precise height and shadow to match sample */}
-           <button className="h-full bg-primary text-white px-14 rounded-full font-black text-[13px] uppercase tracking-[0.25em] shadow-primary-glow flex items-center justify-center hover:scale-[1.03] active:scale-95 transition-all outline-none">
+           <button className="h-14 bg-primary text-white px-8 sm:px-14 rounded-full font-black text-[13px] uppercase tracking-[0.25em] shadow-primary-glow flex items-center justify-center hover:scale-[1.03] active:scale-95 transition-all outline-none w-full sm:w-auto">
               SEARCH
            </button>
         </div>
@@ -208,18 +244,29 @@ const ExploreExperiences: React.FC = () => {
 
         {/* Pagination */}
         <div className="flex justify-center items-center gap-4 pt-20">
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all rotate-180 hover:shadow-premium group">
+           <button
+             onClick={goToPreviousPage}
+             disabled={currentPage === 0}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all rotate-180 group ${currentPage === 0 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:-translate-x-1 transition-transform" strokeWidth={3} />
            </button>
-           <div className="flex gap-4">
-              {[1, 2, 3].map(page => (
-                 <button key={page} className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === 1 ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}>
-                    {page}
+           <div className="flex gap-4 flex-wrap justify-center">
+              {Array.from({ length: totalPages }, (_, index) => index).map(page => (
+                 <button
+                   key={page}
+                   onClick={() => setCurrentPage(page)}
+                   className={`w-16 h-16 flex items-center justify-center rounded-[24px] font-black text-base transition-all ${page === currentPage ? 'bg-primary text-white shadow-primary-glow scale-110' : 'bg-white text-secondary/40 hover:text-secondary border border-gray-100'}`}
+                 >
+                    {page + 1}
                  </button>
               ))}
-              <span className="flex items-center text-secondary/20 font-black px-2 tracking-[0.5em] text-xl">...</span>
            </div>
-           <button className="w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 text-secondary/40 hover:text-primary hover:border-primary transition-all hover:shadow-premium group">
+           <button
+             onClick={goToNextPage}
+             disabled={currentPage >= totalPages - 1}
+             className={`w-16 h-16 flex items-center justify-center rounded-full bg-white border border-gray-100 transition-all group ${currentPage >= totalPages - 1 ? 'text-secondary/10 cursor-not-allowed' : 'text-secondary/40 hover:text-primary hover:border-primary hover:shadow-premium'}`}
+           >
               <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
            </button>
         </div>

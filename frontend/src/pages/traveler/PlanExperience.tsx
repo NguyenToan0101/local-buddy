@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Send, MessageSquare, Coffee, Utensils, ShoppingBag, Map, Bell, ArrowLeft, ChevronDown, Heart, Star, ShieldCheck } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,9 +20,8 @@ const PlanExperience: React.FC = () => {
 
    return (
       <div className="min-h-screen bg-[#FBFBFC] flex flex-col">
-         <Navbar />
 
-         <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto w-full">
+         <main className="pt-6 pb-20 px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto w-full">
             {/* Breadcrumbs & Navigation */}
             <div className="mb-12 flex justify-between items-center animate-in fade-in slide-in-from-top-4 duration-700">
                <Link to={`/traveller/buddies`} className="group flex items-center gap-3 font-black text-[10px] uppercase tracking-[0.2em] text-secondary/30 hover:text-primary transition-all">

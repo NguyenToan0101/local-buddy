@@ -43,4 +43,35 @@ public class EmailService {
             System.out.println("========================================================\n");
         }
     }
+
+    public void sendPasswordResetEmail(String toEmail, String resetLink) {
+        String subject = "Local Buddy - Reset Your Password";
+        String body = "<h3>Reset your Local Buddy password</h3>"
+                + "<p>We received a request to reset the password for your account.</p>"
+                + "<p><a href=\"" + resetLink + "\" style=\"display:inline-block;background:#FF7E4B;color:#ffffff;padding:12px 18px;border-radius:12px;text-decoration:none;font-weight:700;\">Reset Password</a></p>"
+                + "<p>This link is valid for 30 minutes. If you did not request it, you can ignore this email.</p>"
+                + "<br/>"
+                + "<p>Safe travels,<br/>The Local Buddy Team</p>";
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(body, true);
+
+            mailSender.send(message);
+            System.out.println("====== [EMAIL SERVICE] Password reset email successfully sent to " + toEmail + " ======");
+        } catch (Exception e) {
+            System.err.println("====== [EMAIL SERVICE] FAILED to send password reset email to " + toEmail + " ======");
+            System.err.println("Error details: " + e.getMessage());
+        } finally {
+            System.out.println("\n========================================================");
+            System.out.println("   [LOCAL DEVELOPMENT PASSWORD RESET FALLBACK]");
+            System.out.println("   Email: " + toEmail);
+            System.out.println("   Reset Link: " + resetLink);
+            System.out.println("========================================================\n");
+        }
+    }
 }

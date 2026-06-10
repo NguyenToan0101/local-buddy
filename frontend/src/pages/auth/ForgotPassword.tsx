@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Compass, ArrowLeft, Send, Star } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import { authService } from '../../services/auth';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isSent, setIsSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+      await authService.forgotPassword(email);
       setIsSent(true);
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset link.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,7 +29,7 @@ const ForgotPassword: React.FC = () => {
       <div className="max-w-6xl w-full flex flex-col lg:flex-row gap-12 items-center">
         
         {/* Left Side - Form Card */}
-        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[640px]">
+        <div className="w-full lg:w-[460px] bg-white rounded-[40px] p-8 sm:p-10 lg:p-14 shadow-sm border border-gray-50 flex flex-col justify-center min-h-[560px] md:min-h-[640px]">
           <div className="mb-10">
             <Link to="/" className="inline-flex items-center gap-2 group transition-all hover:opacity-80">
               <div className="w-10 h-10 bg-[#FF7E4B] rounded-xl flex items-center justify-center text-white shadow-[0_4px_12px_rgba(255,126,75,0.3)] group-hover:scale-105 transition-transform">
@@ -43,6 +49,11 @@ const ForgotPassword: React.FC = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-10">
+                {error && (
+                  <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm font-bold text-red-600">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-3">
                   <label className="text-sm font-bold text-[#4B5563] ml-1">Email Address</label>
                   <div className="relative group">

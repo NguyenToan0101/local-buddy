@@ -1,6 +1,6 @@
 import { mockData } from '../mock/mockData';
 
-export type UserRole = 'TRAVELER' | 'BUDDY';
+export type UserRole = 'TRAVELER' | 'BUDDY' | 'ADMIN';
 
 export interface User {
   id: string;
@@ -16,7 +16,7 @@ export interface User {
   description?: string;
   interests?: string[];
   rating?: number;
-  verificationStatus?: 'verified' | 'pending' | 'unverified';
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
 }
 
 export interface AuthResponse {
@@ -30,6 +30,25 @@ const API_BASE_URL = '/api';
 const getDisplayAvatar = (data: any): string | undefined =>
   data.displayAvatarUrl || data.avatar || data.avatarUrl || data.googleAvatarUrl;
 
+const getLoginErrorMessage = (message?: string): string => {
+  const fallback = 'Email or password is incorrect.';
+
+  if (!message) {
+    return fallback;
+  }
+
+  const normalizedMessage = message.toLowerCase();
+  if (
+    normalizedMessage.includes('bad credentials') ||
+    normalizedMessage.includes('invalid email or password') ||
+    normalizedMessage.includes('user not found')
+  ) {
+    return fallback;
+  }
+
+  return message;
+};
+
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -42,7 +61,7 @@ export const authService = {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'Invalid email or password');
+      throw new Error(getLoginErrorMessage(errData.message));
     }
 
     const data = await response.json(); // AuthResponse from backend (token, type, id, email, fullName, avatarUrl, role)
@@ -208,5 +227,66 @@ export const authService = {
       interests: data.interests,
       verificationStatus: data.verificationStatus
     };
+  },
+
+  uploadAvatar: async (file: File): Promise<User> => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/auth/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to upload avatar');
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
+      phone: data.phone,
+      verificationStatus: data.verificationStatus,
+    };
+  },
+
+  forgotPassword: async (email: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to request password reset');
+    }
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to reset password');
+    }
   }
 };
