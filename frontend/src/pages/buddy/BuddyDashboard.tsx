@@ -265,14 +265,7 @@ const BuddyDashboard: React.FC = () => {
                 <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full border border-white group-hover:animate-pulse"></span>
              </button>
 
-             {/* Mobile Logout */}
-             <button 
-               onClick={handleLogout}
-               className="md:hidden w-10 h-10 bg-white hover:bg-red-50 text-secondary/40 hover:text-red-500 rounded-xl border border-gray-100 flex items-center justify-center transition-all hover:shadow-premium cursor-pointer"
-               title="Logout"
-             >
-                <LogOut size={16} />
-             </button>
+
 
              {/* Profile Preview CTA */}
              <Link to="/buddy/preview" className="hidden sm:block">

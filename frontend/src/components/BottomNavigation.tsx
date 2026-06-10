@@ -36,7 +36,7 @@ const BottomNavigation: React.FC = () => {
 
   return (
     <nav className="w-full bg-white/95 backdrop-blur-lg border-t border-gray-100 shadow-[0_-8px_30px_rgb(0,0,0,0.04)] pb-safe shrink-0 z-30">
-      <div className="flex justify-around items-center h-16 px-4">
+      <div className="flex justify-around items-center h-16 px-1 sm:px-4">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -45,12 +45,12 @@ const BottomNavigation: React.FC = () => {
             <Link
               key={item.label}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 h-full py-1.5 transition-all ${
+              className={`flex flex-col items-center justify-center flex-1 h-full py-1.5 transition-all min-w-0 ${
                 isActive ? 'text-primary scale-105' : 'text-secondary/35 hover:text-secondary/60'
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-[9px] font-black uppercase tracking-widest mt-1 ${isActive ? 'font-black' : 'font-bold'}`}>
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-normal sm:tracking-widest mt-1 truncate w-full text-center ${isActive ? 'font-black' : 'font-bold'}`}>
                 {item.label}
               </span>
             </Link>
