@@ -75,6 +75,7 @@ const Checkout: React.FC = () => {
       setProcessing(true);
       const payment = await paymentService.capturePayPalOrder(data.orderID, bookingId);
       console.log("Payment captured:", payment);
+      // Buddy's INCOME earnings transaction is automatically created by the backend
       setTimeout(() => {
         setSuccess(true);
         setProcessing(false);

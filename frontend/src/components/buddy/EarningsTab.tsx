@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Wallet, ArrowUpRight, ArrowDownLeft, TrendingUp, DollarSign, 
-  Calendar, CheckCircle, Search, Filter, X, ArrowRight, 
-  ChevronRight, Award, Landmark, CreditCard, Sparkles, AlertCircle
+  Calendar, CheckCircle, Search, Filter, X, ArrowRight, Clock,
+  ChevronRight, Award, CreditCard, Sparkles, AlertCircle
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { transactionService } from '../../services/api';
+import { payoutRequestService, transactionService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const EarningsTab: React.FC = () => {
@@ -20,11 +20,11 @@ const EarningsTab: React.FC = () => {
   // Withdrawal Modal State
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawMethod, setWithdrawMethod] = useState('bank');
   const [withdrawAccount, setWithdrawAccount] = useState('');
-  const [withdrawName, setWithdrawName] = useState('');
+  const [withdrawBankName, setWithdrawBankName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Load Transactions
   const fetchTransactions = async () => {
@@ -44,15 +44,13 @@ const EarningsTab: React.FC = () => {
 
   // Calculations
   const totalBalance = useMemo(() => {
-    return transactions.reduce((acc, t) => {
-      return t.type === 'income' ? acc + t.amount : acc - t.amount;
-    }, 0);
+    return transactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
   }, [transactions]);
 
   const lifetimeEarnings = useMemo(() => {
     return transactions
       .filter(t => t.type === 'income')
-      .reduce((acc, t) => acc + t.amount, 0);
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0);
   }, [transactions]);
 
   const monthlyEarnings = useMemo(() => {
@@ -79,7 +77,7 @@ const EarningsTab: React.FC = () => {
     return transactions
       .filter(t => {
         if (activeFilter === 'income') return t.type === 'income';
-        if (activeFilter === 'withdrawal') return t.type !== 'income';
+        if (activeFilter === 'withdrawal') return t.type === 'payout';
         return true;
       })
       .filter(t => {
@@ -96,37 +94,33 @@ const EarningsTab: React.FC = () => {
     if (isNaN(amount) || amount <= 0 || amount > totalBalance) return;
 
     setIsProcessing(true);
-    
-    // Simulate Blockchain / Bank settlement processing
-    setTimeout(async () => {
-      try {
-        const payload = {
-          type: 'withdrawal',
-          amount: amount,
-          target: withdrawMethod === 'bank' ? 'Vietcombank' : withdrawMethod === 'momo' ? 'MoMo Wallet' : 'PayPal Payout',
-          activity: `Withdrawal to ${withdrawAccount}`,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-        };
-        
-        // Save to DB
-        await transactionService.createTransaction(user?.id || "1", payload);
-        await fetchTransactions(); // Refresh data
-        
-        setIsProcessing(false);
-        setIsSuccess(true);
-      } catch (err) {
-        console.error("Failed to post withdrawal transaction:", err);
-        setIsProcessing(false);
-      }
-    }, 1500);
+    setSubmitError(null);
+    try {
+      await payoutRequestService.create({
+        amount,
+        bankName: withdrawBankName,
+        bankAccountNumber: withdrawAccount,
+        bankAccountName: user?.name,
+      });
+      setIsSuccess(true);
+    } catch (err: any) {
+      console.error('Failed to submit withdrawal request:', err);
+      setSubmitError(err?.message || 'Failed to submit withdrawal request');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const resetWithdrawForm = () => {
     setShowWithdrawModal(false);
     setWithdrawAmount('');
     setWithdrawAccount('');
-    setWithdrawName('');
+    setWithdrawBankName('');
     setIsSuccess(false);
+    setSubmitError(null);
+    if (isSuccess) {
+      fetchTransactions();
+    }
   };
 
   if (loading) return (
@@ -368,12 +362,12 @@ const EarningsTab: React.FC = () => {
             {/* Success Animation view */}
             {isSuccess ? (
               <div className="py-6 text-center space-y-5 animate-in zoom-in-95 duration-300">
-                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  <CheckCircle size={32} />
+                <div className="w-16 h-16 bg-blue-500/10 text-blue-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <Clock size={32} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-base font-black text-secondary uppercase tracking-wider">Settlement Initiated</h4>
-                  <p className="text-[9px] text-secondary/40 font-bold uppercase tracking-widest">Funds are on the way to your account</p>
+                  <h4 className="text-base font-black text-secondary uppercase tracking-wider">Withdrawal Request Submitted</h4>
+                  <p className="text-[9px] text-secondary/40 font-bold uppercase tracking-widest">Your request is pending admin approval</p>
                 </div>
                 <div className="bg-surface p-4 rounded-2xl border border-gray-50 text-left space-y-2.5">
                   <div className="flex justify-between text-[9px] font-bold text-secondary/60 uppercase">
@@ -381,11 +375,11 @@ const EarningsTab: React.FC = () => {
                     <span className="font-black text-emerald-600">${parseFloat(withdrawAmount).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-[9px] font-bold text-secondary/60 uppercase">
-                    <span>Method:</span>
-                    <span className="font-black text-secondary">{withdrawMethod === 'bank' ? 'Vietcombank' : withdrawMethod === 'momo' ? 'MoMo' : 'PayPal'}</span>
+                    <span>Bank Name:</span>
+                    <span className="font-black text-secondary">{withdrawBankName}</span>
                   </div>
                   <div className="flex justify-between text-[9px] font-bold text-secondary/60 uppercase">
-                    <span>Target Account:</span>
+                    <span>Account Number:</span>
                     <span className="font-black text-secondary">{withdrawAccount}</span>
                   </div>
                 </div>
@@ -414,61 +408,29 @@ const EarningsTab: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Select Payment Method */}
+                  {/* Bank Name Input */}
                   <div className="space-y-1.5">
-                    <label className="text-[8px] font-black text-secondary/50 uppercase tracking-wider ml-1">Payout Method</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { id: 'bank', label: 'Local Bank', icon: Landmark },
-                        { id: 'momo', label: 'MoMo', icon: Wallet },
-                        { id: 'paypal', label: 'PayPal', icon: CreditCard }
-                      ].map((method) => {
-                        const Icon = method.icon;
-                        const selected = withdrawMethod === method.id;
-                        return (
-                          <button
-                            key={method.id}
-                            type="button"
-                            onClick={() => setWithdrawMethod(method.id)}
-                            className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer border-solid bg-white ${
-                              selected
-                              ? 'border-primary bg-primary/[0.02] text-primary'
-                              : 'border-gray-100 text-secondary/40 hover:border-gray-200'
-                            }`}
-                          >
-                            <Icon size={14} />
-                            <span className="text-[8px] font-black uppercase tracking-wider leading-none">{method.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <label className="text-[8px] font-black text-secondary/50 uppercase tracking-wider ml-1">Bank Name</label>
+                    <input 
+                      type="text"
+                      required
+                      value={withdrawBankName}
+                      onChange={e => setWithdrawBankName(e.target.value)}
+                      placeholder="e.g. Vietcombank, ACB, MB Bank"
+                      className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:bg-white uppercase" 
+                    />
                   </div>
 
                   {/* Input Account Number */}
                   <div className="space-y-1.5">
-                    <label className="text-[8px] font-black text-secondary/50 uppercase tracking-wider ml-1">
-                      {withdrawMethod === 'bank' ? 'Account Number' : withdrawMethod === 'momo' ? 'Phone Number' : 'PayPal Email'}
-                    </label>
+                    <label className="text-[8px] font-black text-secondary/50 uppercase tracking-wider ml-1">Bank Account Number</label>
                     <input 
                       type="text"
                       required
                       value={withdrawAccount}
                       onChange={e => setWithdrawAccount(e.target.value)}
-                      placeholder={withdrawMethod === 'bank' ? 'e.g. 1012398485' : withdrawMethod === 'momo' ? 'e.g. 0912345678' : 'e.g. payout@example.com'}
+                      placeholder="e.g. 1012398485"
                       className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:bg-white" 
-                    />
-                  </div>
-
-                  {/* Account Name */}
-                  <div className="space-y-1.5">
-                    <label className="text-[8px] font-black text-secondary/50 uppercase tracking-wider ml-1">Account Holder Name</label>
-                    <input 
-                      type="text"
-                      required
-                      value={withdrawName}
-                      onChange={e => setWithdrawName(e.target.value)}
-                      placeholder="e.g. TOAN NGUYEN"
-                      className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:bg-white uppercase" 
                     />
                   </div>
 
@@ -508,21 +470,28 @@ const EarningsTab: React.FC = () => {
                       <span className="text-[8px] font-black uppercase tracking-wider">Insufficient funds in Escrow Balance</span>
                     </div>
                   )}
+
+                  {submitError && (
+                    <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span className="text-[8px] font-black uppercase tracking-wider">{submitError}</span>
+                    </div>
+                  )}
                 </div>
 
                 <button 
                   type="submit"
-                  disabled={isProcessing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > totalBalance}
+                  disabled={isProcessing || !withdrawAmount || !withdrawBankName || !withdrawAccount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > totalBalance}
                   className="w-full bg-primary hover:bg-primary-dark disabled:bg-secondary/20 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-primary-glow flex items-center justify-center gap-2 border-none cursor-pointer disabled:cursor-not-allowed transition-all"
                 >
                   {isProcessing ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                      Settling Funds...
+                      Submitting Request...
                     </>
                   ) : (
                     <>
-                      Confirm Withdrawal
+                      Submit Withdrawal Request
                     </>
                   )}
                 </button>

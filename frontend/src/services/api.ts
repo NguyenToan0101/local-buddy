@@ -453,6 +453,13 @@ export const adminService = {
     if (!response.ok) throw new Error('Failed to fetch all bookings');
     return response.json();
   },
+  getAllEarningsTransactions: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/earnings/transactions`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch earnings transactions');
+    return response.json();
+  },
 };
 
 export const matchService = {
@@ -492,24 +499,94 @@ export const earningService = {
   },
 };
 
+function normalizeEarningsTransaction(tx: any) {
+  return {
+    ...tx,
+    amount: Number(tx.amount ?? 0),
+    type: tx.type === 'payout' ? 'payout' : 'income',
+  };
+}
+
 export const transactionService = {
   getAll: async () => {
     const response = await fetch(`${API_BASE_URL}/transactions`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch transactions');
-    return response.json();
+    const data = await response.json();
+    return Array.isArray(data) ? data.map(normalizeEarningsTransaction) : [];
   },
-  getByBuddyId: async (buddyId: string) => {
+  getByBuddyId: async (_buddyId: string) => {
     return transactionService.getAll();
   },
-  createTransaction: async (buddyId: string, data: any) => {
+  createTransaction: async (_buddyId: string, data: any) => {
+    // Delegates to payout-requests API for withdrawal requests
     const response = await fetch(`${API_BASE_URL}/transactions`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ ...data, buddyId }),
+      body: JSON.stringify(data),
     });
     if (!response.ok) throw new Error('Failed to create transaction');
+    return response.json();
+  },
+};
+
+export const payoutRequestService = {
+  /** Buddy: submit a withdrawal request */
+  create: async (data: {
+    amount: number;
+    bankName: string;
+    bankAccountNumber: string;
+    bankAccountName?: string;
+  }) => {
+    const response = await fetch(`${API_BASE_URL}/payout-requests`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(errText || 'Failed to submit withdrawal request');
+    }
+    return response.json();
+  },
+
+  /** Admin: get all payout requests */
+  getAll: async () => {
+    const response = await fetch(`${API_BASE_URL}/payout-requests`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch payout requests');
+    return response.json();
+  },
+
+  /** Admin: get PENDING payout requests only */
+  getPending: async () => {
+    const response = await fetch(`${API_BASE_URL}/payout-requests/pending`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch pending payout requests');
+    return response.json();
+  },
+
+  /** Admin: approve a payout request */
+  approve: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/payout-requests/${id}/approve`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to approve payout request');
+    return response.json();
+  },
+
+  /** Admin: reject a payout request */
+  reject: async (id: string, reason: string) => {
+    const response = await fetch(`${API_BASE_URL}/payout-requests/${id}/reject`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error('Failed to reject payout request');
     return response.json();
   },
 };
