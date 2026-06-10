@@ -10,6 +10,8 @@ import localbuddy.backend.repository.UserRepository;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
+import localbuddy.backend.dto.VerificationResultDto;
+import localbuddy.backend.service.verification.VerificationProcessingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +19,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -32,6 +37,8 @@ public class BuddyProfileService {
 
     private final BuddyProfileRepository buddyProfileRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
+    private final VerificationProcessingService verificationProcessingService;
 
     @Transactional(readOnly = true)
     public BuddyProfileDto getProfileByUserId(UUID userId) {
@@ -57,7 +64,12 @@ public class BuddyProfileService {
         // 1. Update User details
         if (dto.getName() != null) user.setFullName(dto.getName());
         if (dto.getPhone() != null) user.setPhone(dto.getPhone());
-        if (dto.getImage() != null) user.setAvatarUrl(dto.getImage());
+        if (dto.getImage() != null) {
+            user.setAvatarUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getImage(),
+                    "local-buddy/users/" + userId + "/avatar"
+            ));
+        }
         user.setUpdatedAt(OffsetDateTime.now());
         userRepository.save(user);
 
@@ -69,18 +81,161 @@ public class BuddyProfileService {
         if (dto.getLanguages() != null) buddyProfile.setLanguages(dto.getLanguages());
         if (dto.getTags() != null) buddyProfile.setTags(dto.getTags());
         if (dto.getInterests() != null) buddyProfile.setInterests(dto.getInterests());
-        if (dto.getIdCardFront() != null) buddyProfile.setIdCardFrontUrl(dto.getIdCardFront());
-        if (dto.getIdCardBack() != null) buddyProfile.setIdCardBackUrl(dto.getIdCardBack());
+        if (dto.getIdCardFront() != null) {
+            buddyProfile.setIdCardFrontUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getIdCardFront(),
+                    "local-buddy/users/" + userId + "/verification"
+            ));
+        }
+        if (dto.getIdCardBack() != null) {
+            buddyProfile.setIdCardBackUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    dto.getIdCardBack(),
+                    "local-buddy/users/" + userId + "/verification"
+            ));
+        }
 
         if (currentUserAdmin && dto.getVerificationStatus() != null) {
             try {
-                buddyProfile.setVerificationStatus(VerificationStatus.valueOf(dto.getVerificationStatus().toUpperCase()));
+                buddyProfile.setVerificationStatus(normalizeManualStatus(dto.getVerificationStatus()));
             } catch (Exception ignored) {}
         }
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
 
         return mapToDto(savedProfile, user);
+    }
+
+    @Transactional
+    public BuddyProfileDto updateAvatar(UUID userId, MultipartFile file, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        User user = buddyProfile.getUser();
+        String avatarUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/avatar");
+        user.setAvatarUrl(avatarUrl);
+        user.setUpdatedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        return mapToDto(buddyProfile, user);
+    }
+
+    @Transactional
+    public BuddyProfileDto updateIdCard(UUID userId, String side, MultipartFile file, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        String normalizedSide = side == null ? "" : side.trim().toLowerCase();
+        String imageUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/verification");
+        if ("front".equals(normalizedSide)) {
+            buddyProfile.setIdCardFrontUrl(imageUrl);
+        } else if ("back".equals(normalizedSide)) {
+            buddyProfile.setIdCardBackUrl(imageUrl);
+        } else {
+            throw new IllegalArgumentException("ID card side must be front or back.");
+        }
+        buddyProfile.setVerificationStatus(hasRequiredVerificationMedia(buddyProfile)
+                ? VerificationStatus.PROCESSING
+                : VerificationStatus.PENDING);
+        buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
+                ? "Verification queued for automatic processing."
+                : "Front ID, back ID, and liveness video are required before auto verification.");
+        buddyProfile.setUpdatedAt(OffsetDateTime.now());
+        BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+        if (hasRequiredVerificationMedia(savedProfile)) {
+            scheduleAutoVerificationAfterCommit(userId);
+        }
+        return mapToDto(savedProfile, savedProfile.getUser());
+    }
+
+    @Transactional
+    public BuddyProfileDto updateSelfie(UUID userId, MultipartFile file, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to update this buddy profile.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        if (!isVideoUpload(file)) {
+            throw new IllegalArgumentException("Liveness verification requires an mp4 or webm video.");
+        }
+        String selfieUrl = isVideoUpload(file)
+                ? cloudinaryService.uploadVideo(file, "local-buddy/users/" + userId + "/verification")
+                : cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/verification");
+        buddyProfile.setSelfieUrl(selfieUrl);
+        buddyProfile.setVerificationStatus(hasRequiredVerificationMedia(buddyProfile)
+                ? VerificationStatus.PROCESSING
+                : VerificationStatus.PENDING);
+        buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
+                ? "Verification queued for automatic processing."
+                : "Front ID, back ID, and liveness video are required before auto verification.");
+        buddyProfile.setUpdatedAt(OffsetDateTime.now());
+        BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+        if (hasRequiredVerificationMedia(savedProfile)) {
+            scheduleAutoVerificationAfterCommit(userId);
+        }
+        return mapToDto(savedProfile, savedProfile.getUser());
+    }
+
+    @Transactional
+    public BuddyProfileDto retryAutoVerification(UUID userId, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to retry this verification.");
+        }
+        BuddyProfile buddyProfile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        if (hasRequiredVerificationMedia(buddyProfile)) {
+            buddyProfile.setVerificationStatus(VerificationStatus.PROCESSING);
+            buddyProfile.setAutoVerificationMessage("Verification queued for automatic processing.");
+            buddyProfile.setUpdatedAt(OffsetDateTime.now());
+            BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+            scheduleAutoVerificationAfterCommit(userId);
+            return mapToDto(savedProfile, savedProfile.getUser());
+        }
+        BuddyProfile processedProfile = verificationProcessingService.process(userId);
+        return mapToDto(processedProfile, processedProfile.getUser());
+    }
+
+    @Transactional(readOnly = true)
+    public VerificationResultDto getVerificationResult(UUID userId, UUID currentUserId, boolean currentUserAdmin) {
+        if (!currentUserAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to view this verification result.");
+        }
+        BuddyProfile profile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        return VerificationResultDto.builder()
+                .status(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "pending")
+                .extractedFullName(profile.getExtractedFullName())
+                .extractedIdNumber(profile.getExtractedIdNumber())
+                .extractedDateOfBirth(profile.getExtractedDateOfBirth())
+                .faceMatchScore(profile.getFaceMatchScore())
+                .livenessScore(profile.getLivenessScore())
+                .verificationScore(profile.getVerificationScore())
+                .rejectionReason(profile.getRejectionReason())
+                .autoVerificationMessage(profile.getAutoVerificationMessage())
+                .qualityScore(profile.getQualityScore())
+                .antiSpoofScore(profile.getAntiSpoofScore())
+                .riskScore(profile.getRiskScore())
+                .riskReason(profile.getRiskReason())
+                .duplicateDetected(profile.getDuplicateDetected())
+                .livenessDetails(profile.getLivenessDetails())
+                .antiSpoofDetails(profile.getAntiSpoofDetails())
+                .build();
+    }
+
+    @Transactional
+    public BuddyProfile applyManualVerification(UUID userId, String status, String reason) {
+        BuddyProfile profile = buddyProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
+        VerificationStatus normalizedStatus = normalizeManualStatus(status);
+        profile.setVerificationStatus(normalizedStatus);
+        profile.setRejectionReason(reason);
+        profile.setUpdatedAt(OffsetDateTime.now());
+        if (isApprovedStatus(normalizedStatus)) {
+            profile.setVerifiedAt(OffsetDateTime.now());
+        }
+        return buddyProfileRepository.save(profile);
     }
 
     @Transactional(readOnly = true)
@@ -173,7 +328,76 @@ public class BuddyProfileService {
                 .phone(user.getPhone())
                 .idCardFront(profile.getIdCardFrontUrl())
                 .idCardBack(profile.getIdCardBackUrl())
+                .selfieUrl(profile.getSelfieUrl())
                 .verificationStatus(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "unverified")
+                .extractedFullName(profile.getExtractedFullName())
+                .extractedIdNumber(profile.getExtractedIdNumber())
+                .extractedDateOfBirth(profile.getExtractedDateOfBirth())
+                .faceMatchScore(profile.getFaceMatchScore())
+                .livenessScore(profile.getLivenessScore())
+                .verificationScore(profile.getVerificationScore())
+                .rejectionReason(profile.getRejectionReason())
+                .autoVerificationMessage(profile.getAutoVerificationMessage())
+                .qualityScore(profile.getQualityScore())
+                .antiSpoofScore(profile.getAntiSpoofScore())
+                .riskScore(profile.getRiskScore())
+                .riskReason(profile.getRiskReason())
+                .duplicateDetected(profile.getDuplicateDetected())
+                .livenessDetails(profile.getLivenessDetails())
+                .antiSpoofDetails(profile.getAntiSpoofDetails())
                 .build();
+    }
+
+    private VerificationStatus normalizeManualStatus(String status) {
+        String normalized = status == null ? "" : status.trim().toUpperCase();
+        return switch (normalized) {
+            case "VERIFIED", "MANUAL_APPROVED" -> VerificationStatus.MANUAL_APPROVED;
+            case "REJECTED", "MANUAL_REJECTED" -> VerificationStatus.MANUAL_REJECTED;
+            case "PENDING" -> VerificationStatus.PENDING;
+            case "MANUAL_REVIEW" -> VerificationStatus.MANUAL_REVIEW;
+            default -> VerificationStatus.valueOf(normalized);
+        };
+    }
+
+    private boolean isApprovedStatus(VerificationStatus status) {
+        return status == VerificationStatus.VERIFIED
+                || status == VerificationStatus.AUTO_APPROVED
+                || status == VerificationStatus.MANUAL_APPROVED;
+    }
+
+    private boolean hasRequiredVerificationMedia(BuddyProfile profile) {
+        return StringUtils.hasText(profile.getIdCardFrontUrl())
+                && StringUtils.hasText(profile.getIdCardBackUrl())
+                && isVideoUrl(profile.getSelfieUrl());
+    }
+
+    private void scheduleAutoVerificationAfterCommit(UUID userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    verificationProcessingService.processAsync(userId);
+                }
+            });
+            return;
+        }
+        verificationProcessingService.processAsync(userId);
+    }
+
+    private boolean isVideoUpload(MultipartFile file) {
+        String contentType = file.getContentType();
+        String filename = file.getOriginalFilename();
+        return (contentType != null && contentType.toLowerCase().startsWith("video/"))
+                || (filename != null && (filename.toLowerCase().endsWith(".mp4") || filename.toLowerCase().endsWith(".webm")));
+    }
+
+    private boolean isVideoUrl(String url) {
+        if (!StringUtils.hasText(url)) {
+            return false;
+        }
+        String normalized = url.toLowerCase();
+        return normalized.contains("/video/upload/")
+                || normalized.contains(".mp4")
+                || normalized.contains(".webm");
     }
 }

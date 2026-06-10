@@ -17,6 +17,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -36,6 +37,7 @@ public class ExperienceService {
     private final ExperienceRepository experienceRepository;
     private final ExperienceImageRepository experienceImageRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     @Transactional(readOnly = true)
     public List<ExperienceDto> getAllExperiences(UUID buddyId) {
@@ -99,6 +101,18 @@ public class ExperienceService {
             saveImage(saved, dto.getImage());
         }
         return mapToDto(saved);
+    }
+
+    @Transactional
+    public ExperienceDto updateExperienceImage(UUID currentUserId, UUID experienceId, MultipartFile file) {
+        Experience experience = getExperienceEntity(experienceId);
+        if (!experience.getTraveler().getId().equals(currentUserId)) {
+            throw new IllegalArgumentException("You are not allowed to update this experience.");
+        }
+        String imageUrl = cloudinaryService.uploadImage(file, "local-buddy/experiences/" + experienceId);
+        experienceImageRepository.deleteByExperienceId(experience.getId());
+        saveImage(experience, imageUrl);
+        return mapToDto(experience);
     }
 
     @Transactional
@@ -202,7 +216,10 @@ public class ExperienceService {
 
         ExperienceImage image = new ExperienceImage();
         image.setExperience(experience);
-        image.setImageUrl(imageUrl.trim());
+        image.setImageUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                imageUrl.trim(),
+                "local-buddy/experiences/" + experience.getId()
+        ));
         image.setDisplayOrder(0);
         image.setCreatedAt(nowInExperienceZone());
         experienceImageRepository.save(image);

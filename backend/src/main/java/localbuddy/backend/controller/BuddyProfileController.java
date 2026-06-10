@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,6 +42,35 @@ public class    BuddyProfileController {
     @PutMapping("/{userId}")
     public ResponseEntity<BuddyProfileDto> updateProfile(@PathVariable UUID userId, @RequestBody BuddyProfileDto dto) {
         return ResponseEntity.ok(buddyProfileService.updateProfile(userId, dto, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @PostMapping(value = "/{userId}/avatar", consumes = "multipart/form-data")
+    public ResponseEntity<BuddyProfileDto> uploadAvatar(@PathVariable UUID userId, @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(buddyProfileService.updateAvatar(userId, file, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @PostMapping(value = "/{userId}/id-card/{side}", consumes = "multipart/form-data")
+    public ResponseEntity<BuddyProfileDto> uploadIdCard(
+            @PathVariable UUID userId,
+            @PathVariable String side,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(buddyProfileService.updateIdCard(userId, side, file, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @PostMapping(value = "/{userId}/selfie", consumes = "multipart/form-data")
+    public ResponseEntity<BuddyProfileDto> uploadSelfie(@PathVariable UUID userId, @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(buddyProfileService.updateSelfie(userId, file, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @GetMapping("/{userId}/verification/result")
+    public ResponseEntity<?> getVerificationResult(@PathVariable UUID userId) {
+        return ResponseEntity.ok(buddyProfileService.getVerificationResult(userId, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @PostMapping("/{userId}/verification/retry-auto-verification")
+    public ResponseEntity<BuddyProfileDto> retryAutoVerification(@PathVariable UUID userId) {
+        return ResponseEntity.ok(buddyProfileService.retryAutoVerification(userId, getCurrentUserId(), isCurrentUserAdmin()));
     }
 
     @GetMapping

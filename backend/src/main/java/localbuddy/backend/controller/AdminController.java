@@ -15,6 +15,7 @@ import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.BookingService;
+import localbuddy.backend.service.BuddyProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
@@ -42,6 +44,7 @@ public class AdminController {
     private final BuddyProfileRepository buddyProfileRepository;
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
+    private final BuddyProfileService buddyProfileService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
@@ -55,7 +58,18 @@ public class AdminController {
     @GetMapping("/buddies/pending")
     public List<AdminVerificationDto> getPendingBuddies() {
         return buddyProfileRepository.findAll().stream()
-                .filter(profile -> profile.getVerificationStatus() == VerificationStatus.PENDING)
+                .filter(profile -> isManualReviewStatus(profile.getVerificationStatus()))
+                .map(profile -> mapVerification(profile.getUser(), profile))
+                .toList();
+    }
+
+    @GetMapping("/verifications")
+    public List<AdminVerificationDto> getVerifications(@RequestParam(required = false) String status) {
+        VerificationStatus filterStatus = status != null && !status.isBlank()
+                ? VerificationStatus.valueOf(status.trim().toUpperCase())
+                : null;
+        return buddyProfileRepository.findAll().stream()
+                .filter(profile -> filterStatus == null ? isManualReviewStatus(profile.getVerificationStatus()) : profile.getVerificationStatus() == filterStatus)
                 .map(profile -> mapVerification(profile.getUser(), profile))
                 .toList();
     }
@@ -69,9 +83,9 @@ public class AdminController {
                 .users(users.size())
                 .travelers(users.stream().filter(user -> user.getRole() == UserRole.TRAVELER).count())
                 .buddies(users.stream().filter(user -> user.getRole() == UserRole.BUDDY).count())
-                .pendingVerifications(buddyProfiles.stream().filter(profile -> profile.getVerificationStatus() == VerificationStatus.PENDING).count())
-                .verifiedBuddies(buddyProfiles.stream().filter(profile -> profile.getVerificationStatus() == VerificationStatus.VERIFIED).count())
-                .rejectedBuddies(buddyProfiles.stream().filter(profile -> profile.getVerificationStatus() == VerificationStatus.REJECTED).count())
+                .pendingVerifications(buddyProfiles.stream().filter(profile -> isManualReviewStatus(profile.getVerificationStatus())).count())
+                .verifiedBuddies(buddyProfiles.stream().filter(profile -> isApprovedStatus(profile.getVerificationStatus())).count())
+                .rejectedBuddies(buddyProfiles.stream().filter(profile -> isRejectedStatus(profile.getVerificationStatus())).count())
                 .build();
     }
 
@@ -89,12 +103,7 @@ public class AdminController {
             @PathVariable UUID userId,
             @Valid @RequestBody AdminVerificationUpdateRequest request
     ) {
-        BuddyProfile profile = buddyProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
-
-        profile.setVerificationStatus(VerificationStatus.valueOf(request.getStatus().toUpperCase()));
-        profile.setUpdatedAt(OffsetDateTime.now());
-        BuddyProfile saved = buddyProfileRepository.save(profile);
+        BuddyProfile saved = buddyProfileService.applyManualVerification(userId, request.getStatus(), request.getReason());
 
         return mapVerification(saved.getUser(), saved);
     }
@@ -124,10 +133,27 @@ public class AdminController {
                 .docs(AdminVerificationDto.Documents.builder()
                         .front(front)
                         .back(back)
-                        .selfie(firstText(front, avatar))
+                        .selfie(firstText(profile != null ? profile.getSelfieUrl() : null, avatar))
                         .build())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .extractedFullName(profile != null ? profile.getExtractedFullName() : null)
+                .extractedIdNumber(profile != null ? profile.getExtractedIdNumber() : null)
+                .extractedDateOfBirth(profile != null ? profile.getExtractedDateOfBirth() : null)
+                .ocrScore(profile != null ? profile.getOcrScore() : null)
+                .faceMatchScore(profile != null ? profile.getFaceMatchScore() : null)
+                .livenessScore(profile != null ? profile.getLivenessScore() : null)
+                .verificationScore(profile != null ? profile.getVerificationScore() : null)
+                .rejectionReason(profile != null ? profile.getRejectionReason() : null)
+                .autoVerificationMessage(profile != null ? profile.getAutoVerificationMessage() : null)
+                .qualityScore(profile != null ? profile.getQualityScore() : null)
+                .antiSpoofScore(profile != null ? profile.getAntiSpoofScore() : null)
+                .riskScore(profile != null ? profile.getRiskScore() : null)
+                .riskReason(profile != null ? profile.getRiskReason() : null)
+                .duplicateDetected(profile != null ? profile.getDuplicateDetected() : null)
+                .duplicateUserId(profile != null ? profile.getDuplicateUserId() : null)
+                .livenessDetails(profile != null ? profile.getLivenessDetails() : null)
+                .antiSpoofDetails(profile != null ? profile.getAntiSpoofDetails() : null)
                 .build();
     }
 
@@ -147,10 +173,28 @@ public class AdminController {
                 ? profile.getVerificationStatus()
                 : VerificationStatus.PENDING;
         return switch (status) {
-            case VERIFIED -> "Verified";
-            case REJECTED -> "Rejected";
+            case VERIFIED, AUTO_APPROVED, MANUAL_APPROVED -> "Verified";
+            case REJECTED, AUTO_REJECTED, MANUAL_REJECTED -> "Rejected";
+            case PROCESSING -> "Processing";
+            case MANUAL_REVIEW -> "Manual Review";
             case PENDING -> "Pending";
         };
+    }
+
+    private boolean isManualReviewStatus(VerificationStatus status) {
+        return status == VerificationStatus.MANUAL_REVIEW;
+    }
+
+    private boolean isApprovedStatus(VerificationStatus status) {
+        return status == VerificationStatus.VERIFIED
+                || status == VerificationStatus.AUTO_APPROVED
+                || status == VerificationStatus.MANUAL_APPROVED;
+    }
+
+    private boolean isRejectedStatus(VerificationStatus status) {
+        return status == VerificationStatus.REJECTED
+                || status == VerificationStatus.AUTO_REJECTED
+                || status == VerificationStatus.MANUAL_REJECTED;
     }
 
     private String formatDate(OffsetDateTime dateTime) {

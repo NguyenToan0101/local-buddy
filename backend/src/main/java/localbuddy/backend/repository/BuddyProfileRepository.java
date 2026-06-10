@@ -16,6 +16,8 @@ import java.util.UUID;
 public interface BuddyProfileRepository extends JpaRepository<BuddyProfile, UUID>, JpaSpecificationExecutor<BuddyProfile> {
     Optional<BuddyProfile> findByUserId(UUID userId);
 
+    Optional<BuddyProfile> findFirstByExtractedIdNumberAndUser_IdNot(String extractedIdNumber, UUID userId);
+
     @Override
     @EntityGraph(attributePaths = "user")
     Page<BuddyProfile> findAll(Specification<BuddyProfile> specification, Pageable pageable);

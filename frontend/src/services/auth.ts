@@ -16,7 +16,7 @@ export interface User {
   description?: string;
   interests?: string[];
   rating?: number;
-  verificationStatus?: 'verified' | 'pending' | 'unverified';
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
 }
 
 export interface AuthResponse {
@@ -226,6 +226,37 @@ export const authService = {
       languages: data.languages,
       interests: data.interests,
       verificationStatus: data.verificationStatus
+    };
+  },
+
+  uploadAvatar: async (file: File): Promise<User> => {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/auth/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to upload avatar');
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.fullName,
+      role: data.role as UserRole,
+      avatar: getDisplayAvatar(data),
+      googleAvatar: data.googleAvatarUrl,
+      phone: data.phone,
+      verificationStatus: data.verificationStatus,
     };
   },
 

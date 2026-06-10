@@ -154,7 +154,14 @@ const Navbar: React.FC = () => {
                     </Link>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-surface-dark overflow-hidden border-2 border-primary/10">
-                    <img src={user.avatar || `https://i.pravatar.cc/100?u=${user.id}`} alt={user.name} />
+                    <img
+                      src={user.avatar || `https://i.pravatar.cc/100?u=${user.id}`}
+                      alt={user.name}
+                      referrerPolicy="no-referrer"
+                      onError={(event) => {
+                        event.currentTarget.src = `https://i.pravatar.cc/100?u=${user.id}`;
+                      }}
+                    />
                   </div>
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="text-secondary/40 hover:text-red-500 transition-colors">
                     Logout

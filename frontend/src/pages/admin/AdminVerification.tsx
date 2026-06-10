@@ -14,7 +14,7 @@ interface VerificationRecord {
   type: 'Buddy' | 'Traveller' | 'Admin';
   regDate: string;
   docType: 'CCCD' | 'Passport';
-  status: 'Pending' | 'Verified' | 'Rejected';
+  status: 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
   avatar: string;
   docs: {
     front: string | null;
@@ -23,9 +23,24 @@ interface VerificationRecord {
   };
   email: string;
   phone: string | null;
+  extractedFullName?: string | null;
+  extractedIdNumber?: string | null;
+  extractedDateOfBirth?: string | null;
+  faceMatchScore?: number | null;
+  livenessScore?: number | null;
+  verificationScore?: number | null;
+  qualityScore?: number | null;
+  antiSpoofScore?: number | null;
+  riskScore?: number | null;
+  riskReason?: string | null;
+  duplicateDetected?: boolean | null;
+  duplicateUserId?: string | null;
+  rejectionReason?: string | null;
+  autoVerificationMessage?: string | null;
+  ocrScore?: number | null;
 }
 
-type FilterStatus = 'All' | 'Pending' | 'Verified' | 'Rejected';
+type FilterStatus = 'All' | 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
 type TabType = 'Traveller' | 'Buddy';
 
 const AdminVerification: React.FC = () => {
@@ -47,7 +62,7 @@ const AdminVerification: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const data = await adminService.getVerifications();
+        const data = await adminService.getUsers();
         setAllVerifications(data || []);
       } catch (err: any) {
         setError(err.message || 'Failed to load verification records');
@@ -127,6 +142,10 @@ const AdminVerification: React.FC = () => {
   // Get counts for each tab
   const travellerCount = allVerifications.filter((v) => v.type === 'Traveller').length;
   const buddyCount = allVerifications.filter((v) => v.type === 'Buddy').length;
+  const isVideoUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /\/video\/upload\//.test(url) || /\.(mp4|webm)(\?|$)/i.test(url);
+  };
 
   return (
     <AdminLayout>
@@ -162,7 +181,7 @@ const AdminVerification: React.FC = () => {
                 <ChevronDown size={16} className="text-admin-muted group-hover:rotate-180 transition-transform" />
               </button>
               <div className="absolute right-0 mt-3 w-48 admin-glass rounded-2xl shadow-2xl overflow-hidden border border-admin invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 z-50">
-                {(['All', 'Pending', 'Verified', 'Rejected'] as FilterStatus[]).map((f) => (
+                {(['All', 'Pending', 'Processing', 'Manual Review', 'Verified', 'Rejected'] as FilterStatus[]).map((f) => (
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
@@ -282,6 +301,10 @@ const AdminVerification: React.FC = () => {
                             src={record.avatar || `https://i.pravatar.cc/150?u=${record.email}`}
                             className="w-12 h-12 rounded-2xl object-cover shadow-lg group-hover:scale-110 transition-transform"
                             alt={record.name}
+                            referrerPolicy="no-referrer"
+                            onError={(event) => {
+                              event.currentTarget.src = `https://i.pravatar.cc/150?u=${record.email}`;
+                            }}
                           />
                           <div className="space-y-1">
                             <p className="text-sm font-black text-admin-main flex items-center gap-2">
@@ -310,16 +333,20 @@ const AdminVerification: React.FC = () => {
                       </td>
                       <td className="px-8 py-6">
                         <div
-                          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${record.status === 'Pending'
+                          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${record.status === 'Pending' || record.status === 'Manual Review'
                             ? 'bg-amber-100 text-amber-600'
+                            : record.status === 'Processing'
+                              ? 'bg-blue-100 text-blue-600'
                             : record.status === 'Verified'
                               ? 'bg-emerald-100 text-emerald-600'
                               : 'bg-red-100 text-red-600'
                             }`}
                         >
                           <span
-                            className={`w-2 h-2 rounded-full ${record.status === 'Pending'
+                            className={`w-2 h-2 rounded-full ${record.status === 'Pending' || record.status === 'Manual Review'
                               ? 'bg-amber-500 animate-pulse'
+                              : record.status === 'Processing'
+                                ? 'bg-blue-500 animate-pulse'
                               : record.status === 'Verified'
                                 ? 'bg-emerald-500'
                                 : 'bg-red-500'
@@ -419,14 +446,28 @@ const AdminVerification: React.FC = () => {
                             src={selectedUser.avatar}
                             className="w-full h-full object-cover"
                             alt="Profile avatar"
+                            referrerPolicy="no-referrer"
+                            onError={(event) => {
+                              event.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.email}`;
+                            }}
                           />
                         </div>
                         <div className="flex-1 bg-admin-surface overflow-hidden">
-                          <img
-                            src={selectedUser.docs.selfie}
-                            className="w-full h-full object-cover"
-                            alt="Document selfie"
-                          />
+                          {isVideoUrl(selectedUser.docs.selfie) ? (
+                            <video
+                              src={selectedUser.docs.selfie}
+                              className="w-full h-full object-cover"
+                              controls
+                              muted
+                              playsInline
+                            />
+                          ) : (
+                            <img
+                              src={selectedUser.docs.selfie}
+                              className="w-full h-full object-cover"
+                              alt="Document selfie"
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -454,6 +495,10 @@ const AdminVerification: React.FC = () => {
                     src={selectedUser.avatar || `https://i.pravatar.cc/150?u=${selectedUser.email}`}
                     className="w-20 h-20 rounded-3xl object-cover shadow-2xl"
                     alt={selectedUser.name}
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.email}`;
+                    }}
                   />
                   <div>
                     <h4 className="text-xl font-black text-admin-main">{selectedUser.name}</h4>
@@ -483,26 +528,56 @@ const AdminVerification: React.FC = () => {
                     </div>
                   ))}
                 </div>
+
+                <div className="p-6 bg-admin-surface rounded-[32px] border border-admin space-y-4">
+                  <h4 className="text-sm font-black text-admin-main uppercase tracking-[0.2em]">Auto Verification</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: 'Face', value: selectedUser.faceMatchScore },
+                      { label: 'Liveness', value: selectedUser.livenessScore },
+                      { label: 'Quality', value: selectedUser.qualityScore },
+                      { label: 'Anti-spoof', value: selectedUser.antiSpoofScore == null ? null : 100 - selectedUser.antiSpoofScore },
+                      { label: 'OCR', value: selectedUser.ocrScore },
+                      { label: 'Risk', value: selectedUser.riskScore },
+                    ].map((metric) => (
+                      <div key={metric.label} className="rounded-2xl border border-admin bg-admin-sidebar p-4">
+                        <p className="text-[9px] font-black text-admin-muted uppercase tracking-widest">{metric.label}</p>
+                        <p className="text-lg font-black text-admin-main mt-1">{metric.value == null ? '-' : Math.round(metric.value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2 text-xs font-bold text-admin-muted">
+                    <p>OCR name: <span className="text-admin-main">{selectedUser.extractedFullName || '-'}</span></p>
+                    <p>ID number: <span className="text-admin-main">{selectedUser.extractedIdNumber || '-'}</span></p>
+                    <p>DOB: <span className="text-admin-main">{selectedUser.extractedDateOfBirth || '-'}</span></p>
+                    {selectedUser.autoVerificationMessage && <p>{selectedUser.autoVerificationMessage}</p>}
+                    {selectedUser.riskReason && <p>{selectedUser.riskReason}</p>}
+                    {selectedUser.duplicateDetected && (
+                      <p className="text-amber-500">
+                        Duplicate warning: identity overlaps with {selectedUser.duplicateUserId || 'another user'}.
+                      </p>
+                    )}
+                    {selectedUser.rejectionReason && <p className="text-rose-500">{selectedUser.rejectionReason}</p>}
+                  </div>
+                </div>
               </div>
 
-              {/* Only show approve/reject for Buddy with documents */}
-              {selectedUser.type === 'Buddy' && selectedUser.docs.front && selectedUser.docs.back && (
+              {/* Only show approve/reject for Buddy records selected for manual review. */}
+              {selectedUser.type === 'Buddy' && selectedUser.status === 'Manual Review' && selectedUser.docs.front && selectedUser.docs.back && (
                 <div className="pt-10 border-t border-admin space-y-4">
                   {!showRejectForm ? (
                     <>
                       <button
                         onClick={() => handleApprove(selectedUser)}
-                        disabled={selectedUser.status === 'Verified'}
-                        className="w-full h-20 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-20 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all"
                       >
-                        {selectedUser.status === 'Verified' ? 'Already Verified' : 'Approve Match'}
+                        Approve Match
                       </button>
                       <button
                         onClick={() => setShowRejectForm(true)}
-                        disabled={selectedUser.status === 'Rejected'}
-                        className="w-full h-16 admin-btn-muted border border-admin font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-16 admin-btn-muted border border-admin font-black uppercase tracking-widest"
                       >
-                        {selectedUser.status === 'Rejected' ? 'Already Rejected' : 'Decline Entry'}
+                        Decline Entry
                       </button>
                     </>
                   ) : (

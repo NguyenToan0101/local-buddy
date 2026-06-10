@@ -100,7 +100,23 @@ export interface Buddy {
   phone?: string;
   idCardFront?: string;
   idCardBack?: string;
-  verificationStatus?: 'verified' | 'pending' | 'unverified';
+  selfieUrl?: string;
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
+  extractedFullName?: string;
+  extractedIdNumber?: string;
+  extractedDateOfBirth?: string;
+  faceMatchScore?: number;
+  livenessScore?: number;
+  verificationScore?: number;
+  rejectionReason?: string;
+  autoVerificationMessage?: string;
+  qualityScore?: number;
+  antiSpoofScore?: number;
+  riskScore?: number;
+  riskReason?: string;
+  duplicateDetected?: boolean;
+  livenessDetails?: string;
+  antiSpoofDetails?: string;
 }
 
 export interface PageResponse<T> {
@@ -202,6 +218,64 @@ export const buddyService = {
     }
     return await response.json() as Buddy;
   },
+  uploadAvatar: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/avatar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload buddy avatar');
+    }
+    return await response.json() as Buddy;
+  },
+  uploadIdCard: async (id: string, side: 'front' | 'back', file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/id-card/${side}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload ID card image');
+    }
+    return await response.json() as Buddy;
+  },
+  uploadSelfie: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/buddies/${id}/selfie`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to upload liveness video');
+    }
+    return await response.json() as Buddy;
+  },
+  getVerificationResult: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/verifications/${id}/result`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch verification result');
+    }
+    return response.json();
+  },
+  retryAutoVerification: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/verifications/${id}/retry-auto-verification`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to retry auto verification');
+    }
+    return response.json() as Promise<Buddy>;
+  },
 };
 
 export const bookingService = {
@@ -295,8 +369,16 @@ export const userService = {
 };
 
 export const adminService = {
-  getVerifications: async () => {
+  getUsers: async () => {
     const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch admin users');
+    return response.json();
+  },
+  getVerifications: async (status?: string) => {
+    const path = status ? `/admin/verifications?status=${encodeURIComponent(status)}` : '/admin/verifications';
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch verification records');
@@ -309,7 +391,7 @@ export const adminService = {
     if (!response.ok) throw new Error('Failed to fetch pending buddy verifications');
     return response.json();
   },
-  updateBuddyVerification: async (buddyId: string, status: 'pending' | 'verified' | 'rejected', reason?: string) => {
+  updateBuddyVerification: async (buddyId: string, status: 'pending' | 'verified' | 'rejected' | 'manual_approved' | 'manual_rejected' | 'manual_review', reason?: string) => {
     const response = await fetch(`${API_BASE_URL}/admin/buddies/${buddyId}/verification`, {
       method: 'PATCH',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -569,6 +651,17 @@ export const experienceService = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to delete experience');
+  },
+  uploadImage: async (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}/image`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Failed to upload experience image');
+    return response.json() as Promise<Experience>;
   },
 };
 

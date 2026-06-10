@@ -160,6 +160,10 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                                 src={user.avatar}
                                 alt="Avatar"
                                 className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                                onError={(event) => {
+                                    event.currentTarget.style.display = 'none';
+                                }}
                             />
                         ) : (
                             <User size={32} className="text-gray-400" />

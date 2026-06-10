@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import type { User } from '../services/auth';
 import { authService } from '../services/auth';
 
@@ -19,53 +19,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedUser = authService.getCurrentUser();
-    if (savedUser) {
-      setUser(savedUser);
-    }
-    setLoading(false);
+  const clearAuth = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
   }, []);
+
+  const storeAuth = useCallback((nextUser: User, token: string) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    setUser(nextUser);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        clearAuth();
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
+      try {
+        const freshUser = await authService.fetchMe(token);
+        if (!cancelled) {
+          localStorage.setItem('user', JSON.stringify(freshUser));
+          setUser(freshUser);
+        }
+      } catch {
+        if (!cancelled) {
+          clearAuth();
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearAuth]);
 
   const login = async (email: string, password: string) => {
     const { user, token } = await authService.login(email, password);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    storeAuth(user, token);
     return user;
   };
 
-  const loginWithToken = async (token: string) => {
+  const loginWithToken = useCallback(async (token: string) => {
     const user = await authService.fetchMe(token);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    storeAuth(user, token);
     return user;
-  };
+  }, [storeAuth]);
 
   const register = async (userData: any) => {
     const { user, token } = await authService.register(userData);
     if (token === 'OTP_SENT') {
       return { otpRequired: true, email: user.email, name: user.name, role: user.role };
     }
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    storeAuth(user, token);
     return user;
   };
 
   const verifyOtp = async (email: string, otp: string) => {
     const { user, token } = await authService.verifyOtp(email, otp);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setUser(user);
+    storeAuth(user, token);
     return user;
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+    clearAuth();
   };
 
   const updateUser = async (userData: Partial<User>) => {
