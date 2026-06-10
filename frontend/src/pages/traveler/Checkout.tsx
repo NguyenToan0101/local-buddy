@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CreditCard, ShieldCheck, Lock, Bell, User, ArrowLeft, CheckCircle2, ChevronRight, Info } from 'lucide-react';
-import { buddyService } from '../../services/api';
+import { buddyService, paymentService } from '../../services/api';
 import type { Buddy } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { bookingService } from '../../services/api';
+import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
+
 
 const Checkout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const bookingId = location.state?.bookingId;
   
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'apple' | 'google'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'card'>('paypal');
   const [buddy, setBuddy] = useState<Buddy | null>(null);
   const [booking, setBooking] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isAlreadyPaid = booking ? booking.status && booking.status !== 'PENDING' : false;
+  const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +43,7 @@ const Checkout: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching data for checkout:", error);
+        setError("Failed to load booking details");
       } finally {
         setLoading(false);
       }
@@ -46,45 +51,81 @@ const Checkout: React.FC = () => {
     fetchData();
   }, [bookingId]);
 
-  const handleCheckout = async () => {
+  const handleCreateOrder = async () => {
     if (!bookingId) {
-      alert("Demo Mode: Payment successful!");
-      setSuccess(true);
+      setError("Booking ID is required");
       return;
     }
-
-    if (isAlreadyPaid) {
-      return;
+    try {
+      const order = await paymentService.createPayPalOrder(bookingId);
+      return order.id;
+    } catch (error) {
+      console.error("Error creating order:", error);
+        const errorMessage =
+      error instanceof Error
+         ? error.message
+         : "Failed to create payment order";
+      setError(errorMessage);
+      throw error;
     }
+  };
 
+  const handleApprove = async (data: any) => {
     try {
       setProcessing(true);
-      await bookingService.updateStatus(bookingId, 'CONFIRMED');
+      const payment = await paymentService.capturePayPalOrder(data.orderID, bookingId);
+      console.log("Payment captured:", payment);
       setTimeout(() => {
         setSuccess(true);
         setProcessing(false);
       }, 1500);
     } catch (error) {
-      console.error("Error updating booking status:", error);
+      console.error("Error capturing order:", error);
+      setError("Payment capture failed. Please try again.");
       setProcessing(false);
     }
   };
+
+  const handleError = (err: any) => {
+    console.error("PayPal error:", err);
+    setError("Payment failed. Please try again.");
+    setProcessing(false);
+  };
+
+  if (!clientId) {
+    return (
+      <div className="min-h-screen bg-[#FBFBFC] flex flex-col items-center justify-center p-6">
+        <div className="bg-white rounded-[64px] p-16 shadow-premium border border-gray-100 max-w-xl w-full text-center space-y-8">
+          <h2 className="text-4xl font-black text-secondary tracking-tighter">Configuration Error</h2>
+          <p className="text-secondary/40 font-bold">PayPal Client ID is not configured. Please check your environment variables.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
       <div className="min-h-screen bg-[#FBFBFC] flex flex-col items-center justify-center p-6">
         <div className="bg-white rounded-[64px] p-16 shadow-premium border border-gray-100 max-w-xl w-full text-center space-y-8 animate-in zoom-in duration-500">
-           <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto shadow-xl shadow-green-500/20">
-              <CheckCircle2 size={48} />
-           </div>
-           <div className="space-y-4">
-              <h2 className="text-4xl font-black text-secondary tracking-tighter italic">Payment Successful!</h2>
-              <p className="text-secondary/40 font-bold max-w-xs mx-auto italic">Your adventure is now officially confirmed. Your Local Buddy has been notified.</p>
-           </div>
-           <Button className="w-full py-6 rounded-2xl" onClick={() => navigate('/traveller/booking')}>
-              Back to My Bookings
-           </Button>
+          <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto shadow-xl shadow-green-500/20">
+            <CheckCircle2 size={48} />
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-4xl font-black text-secondary tracking-tighter italic">Payment Successful!</h2>
+            <p className="text-secondary/40 font-bold max-w-xs mx-auto italic">Your adventure is now officially confirmed. Your Local Buddy has been notified.</p>
+          </div>
+          <Button className="w-full py-6 rounded-2xl" onClick={() => navigate('/traveller/booking')}>
+            Back to My Bookings
+          </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FBFBFC] flex flex-col items-center justify-center p-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -167,139 +208,146 @@ const Checkout: React.FC = () => {
 
             {/* Payment Methods Section */}
             <section className="space-y-8">
-               <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shadow-primary/5">
-                     <CreditCard size={20} />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shadow-primary/5">
+                  <CreditCard size={20} />
+                </div>
+                <h2 className="text-xl font-black text-secondary tracking-tight">Payment Method</h2>
+              </div>
+
+              {isAlreadyPaid && (
+                <div className="rounded-[32px] border border-green-200 bg-green-50 px-6 py-5 text-sm font-black text-green-700 uppercase tracking-widest">
+                  This booking has already been paid.
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-[32px] border border-red-200 bg-red-50 px-6 py-5 text-sm font-black text-red-700 uppercase tracking-widest">
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* PayPal */}
+                <button 
+                  disabled={isAlreadyPaid}
+                  onClick={() => setPaymentMethod('paypal')}
+                  className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'paypal' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex flex-col items-center gap-6 text-center">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'paypal' ? 'bg-[#003087] text-white shadow-lg' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
+                      <span className="text-2xl font-black italic">PP</span>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className={`font-black text-sm uppercase tracking-widest leading-none ${paymentMethod === 'paypal' ? 'text-secondary' : 'text-secondary/40'}`}>PayPal</h4>
+                      <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-[0.2em]">Secure & Fast</p>
+                    </div>
                   </div>
-                  <h2 className="text-xl font-black text-secondary tracking-tight">Payment Method</h2>
-               </div>
+                  {paymentMethod === 'paypal' && <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-primary-glow"></div>}
+                </button>
 
-               {isAlreadyPaid && (
-                  <div className="rounded-[32px] border border-green-200 bg-green-50 px-6 py-5 text-sm font-black text-green-700 uppercase tracking-widest">
-                     This booking has already been paid.
+                {/* Credit Card */}
+                <button 
+                  disabled={isAlreadyPaid || true}
+                  onClick={() => setPaymentMethod('card')}
+                  className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'card' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid || true ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex flex-col items-center gap-6 text-center">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'card' ? 'bg-primary text-white shadow-lg rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
+                      <CreditCard size={32} />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className={`font-black text-sm uppercase tracking-widest leading-none ${paymentMethod === 'card' ? 'text-secondary' : 'text-secondary/40'}`}>Credit Card</h4>
+                      <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-[0.2em]">Coming Soon</p>
+                    </div>
                   </div>
-               )}
-
-               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {/* Credit Card */}
-                  <button 
-                    disabled={isAlreadyPaid}
-                    onClick={() => setPaymentMethod('card')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'card' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                     <div className="flex flex-col items-center gap-6 text-center">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'card' ? 'bg-primary text-white shadow-lg rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
-                           <CreditCard size={32} />
-                        </div>
-                        <div className="space-y-1">
-                           <h4 className={`font-black text-sm uppercase tracking-widest leading-none ${paymentMethod === 'card' ? 'text-secondary' : 'text-secondary/40'}`}>Credit Card</h4>
-                           <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-[0.2em]">Visa • Mcard • Amex</p>
-                        </div>
-                     </div>
-                     {paymentMethod === 'card' && <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-primary-glow"></div>}
-                  </button>
-
-                  {/* Apple Pay */}
-                  <button 
-                    disabled={isAlreadyPaid}
-                    onClick={() => setPaymentMethod('apple')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'apple' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                     <div className="flex flex-col items-center gap-6 text-center">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'apple' ? 'bg-black text-white shadow-lg -rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
-                           <span className="text-xl font-black tracking-tighter italic">Pay</span>
-                        </div>
-                        <div className="space-y-1">
-                           <h4 className={`font-black text-sm uppercase tracking-widest leading-none ${paymentMethod === 'apple' ? 'text-secondary' : 'text-secondary/40'}`}>Apple Pay</h4>
-                           <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-[0.2em]">Quick Checkout</p>
-                        </div>
-                     </div>
-                     {paymentMethod === 'apple' && <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-primary-glow"></div>}
-                  </button>
-
-                  {/* Google Pay */}
-                  <button 
-                    disabled={isAlreadyPaid}
-                    onClick={() => setPaymentMethod('google')}
-                    className={`relative p-8 rounded-[40px] border-4 transition-all duration-500 overflow-hidden group ${paymentMethod === 'google' ? 'bg-white border-primary shadow-premium scale-[1.02]' : 'bg-gray-50/50 border-transparent hover:border-gray-200'} ${isAlreadyPaid ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                     <div className="flex flex-col items-center gap-6 text-center">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${paymentMethod === 'google' ? 'bg-[#4285F4] text-white shadow-lg rotate-12' : 'bg-white text-secondary/20 group-hover:text-primary'}`}>
-                           <div className="w-8 h-8 rounded border-4 border-white font-black flex items-center justify-center italic text-lg">G</div>
-                        </div>
-                        <div className="space-y-1">
-                           <h4 className={`font-black text-sm uppercase tracking-widest leading-none ${paymentMethod === 'google' ? 'text-secondary' : 'text-secondary/40'}`}>Google Pay</h4>
-                           <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-[0.2em]">Smart Wallet</p>
-                        </div>
-                     </div>
-                     {paymentMethod === 'google' && <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-primary-glow"></div>}
-                  </button>
-               </div>
+                  {paymentMethod === 'card' && <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full shadow-primary-glow"></div>}
+                </button>
+              </div>
             </section>
           </div>
 
           {/* Price Breakdown Sidebar */}
           <aside className="lg:w-[400px] animate-in fade-in slide-in-from-right-4 duration-1000">
-             <div className="bg-white rounded-[48px] shadow-premium p-12 border border-blue-50/30 sticky top-32 space-y-10 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-primary-dark opacity-80"></div>
+            <div className="bg-white rounded-[48px] shadow-premium p-12 border border-blue-50/30 sticky top-32 space-y-10 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-primary-dark opacity-80"></div>
+              
+              <h3 className="text-2xl font-black text-secondary tracking-tight">Price Breakdown</h3>
+              
+              <div className="space-y-6">
+                <div className="flex justify-between items-center text-secondary/40 px-2">
+                  <span className="text-sm font-bold uppercase tracking-widest">Experience ({booking?.totalHours || booking?.hours || 4}h)</span>
+                  <span className="font-black text-secondary text-lg">${booking?.totalPrice?.toFixed(2) || booking?.price?.toFixed(2) || "120.00"}</span>
+                </div>
+                <div className="flex justify-between items-center text-secondary/40 px-2">
+                  <span className="text-sm font-bold uppercase tracking-widest">Service Fee</span>
+                  <span className="font-black text-secondary text-lg">$0.00</span>
+                </div>
+                <div className="pt-8 border-t border-gray-50 flex justify-between items-baseline px-2">
+                  <span className="text-lg font-black text-secondary italic tracking-tight">Total Investment</span>
+                  <span className="text-5xl font-black text-primary tracking-tighter leading-none">${booking?.totalPrice?.toFixed(2) || booking?.price?.toFixed(2) || "120.00"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {!isAlreadyPaid && paymentMethod === 'paypal' && (
+                  <PayPalScriptProvider options={{ clientId: clientId || "" }}>
+                    <PayPalButtons
+                      createOrder={handleCreateOrder}
+                      onApprove={handleApprove}
+                      onError={handleError}
+                      disabled={processing}
+                      style={{
+                        layout: "vertical",
+                        color: "blue",
+                        shape: "pill",
+                        label: "pay",
+                      }}
+                    />
+                  </PayPalScriptProvider>
+                )}
                 
-                <h3 className="text-2xl font-black text-secondary tracking-tight">Price Breakdown</h3>
-                
-                 <div className="space-y-6">
-                    <div className="flex justify-between items-center text-secondary/40 px-2">
-                       <span className="text-sm font-bold uppercase tracking-widest">Experience ({booking?.hours || 4}h)</span>
-                       <span className="font-black text-secondary text-lg">${booking?.price || "120.00"}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-secondary/40 px-2">
-                       <span className="text-sm font-bold uppercase tracking-widest">Service Fee</span>
-                       <span className="font-black text-secondary text-lg">$0.00</span>
-                    </div>
-                    <div className="pt-8 border-t border-gray-50 flex justify-between items-baseline px-2">
-                       <span className="text-lg font-black text-secondary italic tracking-tight">Total Investment</span>
-                       <span className="text-5xl font-black text-primary tracking-tighter leading-none">${booking?.price || "120.00"}</span>
-                    </div>
-                 </div>
+                {(isAlreadyPaid || paymentMethod !== 'paypal') && (
+                  <Button 
+                    disabled={true}
+                    className="w-full py-8 text-xl shadow-premium-hover opacity-50 cursor-not-allowed flex items-center justify-center gap-3 border-none"
+                  >
+                    {isAlreadyPaid ? "Already Paid" : "Select PayPal"}
+                  </Button>
+                )}
 
-                 <div className="space-y-6">
-                    <Button 
-                      disabled={processing || isAlreadyPaid}
-                      onClick={handleCheckout}
-                      className="w-full py-8 text-xl shadow-premium-hover hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border-none"
-                    >
-                       {isAlreadyPaid ? "Already Paid" : processing ? "Securing Session..." : "Secure My Adventure"}
-                    </Button>
-                   <div className="flex flex-col items-center gap-3">
-                      <div className="flex items-center gap-2 text-primary/30 font-black uppercase tracking-[0.3em] text-[9px]">
-                         <Lock size={12} /> SSL Encrypted Encryption
-                      </div>
-                      <div className="flex -space-x-1 opacity-20">
-                         <div className="w-8 h-5 bg-secondary rounded-sm"></div>
-                         <div className="w-8 h-5 bg-primary rounded-sm"></div>
-                         <div className="w-8 h-5 bg-accent-orange rounded-sm"></div>
-                      </div>
-                   </div>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-2 text-primary/30 font-black uppercase tracking-[0.3em] text-[9px]">
+                    <Lock size={12} /> SSL Encrypted
+                  </div>
+                  <div className="flex -space-x-1 opacity-20">
+                    <div className="w-8 h-5 bg-secondary rounded-sm"></div>
+                    <div className="w-8 h-5 bg-primary rounded-sm"></div>
+                    <div className="w-8 h-5 bg-accent-orange rounded-sm"></div>
+                  </div>
                 </div>
+              </div>
 
-                {/* Trust Guarantee Box */}
-                <div className="bg-gray-50/50 rounded-[32px] p-8 space-y-4 border border-gray-100 group">
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-accent-green group-hover:rotate-12 transition-transform">
-                         <ShieldCheck size={24} />
-                      </div>
-                      <h4 className="font-black text-secondary tracking-tight text-sm">Buddy Guarantee</h4>
-                   </div>
-                   <p className="text-[10px] font-bold text-secondary/30 leading-relaxed uppercase tracking-widest">
-                      Your payment is held in escrow and only released to <span className="text-secondary underline decoration-primary/20">Mateo</span> after your experience is successfully completed.
-                   </p>
+              {/* Trust Guarantee Box */}
+              <div className="bg-gray-50/50 rounded-[32px] p-8 space-y-4 border border-gray-100 group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-accent-green group-hover:rotate-12 transition-transform">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <h4 className="font-black text-secondary tracking-tight text-sm">Buddy Guarantee</h4>
                 </div>
+                <p className="text-[10px] font-bold text-secondary/30 leading-relaxed uppercase tracking-widest">
+                  Your payment is held in escrow and only released to <span className="text-secondary underline decoration-primary/20">{buddy?.name || "Buddy"}</span> after your experience is successfully completed.
+                </p>
+              </div>
 
-                {/* Need Help link */}
-                <div className="text-center">
-                   <button className="text-[9px] font-black text-secondary/10 uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center gap-2 mx-auto">
-                      <Info size={12} /> Questions about this booking?
-                   </button>
-                </div>
-             </div>
+              {/* Need Help link */}
+              <div className="text-center">
+                <button className="text-[9px] font-black text-secondary/10 uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center gap-2 mx-auto">
+                  <Info size={12} /> Questions about this booking?
+                </button>
+              </div>
+            </div>
           </aside>
 
         </div>

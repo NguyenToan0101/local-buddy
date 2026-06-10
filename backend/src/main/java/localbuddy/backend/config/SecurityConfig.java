@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/auth/verify-otp",
                                 "/ws/**",
                                 "/login/**",
-                                "/oauth2/**"
+                                "/oauth2/**",
+                                "/api/auth/**"
                         ).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/buddies", "/buddies/**").permitAll()
                         .anyRequest().authenticated()
@@ -66,7 +67,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "https://localbuddy.online"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control", "Accept"));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));

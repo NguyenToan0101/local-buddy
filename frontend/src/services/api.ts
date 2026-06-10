@@ -183,6 +183,45 @@ export const bookingService = {
   },
 };
 
+export const paymentService = {
+  createPayPalOrder: async (bookingId: string) => {
+    const response = await fetch(`${API_BASE_URL}/payments/paypal/create-order?bookingId=${bookingId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to create PayPal order');
+    }
+    return response.json();
+  },
+  capturePayPalOrder: async (orderId: string, bookingId: string) => {
+    const response = await fetch(`${API_BASE_URL}/payments/paypal/capture-order?orderId=${orderId}&bookingId=${bookingId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to capture PayPal order');
+    }
+    return response.json();
+  },
+  getPayment: async (paymentId: string) => {
+    const response = await fetch(`${API_BASE_URL}/payments/${paymentId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch payment');
+    return response.json();
+  },
+  getBookingPayments: async (bookingId: string) => {
+    const response = await fetch(`${API_BASE_URL}/payments/booking/${bookingId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch booking payments');
+    return response.json();
+  },
+};
+
 export const userService = {
   getAll: async () => {
     const db = loadDb();

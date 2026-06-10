@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/buddies/{buddyId}/availabilities")
+@RequestMapping("/api/buddies/{buddyId}/availabilities")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class AvailabilitySlotController {
