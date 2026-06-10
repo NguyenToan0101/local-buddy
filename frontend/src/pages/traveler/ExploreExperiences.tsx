@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Star, ChevronDown, Filter, ChevronRight, Compass, Clock, Globe, Check } from 'lucide-react';
 import { experienceService } from '../../services/api';
 import type { Experience } from '../../services/api';
 import Button from '../../components/ui/Button';
-import Navbar from '../../components/Navbar';
 import ExperienceCard from '../../components/features/ExperienceCard';
 import Footer from '../../components/Footer';
 
@@ -96,9 +95,8 @@ const ExploreExperiences: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FBFBFC]">
-      <Navbar />
       
-      <main className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 pt-32 pb-20 space-y-12">
+      <main className="max-w-[1440px] mx-auto px-6 sm:px-12 lg:px-16 pt-6 pb-20 space-y-12">
         
         {/* Banner Section */}
         <div className="bg-white rounded-[64px] p-16 shadow-premium border border-gray-50 flex flex-col md:flex-row md:justify-between md:items-center gap-10 relative overflow-hidden">

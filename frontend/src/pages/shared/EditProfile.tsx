@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, User, Sparkles, Loader2 } from 'lucide-react';
-import Button from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import SmartSelect from '../../components/ui/SmartSelect';
@@ -223,20 +222,21 @@ const EditProfile: React.FC = () => {
                 </p>
               </div>
 
-              <div className="w-full pt-10 space-y-4">
-                <Button
+              <div className="w-full pt-8 space-y-3">
+                <button
+                  type="button"
                   onClick={handleSave}
-                  className="w-full py-5 shadow-primary-glow text-[11px] font-black uppercase tracking-[0.2em] rounded-24 transition-all hover:scale-[1.02] active:scale-95"
+                  className="w-full btn-primary"
                 >
                   Save Changes
-                </Button>
-                <Button
-                  variant="ghost"
+                </button>
+                <button
+                  type="button"
                   onClick={() => navigate('/traveller/profile')}
-                  className="w-full py-5 border-2 border-gray-100 hover:bg-white text-[11px] font-black uppercase tracking-[0.2em] rounded-24 transition-all"
+                  className="w-full btn-ghost"
                 >
                   Discard
-                </Button>
+                </button>
               </div>
             </div>
 

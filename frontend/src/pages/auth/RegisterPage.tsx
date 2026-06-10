@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Compass, Shield, Star, Facebook, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Compass, Shield, Star, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
@@ -320,14 +320,16 @@ const RegisterPage: React.FC = () => {
                   <div className="flex-grow border-t border-[#E5E7EB]"></div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <button className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5">
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = `/oauth2/authorization/google`;
+                    }}
+                    className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  >
                     <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
                     <span className="text-sm">Google</span>
-                  </button>
-                  <button className="flex items-center justify-center gap-3 py-4 border-2 border-[#F3F4F6] rounded-2xl font-bold text-[#1A1A1A] hover:bg-[#F9FAFB] transition-all transform hover:-translate-y-0.5">
-                    <Facebook size={20} className="text-[#1877F2] fill-[#1877F2]" />
-                    <span className="text-sm">Facebook</span>
                   </button>
                 </div>
               </>

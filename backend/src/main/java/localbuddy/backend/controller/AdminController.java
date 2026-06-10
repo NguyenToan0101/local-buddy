@@ -125,6 +125,7 @@ public class AdminController {
         return AdminVerificationDto.builder()
                 .id(user.getId())
                 .name(user.getFullName())
+                .age(profile != null && profile.getAge() != null ? profile.getAge().intValue() : null)
                 .type(userType)
                 .regDate(formatDate(user.getCreatedAt()))
                 .docType(buddy ? "CCCD" : "Passport")

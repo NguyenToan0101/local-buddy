@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   MessageCircle, 
@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { bookingService } from '../../services/api';
 import Button from '../../components/ui/Button';
-import Navbar from '../../components/Navbar';
 import Modal from '../../components/ui/Modal';
 
 const LiveExperience: React.FC = () => {
@@ -79,9 +78,8 @@ const LiveExperience: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] relative">
-      <Navbar />
       
-      <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-16 max-w-5xl mx-auto space-y-12">
+      <main className="pt-6 pb-20 px-4 sm:px-6 lg:px-16 max-w-5xl mx-auto space-y-12">
         {/* Header Section */}
         <section className="space-y-6 text-center">
            <div className="space-y-2">
