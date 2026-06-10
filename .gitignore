@@ -3,3 +3,33 @@
 .kiro
 .vscode/
 copilot-instruction.md
+.agent
+# Python virtual env
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Python cache/build
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+build/
+dist/
+*.egg-info/
+
+# AI models/cache
+.cache/
+models/
+*.onnx
+*.pt
+*.pth
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env

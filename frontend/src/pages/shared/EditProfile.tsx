@@ -195,6 +195,10 @@ const EditProfile: React.FC = () => {
                     src={formData.avatar || `https://i.pravatar.cc/200?u=${user.id}`}
                     alt="Profile"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.src = `https://i.pravatar.cc/200?u=${user.id}`;
+                    }}
                   />
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Camera className="text-white" size={32} />

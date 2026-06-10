@@ -116,6 +116,10 @@ const TravelerProfile: React.FC = () => {
                                  src={user.avatar || profileData?.avatarUrl || `https://i.pravatar.cc/200?u=${user.id}`}
                                  alt={user.name}
                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                 referrerPolicy="no-referrer"
+                                 onError={(event) => {
+                                    event.currentTarget.src = `https://i.pravatar.cc/200?u=${user.id}`;
+                                 }}
                               />
                            </div>
                         </div>

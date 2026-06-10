@@ -15,14 +15,24 @@ const SettingsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [buddyData, setBuddyData] = useState<Partial<Buddy>>({});
+  const [selfiePreviewIsVideo, setSelfiePreviewIsVideo] = useState(false);
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const getBuddyId = () => {
     let buddyId = user?.id || '';
     if (buddyId.startsWith('buddy-')) buddyId = buddyId.replace('buddy-', '');
     return buddyId;
+  };
+
+  const isVerifiedStatus = (status?: string) =>
+    status === 'verified' || status === 'auto_approved' || status === 'manual_approved';
+
+  const isVideoUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /\/video\/upload\//.test(url) || /\.(mp4|webm)(\?|$)/i.test(url);
   };
 
   useEffect(() => {
@@ -33,6 +43,7 @@ const SettingsTab: React.FC = () => {
       try {
         const data = await buddyService.getById(buddyId);
         setBuddyData(data);
+        setSelfiePreviewIsVideo(isVideoUrl(data.selfieUrl));
       } catch (error) {
         console.error("Error fetching buddy data:", error);
       } finally {
@@ -56,7 +67,7 @@ const SettingsTab: React.FC = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
     // Không cho upload lại nếu đã được verify
-    if (buddyData.verificationStatus === 'verified') return;
+    if (isVerifiedStatus(buddyData.verificationStatus)) return;
     const file = e.target.files?.[0];
     if (file) {
       const field = side === 'front' ? 'idCardFront' : 'idCardBack';
@@ -65,7 +76,7 @@ const SettingsTab: React.FC = () => {
         URL.revokeObjectURL(previousValue);
       }
       const previewUrl = URL.createObjectURL(file);
-      setBuddyData(prev => ({ ...prev, [field]: previewUrl }));
+      setBuddyData(prev => ({ ...prev, [field]: previewUrl, verificationStatus: 'processing' }));
       try {
         const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
         setBuddyData(prev => ({ ...prev, ...updated }));
@@ -78,7 +89,7 @@ const SettingsTab: React.FC = () => {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Không cho đổi avatar qua flow này nếu đã verify (giữ ổn định hồ sơ định danh)
-    if (buddyData.verificationStatus === 'verified') return;
+    if (isVerifiedStatus(buddyData.verificationStatus)) return;
     const file = e.target.files?.[0];
     if (file) {
       const previousImage = buddyData.image;
@@ -97,22 +108,42 @@ const SettingsTab: React.FC = () => {
     }
   };
 
+  const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isVerifiedStatus(buddyData.verificationStatus)) return;
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('video/')) {
+        console.error("Liveness verification requires a video file.");
+        return;
+      }
+      const previousValue = buddyData.selfieUrl;
+      if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
+        URL.revokeObjectURL(previousValue);
+      }
+      const previewUrl = URL.createObjectURL(file);
+      setSelfiePreviewIsVideo(file.type.startsWith('video/'));
+      setBuddyData(prev => ({ ...prev, selfieUrl: previewUrl, verificationStatus: 'processing' }));
+      try {
+        const updated = await buddyService.uploadSelfie(getBuddyId(), file);
+        setBuddyData(prev => ({ ...prev, ...updated }));
+        setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl) || file.type.startsWith('video/'));
+      } catch (error) {
+        console.error("Error uploading selfie:", error);
+        setBuddyData(prev => ({ ...prev, selfieUrl: previousValue }));
+        setSelfiePreviewIsVideo(isVideoUrl(previousValue));
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
     const buddyId = getBuddyId();
 
     try {
-      // Logic for verification status
-      const hasIdPhotos = buddyData.idCardFront && buddyData.idCardBack;
-      const updatedStatus = hasIdPhotos ? 'pending' : (buddyData.verificationStatus || 'unverified');
-
       // 1. Prepare clean payload (exclude large nested fields and ID)
-      const { reviews, id, ...rest } = buddyData;
-      const cleanData = { 
-        ...rest, 
-        verificationStatus: updatedStatus 
-      };
+      const { reviews, id, verificationStatus, ...rest } = buddyData;
+      const cleanData = { ...rest };
       
       // Log payload size for debugging
       console.log("Payload size (chars):", JSON.stringify(cleanData).length);
@@ -126,10 +157,8 @@ const SettingsTab: React.FC = () => {
         location: buddyData.location,
         description: buddyData.description,
         avatar: buddyData.image,
-        verificationStatus: updatedStatus,
+        verificationStatus: buddyData.verificationStatus,
       });
-
-      setBuddyData(prev => ({ ...prev, verificationStatus: updatedStatus }));
       // Success notification could be added here if a toast system is available
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -142,6 +171,8 @@ const SettingsTab: React.FC = () => {
     const status = buddyData.verificationStatus || 'unverified';
     switch (status) {
       case 'verified':
+      case 'auto_approved':
+      case 'manual_approved':
         return { 
           label: 'Verified Buddy', 
           color: 'text-green-500', 
@@ -149,13 +180,32 @@ const SettingsTab: React.FC = () => {
           icon: Shield,
           desc: 'Your identity has been fully verified.' 
         };
+      case 'processing':
+        return {
+          label: 'Processing',
+          color: 'text-blue-500',
+          bg: 'bg-blue-500/10',
+          icon: Clock,
+          desc: 'System is checking OCR, face match, liveness, and anti-spoofing.'
+        };
+      case 'manual_review':
       case 'pending':
         return { 
-          label: 'Pending Verification', 
+          label: 'Pending Admin Review',
           color: 'text-amber-500', 
           bg: 'bg-amber-500/10', 
           icon: Clock,
-          desc: 'Verification in progress. Usually takes up to 24h.' 
+          desc: 'Auto checks need admin review. Usually takes up to 24h.'
+        };
+      case 'rejected':
+      case 'auto_rejected':
+      case 'manual_rejected':
+        return {
+          label: 'Rejected',
+          color: 'text-red-500',
+          bg: 'bg-red-500/10',
+          icon: Shield,
+          desc: buddyData.rejectionReason || 'Verification was rejected. Please upload clearer documents and a valid liveness video.'
         };
       default:
         return { 
@@ -180,7 +230,7 @@ const SettingsTab: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-1000 pb-12">
       {/* Verification Status Banner */}
-      {buddyData.verificationStatus !== 'verified' && (
+      {!isVerifiedStatus(buddyData.verificationStatus) && (
         <div className={`p-6 rounded-[32px] ${statusConfig.bg} border-2 border-white/50 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm overflow-hidden relative group`}>
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
           <div className="flex items-center gap-6 relative z-10">
@@ -318,6 +368,7 @@ const SettingsTab: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
               </div>
 
               {/* pricing Section */}
@@ -336,6 +387,7 @@ const SettingsTab: React.FC = () => {
                     <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] font-black text-secondary/20 uppercase tracking-widest">/ hour</span>
                   </div>
                 </div>
+
               </div>
 
               {/* Bio Section */}
@@ -413,7 +465,7 @@ const SettingsTab: React.FC = () => {
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">ID Card - Front Side</label>
                     <div 
-                      onClick={buddyData.verificationStatus === 'verified' ? undefined : () => frontInputRef.current?.click()}
+                      onClick={isVerifiedStatus(buddyData.verificationStatus) ? undefined : () => frontInputRef.current?.click()}
                       className="aspect-[1.6/1] bg-surface/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 hover:shadow-premium transition-all overflow-hidden relative group/upload shadow-inner"
                     >
                       {buddyData.idCardFront ? (
@@ -439,7 +491,7 @@ const SettingsTab: React.FC = () => {
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">ID Card - Back Side</label>
                     <div 
-                      onClick={buddyData.verificationStatus === 'verified' ? undefined : () => backInputRef.current?.click()}
+                      onClick={isVerifiedStatus(buddyData.verificationStatus) ? undefined : () => backInputRef.current?.click()}
                       className="aspect-[1.6/1] bg-surface/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 hover:shadow-premium transition-all overflow-hidden relative group/upload shadow-inner"
                     >
                       {buddyData.idCardBack ? (
@@ -461,6 +513,42 @@ const SettingsTab: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Liveness Video</label>
+                  <div
+                    onClick={isVerifiedStatus(buddyData.verificationStatus) ? undefined : () => selfieInputRef.current?.click()}
+                    className="aspect-[2/1] bg-surface/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 hover:shadow-premium transition-all overflow-hidden relative group/upload shadow-inner"
+                  >
+                    {buddyData.selfieUrl ? (
+                      selfiePreviewIsVideo ? (
+                        <video src={buddyData.selfieUrl} className="w-full h-full object-cover" controls muted playsInline />
+                      ) : (
+                        <img src={buddyData.selfieUrl} className="w-full h-full object-cover group-hover/upload:scale-105 transition-transform duration-700" alt="Selfie" />
+                      )
+                    ) : (
+                      <>
+                        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-secondary/10 mb-4 shadow-sm">
+                          <Camera size={24} />
+                        </div>
+                        <p className="text-[10px] font-black text-secondary/20 uppercase tracking-widest">Select video</p>
+                      </>
+                    )}
+                    <input type="file" ref={selfieInputRef} onChange={handleSelfieUpload} className="hidden" accept="video/mp4,video/webm" />
+                  </div>
+                </div>
+
+                {(buddyData.verificationScore !== undefined || buddyData.autoVerificationMessage) && (
+                  <div className="rounded-[28px] bg-surface/50 border border-gray-100 p-6 space-y-2">
+                    <p className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em]">Auto Verification</p>
+                    {buddyData.verificationScore !== undefined && (
+                      <p className="text-sm font-black text-secondary">Score: {Math.round(buddyData.verificationScore)}/100</p>
+                    )}
+                    {buddyData.autoVerificationMessage && (
+                      <p className="text-xs font-bold text-secondary/60">{buddyData.autoVerificationMessage}</p>
+                    )}
+                  </div>
+                )}
               </div>
            </div>
         </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Compass, Star, Facebook } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
+import { DEFAULT_ROUTE_BY_ROLE } from '../../utils/authRoutes';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,11 +22,7 @@ const LoginPage: React.FC = () => {
 
     try {
       const loggedInUser = await login(email.trim(), password);
-      if (loggedInUser.role === 'BUDDY') {
-        navigate('/buddy/dashboard');
-      } else {
-        navigate('/traveller/home');
-      }
+      navigate(DEFAULT_ROUTE_BY_ROLE[loggedInUser.role]);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
     } finally {

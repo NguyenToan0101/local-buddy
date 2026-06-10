@@ -16,7 +16,7 @@ export interface User {
   description?: string;
   interests?: string[];
   rating?: number;
-  verificationStatus?: 'verified' | 'pending' | 'unverified';
+  verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
 }
 
 export interface AuthResponse {

@@ -79,6 +79,72 @@ public class BuddyProfile {
     @Column(name = "id_card_back_url", columnDefinition = "TEXT")
     private String idCardBackUrl;
 
+    @Column(name = "selfie_url", columnDefinition = "TEXT")
+    private String selfieUrl;
+
+    @Column(name = "extracted_full_name")
+    private String extractedFullName;
+
+    @Column(name = "extracted_id_number")
+    private String extractedIdNumber;
+
+    @Column(name = "extracted_date_of_birth")
+    private String extractedDateOfBirth;
+
+    @Column(name = "face_match_score")
+    private Double faceMatchScore;
+
+    @Column(name = "liveness_score")
+    private Double livenessScore;
+
+    @Column(name = "verification_score")
+    private Double verificationScore;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "verified_at")
+    private OffsetDateTime verifiedAt;
+
+    @Column(name = "processed_at")
+    private OffsetDateTime processedAt;
+
+    @Column(name = "auto_verification_message", columnDefinition = "TEXT")
+    private String autoVerificationMessage;
+
+    @Column(name = "quality_score")
+    private Double qualityScore;
+
+    @Column(name = "anti_spoof_score")
+    private Double antiSpoofScore;
+
+    @Column(name = "risk_score")
+    private Double riskScore;
+
+    @Column(name = "risk_reason", columnDefinition = "TEXT")
+    private String riskReason;
+
+    @Column(name = "duplicate_detected")
+    private Boolean duplicateDetected;
+
+    @Column(name = "duplicate_user_id")
+    private UUID duplicateUserId;
+
+    @Column(name = "liveness_details", columnDefinition = "TEXT")
+    private String livenessDetails;
+
+    @Column(name = "anti_spoof_details", columnDefinition = "TEXT")
+    private String antiSpoofDetails;
+
+    @Column(name = "quality_details", columnDefinition = "TEXT")
+    private String qualityDetails;
+
+    @Column(name = "ocr_raw_text", columnDefinition = "TEXT")
+    private String ocrRawText;
+
+    @Column(name = "ocr_score")
+    private Double ocrScore;
+
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

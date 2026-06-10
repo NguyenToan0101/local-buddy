@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+requests
+pillow
+paddleocr
+paddlepaddle
+deepface
+opencv-python
+numpy
+mediapipe
+insightface
+onnxruntime

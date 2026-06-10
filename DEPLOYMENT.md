@@ -30,6 +30,10 @@ API_FRONTEND=https://localbuddy.online
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
+AI_SERVICE_BASE_URL=http://ai-verification-service:8001
+ALLOWED_MEDIA_HOSTS=res.cloudinary.com
+MAX_DOWNLOAD_MB=35
+ANTISPOOF_MODEL_PATH=/models/minifasnet_v2.onnx
 ```
 
 `docker-compose.yml` reads `/etc/local-buddy/backend.env` by default.
@@ -54,9 +58,16 @@ On the server:
 ```bash
 cd /root/local-buddy
 git pull
-docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
+
+The AI verification service is exposed only inside the Compose network by
+default. Spring Boot reaches it through `AI_SERVICE_BASE_URL`; do not publish
+port `8001` on a public server unless the service is protected.
+
+`docker-compose.yml` mounts `./ai-verification-service/models` into the AI
+container as `/models`. The included MiniFASNet ONNX anti-spoofing model is
+expected at `/models/minifasnet_v2.onnx`.
 
 ## Verify
 

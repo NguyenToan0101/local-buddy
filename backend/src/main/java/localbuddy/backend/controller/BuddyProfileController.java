@@ -58,6 +58,21 @@ public class    BuddyProfileController {
         return ResponseEntity.ok(buddyProfileService.updateIdCard(userId, side, file, getCurrentUserId(), isCurrentUserAdmin()));
     }
 
+    @PostMapping(value = "/{userId}/selfie", consumes = "multipart/form-data")
+    public ResponseEntity<BuddyProfileDto> uploadSelfie(@PathVariable UUID userId, @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(buddyProfileService.updateSelfie(userId, file, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @GetMapping("/{userId}/verification/result")
+    public ResponseEntity<?> getVerificationResult(@PathVariable UUID userId) {
+        return ResponseEntity.ok(buddyProfileService.getVerificationResult(userId, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
+    @PostMapping("/{userId}/verification/retry-auto-verification")
+    public ResponseEntity<BuddyProfileDto> retryAutoVerification(@PathVariable UUID userId) {
+        return ResponseEntity.ok(buddyProfileService.retryAutoVerification(userId, getCurrentUserId(), isCurrentUserAdmin()));
+    }
+
     @GetMapping
     public ResponseEntity<List<BuddyProfileDto>> getAll() {
         return ResponseEntity.ok(buddyProfileService.getAllBuddies());

@@ -215,8 +215,10 @@ public class UserController {
                 ? profile.getVerificationStatus()
                 : VerificationStatus.PENDING;
         return switch (status) {
-            case VERIFIED -> "verified";
-            case REJECTED -> "rejected";
+            case VERIFIED, AUTO_APPROVED, MANUAL_APPROVED -> "verified";
+            case REJECTED, AUTO_REJECTED, MANUAL_REJECTED -> "rejected";
+            case PROCESSING -> "processing";
+            case MANUAL_REVIEW -> "manual_review";
             case PENDING -> "pending";
         };
     }

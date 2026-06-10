@@ -36,12 +36,7 @@ import CreateTouristProfile from './pages/traveler/CreateTouristProfile';
 import ShareExperience from './pages/traveler/ShareExperience';
 import { useAuth } from './context/AuthContext';
 import type { UserRole } from './services/auth';
-
-const DEFAULT_ROUTE_BY_ROLE: Record<UserRole, string> = {
-  TRAVELER: '/traveller/home',
-  BUDDY: '/buddy/dashboard',
-  ADMIN: '/admin/dashboard',
-};
+import { DEFAULT_ROUTE_BY_ROLE } from './utils/authRoutes';
 
 function RequireRole({ roles, children }: { roles: UserRole[]; children: React.ReactElement }) {
   const { user } = useAuth();
