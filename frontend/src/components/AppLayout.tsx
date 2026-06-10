@@ -48,7 +48,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const isBuddyPath = path.startsWith('/buddy');
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] flex flex-col">
+    <div className="min-h-screen bg-[#FBFBFC] flex flex-col overflow-x-hidden">
       {/* Desktop / Tablet top navigation — hidden on mobile */}
       {!isBuddyPath && (
         <div className="hidden md:block">
