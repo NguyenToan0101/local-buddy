@@ -73,7 +73,7 @@ public class AdminController {
                 ? VerificationStatus.valueOf(status.trim().toUpperCase())
                 : null;
         return buddyProfileRepository.findAll().stream()
-                .filter(profile -> filterStatus == null ? isManualReviewStatus(profile.getVerificationStatus()) : profile.getVerificationStatus() == filterStatus)
+                .filter(profile -> filterStatus == null || profile.getVerificationStatus() == filterStatus)
                 .map(profile -> mapVerification(profile.getUser(), profile))
                 .toList();
     }
