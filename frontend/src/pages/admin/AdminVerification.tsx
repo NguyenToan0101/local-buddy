@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Search, Filter, ChevronDown,
   Eye, Calendar, User, FileText, AlertTriangle, X,
-  ShieldCheck, Loader2, Users
+  ShieldCheck, Loader2
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminService } from '../../services/api';
@@ -11,7 +11,7 @@ import { adminService } from '../../services/api';
 interface VerificationRecord {
   id: string;
   name: string;
-  type: 'Buddy' | 'Traveller' | 'Admin';
+  type: 'Buddy';
   regDate: string;
   docType: 'CCCD' | 'Passport';
   status: 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
@@ -42,10 +42,8 @@ interface VerificationRecord {
 }
 
 type FilterStatus = 'All' | 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
-type TabType = 'Traveller' | 'Buddy';
 
 const AdminVerification: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('Buddy');
   const [filter, setFilter] = useState<FilterStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<VerificationRecord | null>(null);
@@ -81,14 +79,14 @@ const AdminVerification: React.FC = () => {
     ? Math.abs(selectedOcrAge - selectedUser.age) > 1
     : false;
 
-  // Fetch all users from backend (backend already excludes ADMIN)
+  // Fetch buddy verification records only. Travellers do not require identity verification.
   useEffect(() => {
     const fetchVerifications = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const data = await adminService.getUsers();
+        const data = await adminService.getVerifications();
         setAllVerifications(data || []);
       } catch (err: any) {
         setError(err.message || 'Failed to load verification records');
@@ -105,10 +103,7 @@ const AdminVerification: React.FC = () => {
     try {
       setError(null);
 
-      // Only Buddy can be approved/rejected (Travellers are auto-verified)
-      if (record.type === 'Buddy') {
-        await adminService.updateBuddyVerification(record.id, 'verified');
-      }
+      await adminService.updateBuddyVerification(record.id, 'verified');
 
       // Update local state
       setAllVerifications((prev) =>
@@ -132,9 +127,7 @@ const AdminVerification: React.FC = () => {
     try {
       setError(null);
 
-      if (record.type === 'Buddy') {
-        await adminService.updateBuddyVerification(record.id, 'rejected', rejectReason);
-      }
+      await adminService.updateBuddyVerification(record.id, 'rejected', rejectReason);
 
       // Update local state
       setAllVerifications((prev) =>
@@ -151,9 +144,8 @@ const AdminVerification: React.FC = () => {
     }
   };
 
-  // Filter data based on active tab, status filter, and search query
+  // Filter data by status and search query.
   const filteredData = allVerifications
-    .filter((item) => item.type === activeTab)
     .filter((item) => filter === 'All' || item.status === filter)
     .filter((item) => {
       if (!searchQuery.trim()) return true;
@@ -165,9 +157,7 @@ const AdminVerification: React.FC = () => {
       );
     });
 
-  // Get counts for each tab
-  const travellerCount = allVerifications.filter((v) => v.type === 'Traveller').length;
-  const buddyCount = allVerifications.filter((v) => v.type === 'Buddy').length;
+  const buddyCount = allVerifications.length;
   const isVideoUrl = (url?: string | null) => {
     if (!url) return false;
     return /\/video\/upload\//.test(url) || /\.(mp4|webm)(\?|$)/i.test(url);
@@ -221,43 +211,15 @@ const AdminVerification: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Summary */}
         <div className="flex items-center gap-4 border-b border-admin">
-          <button
-            onClick={() => {
-              setActiveTab('Traveller');
-              setFilter('All');
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-3 px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'Traveller'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-admin-muted hover:text-admin-main'
-              }`}
-          >
-            <Users size={20} />
-            Travellers
-            <span className="px-3 py-1 bg-admin-surface rounded-full text-xs font-black">
-              {travellerCount}
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab('Buddy');
-              setFilter('All');
-              setSearchQuery('');
-            }}
-            className={`flex items-center gap-3 px-6 py-4 font-black transition-all border-b-4 ${activeTab === 'Buddy'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-admin-muted hover:text-admin-main'
-              }`}
-          >
+          <div className="flex items-center gap-3 px-6 py-4 font-black border-b-4 border-indigo-600 text-indigo-600">
             <ShieldCheck size={20} />
             Buddies
             <span className="px-3 py-1 bg-admin-surface rounded-full text-xs font-black">
               {buddyCount}
             </span>
-          </button>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -283,13 +245,13 @@ const AdminVerification: React.FC = () => {
         {!loading && filteredData.length === 0 && (
           <div className="p-12 rounded-2xl bg-admin-surface border border-admin text-center">
             <div className="w-16 h-16 bg-admin-layout-bg rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users size={32} className="text-admin-muted" />
+              <ShieldCheck size={32} className="text-admin-muted" />
             </div>
-            <h3 className="text-lg font-black text-admin-main mb-2">No {activeTab}s Found</h3>
+            <h3 className="text-lg font-black text-admin-main mb-2">No Buddies Found</h3>
             <p className="text-sm text-admin-muted">
               {searchQuery || filter !== 'All'
                 ? 'Try adjusting your filters or search query.'
-                : `No ${activeTab.toLowerCase()} records available yet.`}
+                : 'No buddy verification records available yet.'}
             </p>
           </div>
         )}
@@ -594,8 +556,8 @@ const AdminVerification: React.FC = () => {
                 </div>
               </div>
 
-              {/* Only show approve/reject for Buddy records selected for manual review. */}
-              {selectedUser.type === 'Buddy' && selectedUser.status === 'Manual Review' && selectedUser.docs.front && selectedUser.docs.back && (
+              {/* Only show approve/reject for records selected for manual review. */}
+              {selectedUser.status === 'Manual Review' && selectedUser.docs.front && selectedUser.docs.back && (
                 <div className="pt-10 border-t border-admin space-y-4">
                   {!showRejectForm ? (
                     <>
