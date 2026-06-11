@@ -2,8 +2,6 @@ services:
   frontend:
     build:
       context: ./frontend
-    env_file:
-      - ${FRONT_ENV_FILE:-/etc/local-buddy/frontend.env}
     ports:
       - "5173:80"
     restart: unless-stopped
