@@ -31,7 +31,8 @@ jobs:
             congtoan0101/vite-app:${{ github.sha }}
           # Truyền secret từ GitHub vào Docker
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
+              VITE_API_URL=${{ secrets.VITE_API_URL }}
+              VITE_PAYPAL_CLIENT_ID=${{ secrets.VITE_PAYPAL_CLIENT_ID }}
 
       # 2. Build và Push Backend Image (Spring Boot)
       - name: Build and Push Backend

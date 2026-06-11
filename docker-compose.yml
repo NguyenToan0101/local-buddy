@@ -2,6 +2,8 @@ services:
   frontend:
     build:
       context: ./frontend
+    env_file:
+      - ${FRONT_ENV_FILE:-/etc/local-buddy/frontend.env}
     ports:
       - "5173:80"
     restart: unless-stopped
@@ -9,8 +11,6 @@ services:
   backend:
     build:
       context: ./backend
-    env_file:
-      - ${BACKEND_ENV_FILE:-/etc/local-buddy/backend.env}
     environment:
       AI_SERVICE_BASE_URL: http://ai-verification-service:8001
     ports:
