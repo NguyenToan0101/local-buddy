@@ -237,7 +237,9 @@ public class BuddyProfileService {
     @Transactional(readOnly = true)
     public List<BuddyProfileDto> getAllBuddies() {
         return buddyProfileRepository.findAll().stream()
-                .filter(profile -> Boolean.TRUE.equals(profile.getUser().getIsActive()) && profile.getUser().getRole() == UserRole.BUDDY)
+                .filter(profile -> Boolean.TRUE.equals(profile.getUser().getIsActive())
+                        && profile.getUser().getRole() == UserRole.BUDDY
+                        && isApprovedStatus(profile.getVerificationStatus()))
                 .map(profile -> mapToDto(profile, profile.getUser()))
                 .collect(Collectors.toList());
     }
@@ -256,6 +258,11 @@ public class BuddyProfileService {
             predicates.add(cb.isTrue(user.get("isActive")));
             predicates.add(cb.equal(user.get("role"), UserRole.BUDDY));
             predicates.add(cb.isNull(user.get("deletedAt")));
+            predicates.add(root.get("verificationStatus").in(
+                    VerificationStatus.VERIFIED,
+                    VerificationStatus.AUTO_APPROVED,
+                    VerificationStatus.MANUAL_APPROVED
+            ));
 
             if (StringUtils.hasText(searchQuery)) {
                 String pattern = "%" + searchQuery.trim().toLowerCase() + "%";
