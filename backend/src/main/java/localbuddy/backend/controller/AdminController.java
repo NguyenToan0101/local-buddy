@@ -13,9 +13,11 @@ import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.UserRepository;
+import localbuddy.backend.dto.EarningsTransactionDto;
 import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.BookingService;
 import localbuddy.backend.service.BuddyProfileService;
+import localbuddy.backend.service.EarningsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +32,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -45,6 +48,7 @@ public class AdminController {
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
     private final BuddyProfileService buddyProfileService;
+    private final EarningsService earningsService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
@@ -87,6 +91,11 @@ public class AdminController {
                 .verifiedBuddies(buddyProfiles.stream().filter(profile -> isApprovedStatus(profile.getVerificationStatus())).count())
                 .rejectedBuddies(buddyProfiles.stream().filter(profile -> isRejectedStatus(profile.getVerificationStatus())).count())
                 .build();
+    }
+
+    @GetMapping("/earnings/transactions")
+    public Map<String, List<EarningsTransactionDto>> getAllEarningsTransactions() {
+        return Map.of("transactions", earningsService.getAllTransactions());
     }
 
     @GetMapping("/bookings")
