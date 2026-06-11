@@ -5,6 +5,7 @@ import localbuddy.backend.dto.AuthResponse;
 import localbuddy.backend.dto.ForgotPasswordRequest;
 import localbuddy.backend.dto.LoginRequest;
 import localbuddy.backend.dto.RegisterRequest;
+import localbuddy.backend.dto.ResendOtpRequest;
 import localbuddy.backend.dto.ResetPasswordRequest;
 import localbuddy.backend.dto.VerifyOtpRequest;
 import localbuddy.backend.model.entity.User;
@@ -55,19 +56,25 @@ public class AuthController {
         return ResponseEntity.ok(authService.verifyOtp(verifyOtpRequest.getEmail(), verifyOtpRequest.getOtp()));
     }
 
+    @PostMapping("/resend-otp")
+    public ResponseEntity<AuthResponse> resendOtp(@Valid @RequestBody ResendOtpRequest resendOtpRequest) {
+        return ResponseEntity.ok(authService.resendOtp(resendOtpRequest.getEmail()));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        String email = loginRequest.getEmail().trim().toLowerCase();
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail().trim(),
+                        email,
                         loginRequest.getPassword()
                 )
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = userRepository.findByEmail(loginRequest.getEmail().trim())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + loginRequest.getEmail()));
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         String jwt = jwtService.generateToken(user.getEmail(), user.getId(), user.getRole().name());
 
@@ -123,7 +130,7 @@ public class AuthController {
         }
 
         String email = principal.getName();
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         Map<String, Object> response = new HashMap<>();
@@ -158,7 +165,7 @@ public class AuthController {
         }
 
         String email = principal.getName();
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         if (updates.containsKey("name")) {
@@ -208,7 +215,7 @@ public class AuthController {
         }
 
         String email = principal.getName();
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         String avatarUrl = cloudinaryService.uploadImage(file, "local-buddy/users/" + user.getId() + "/avatar");

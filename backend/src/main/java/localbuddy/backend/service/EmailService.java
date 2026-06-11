@@ -2,6 +2,8 @@ package localbuddy.backend.service;
 
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,12 @@ import org.springframework.stereotype.Service;
 public class EmailService {
 
     private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:}")
+    private String fromEmail;
+
+    @Value("${app.email.log-sensitive-fallback:false}")
+    private boolean logSensitiveFallback;
 
     public void sendOtpEmail(String toEmail, String otp) {
         String subject = "Local Buddy - Verify Your Email";
@@ -25,6 +33,9 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            if (fromEmail != null && !fromEmail.isBlank()) {
+                helper.setFrom(fromEmail);
+            }
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(body, true);
@@ -34,13 +45,15 @@ public class EmailService {
         } catch (Exception e) {
             System.err.println("====== [EMAIL SERVICE] FAILED to send email to " + toEmail + " ======");
             System.err.println("Error details: " + e.getMessage());
+            throw new MailSendException("Could not send OTP email. Please check SMTP configuration.", e);
         } finally {
-            // Bulletproof fallback: Always print the OTP to the console so local development never breaks
-            System.out.println("\n========================================================");
-            System.out.println("   [LOCAL DEVELOPMENT OTP FALLBACK]");
-            System.out.println("   Email: " + toEmail);
-            System.out.println("   OTP Code: " + otp);
-            System.out.println("========================================================\n");
+            if (logSensitiveFallback) {
+                System.out.println("\n========================================================");
+                System.out.println("   [LOCAL DEVELOPMENT OTP FALLBACK]");
+                System.out.println("   Email: " + toEmail);
+                System.out.println("   OTP Code: " + otp);
+                System.out.println("========================================================\n");
+            }
         }
     }
 
@@ -57,6 +70,9 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            if (fromEmail != null && !fromEmail.isBlank()) {
+                helper.setFrom(fromEmail);
+            }
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(body, true);
@@ -67,11 +83,13 @@ public class EmailService {
             System.err.println("====== [EMAIL SERVICE] FAILED to send password reset email to " + toEmail + " ======");
             System.err.println("Error details: " + e.getMessage());
         } finally {
-            System.out.println("\n========================================================");
-            System.out.println("   [LOCAL DEVELOPMENT PASSWORD RESET FALLBACK]");
-            System.out.println("   Email: " + toEmail);
-            System.out.println("   Reset Link: " + resetLink);
-            System.out.println("========================================================\n");
+            if (logSensitiveFallback) {
+                System.out.println("\n========================================================");
+                System.out.println("   [LOCAL DEVELOPMENT PASSWORD RESET FALLBACK]");
+                System.out.println("   Email: " + toEmail);
+                System.out.println("   Reset Link: " + resetLink);
+                System.out.println("========================================================\n");
+            }
         }
     }
 }
