@@ -19,24 +19,41 @@ const RegisterPage: React.FC = () => {
   const [otpRequired, setOtpRequired] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpError, setOtpError] = useState('');
+  const [otpSuccess, setOtpSuccess] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
-  const { register, verifyOtp } = useAuth();
+  const { register, verifyOtp, resendOtp } = useAuth();
   const navigate = useNavigate();
+
+  const validateRegistration = () => {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName) return 'Full name is required.';
+    if (trimmedName.length > 255) return 'Full name must be 255 characters or less.';
+    if (!trimmedEmail) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return 'Email must be valid.';
+    if (!password) return 'Password is required.';
+    if (password.length < 6) return 'Password must be at least 6 characters.';
+    if (password.length > 72) return 'Password must be 72 characters or less.';
+    if (password !== confirmPassword) return 'Passwords do not match.';
+    return '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const validationError = validateRegistration();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setLoading(true);
     
     try {
-      const res = await register({ email, name, password, role });
+      const res = await register({ email: email.trim(), name: name.trim(), password, role });
       if (res && res.otpRequired) {
         setOtpRequired(true);
       } else {
@@ -56,10 +73,17 @@ const RegisterPage: React.FC = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setOtpError('');
+    setOtpSuccess('');
+
+    if (!/^\d{6}$/.test(otp)) {
+      setOtpError('OTP must be 6 digits.');
+      return;
+    }
+
     setVerifyingOtp(true);
 
     try {
-      await verifyOtp(email, otp);
+      await verifyOtp(email.trim(), otp);
       if (role === 'BUDDY') {
         navigate('/buddy/welcome');
       } else {
@@ -120,8 +144,12 @@ const RegisterPage: React.FC = () => {
                     <input 
                       type="text" 
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))}
-                      placeholder="••••••" 
+                      onChange={(e) => {
+                        setOtp(e.target.value.replace(/\D/g, '').substring(0, 6));
+                        setOtpError('');
+                        setOtpSuccess('');
+                      }}
+                      placeholder="000000" 
                       className="w-full bg-[#F9FAFB] border-2 border-transparent outline-none rounded-2xl py-5.5 text-center font-black text-3xl tracking-[0.8em] pl-6 transition-all placeholder:text-[#9CA3AF] shadow-inner focus:border-[#FF7E4B]/20 focus:bg-white focus:ring-4 focus:ring-[#FF7E4B]/5 text-secondary"
                       required
                     />
@@ -129,6 +157,7 @@ const RegisterPage: React.FC = () => {
                 </div>
 
                 {otpError && <p className="text-red-500 font-bold text-sm px-2 text-center">{otpError}</p>}
+                {otpSuccess && <p className="text-green-600 font-bold text-sm px-2 text-center">{otpSuccess}</p>}
 
                 <div className="space-y-4">
                   <Button 
@@ -144,9 +173,10 @@ const RegisterPage: React.FC = () => {
                       type="button"
                       onClick={async () => {
                         setOtpError('');
+                        setOtpSuccess('');
                         try {
-                          await register({ email, name, password, role });
-                          alert('A new OTP has been sent to your email.');
+                          await resendOtp(email.trim());
+                          setOtpSuccess('A new OTP has been sent to your email.');
                         } catch (err: any) {
                           setOtpError(err.message || 'Failed to resend OTP');
                         }

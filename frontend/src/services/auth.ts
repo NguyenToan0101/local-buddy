@@ -49,6 +49,15 @@ const getLoginErrorMessage = (message?: string): string => {
   return message;
 };
 
+const getApiErrorMessage = (data: any, fallback: string): string => {
+  if (data?.fields && typeof data.fields === 'object') {
+    const messages = Object.values(data.fields)
+      .filter((message): message is string => typeof message === 'string' && message.trim().length > 0);
+    if (messages.length > 0) return messages.join(' ');
+  }
+  return data?.message || fallback;
+};
+
 export const authService = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -96,7 +105,7 @@ export const authService = {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'Registration failed');
+      throw new Error(getApiErrorMessage(errData, 'Registration failed'));
     }
 
     const data = await response.json();
@@ -138,7 +147,7 @@ export const authService = {
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'OTP verification failed');
+      throw new Error(getApiErrorMessage(errData, 'OTP verification failed'));
     }
 
     const data = await response.json();
@@ -154,6 +163,21 @@ export const authService = {
     };
 
     return { user, token: data.token };
+  },
+
+  resendOtp: async (email: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(getApiErrorMessage(errData, 'Failed to resend OTP'));
+    }
   },
 
   getCurrentUser: (): User | null => {

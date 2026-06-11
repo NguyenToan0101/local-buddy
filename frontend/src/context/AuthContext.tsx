@@ -9,6 +9,7 @@ interface AuthContextType {
   loginWithToken: (token: string) => Promise<User>;
   register: (userData: any) => Promise<any>;
   verifyOtp: (email: string, otp: string) => Promise<User>;
+  resendOtp: (email: string) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -93,6 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return user;
   };
 
+  const resendOtp = async (email: string) => {
+    await authService.resendOtp(email);
+  };
+
   const logout = () => {
     clearAuth();
   };
@@ -110,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, verifyOtp, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, verifyOtp, resendOtp, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );
