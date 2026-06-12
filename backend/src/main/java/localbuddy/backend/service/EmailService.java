@@ -6,15 +6,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    private final RestClient resendClient = RestClient.create("https://api.resend.com");
 
-    @Value("${spring.mail.username:}")
+    @Value("${resend.api-key:}")
+    private String resendApiKey;
+
+    @Value("${app.email.from:${spring.mail.username:}}")
     private String fromEmail;
 
     @Value("${app.email.log-sensitive-fallback:false}")
@@ -30,22 +40,12 @@ public class EmailService {
                 + "<p>Safe travels,<br/>The Local Buddy Team</p>";
 
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            if (fromEmail != null && !fromEmail.isBlank()) {
-                helper.setFrom(fromEmail);
-            }
-            helper.setTo(toEmail);
-            helper.setSubject(subject);
-            helper.setText(body, true);
-
-            mailSender.send(message);
+            sendEmail(toEmail, subject, body);
             System.out.println("====== [EMAIL SERVICE] Email successfully sent to " + toEmail + " ======");
         } catch (Exception e) {
             System.err.println("====== [EMAIL SERVICE] FAILED to send email to " + toEmail + " ======");
             System.err.println("Error details: " + e.getMessage());
-            throw new MailSendException("Could not send OTP email. Please check SMTP configuration.", e);
+            throw new MailSendException("Could not send OTP email. Please check email provider configuration.", e);
         } finally {
             if (logSensitiveFallback) {
                 System.out.println("\n========================================================");
@@ -67,17 +67,7 @@ public class EmailService {
                 + "<p>Safe travels,<br/>The Local Buddy Team</p>";
 
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            if (fromEmail != null && !fromEmail.isBlank()) {
-                helper.setFrom(fromEmail);
-            }
-            helper.setTo(toEmail);
-            helper.setSubject(subject);
-            helper.setText(body, true);
-
-            mailSender.send(message);
+            sendEmail(toEmail, subject, body);
             System.out.println("====== [EMAIL SERVICE] Password reset email successfully sent to " + toEmail + " ======");
         } catch (Exception e) {
             System.err.println("====== [EMAIL SERVICE] FAILED to send password reset email to " + toEmail + " ======");
@@ -91,5 +81,58 @@ public class EmailService {
                 System.out.println("========================================================\n");
             }
         }
+    }
+
+    private void sendEmail(String toEmail, String subject, String htmlBody) {
+        if (resendApiKey != null && !resendApiKey.isBlank()) {
+            sendViaResend(toEmail, subject, htmlBody);
+            return;
+        }
+        sendViaSmtp(toEmail, subject, htmlBody);
+    }
+
+    private void sendViaResend(String toEmail, String subject, String htmlBody) {
+        String from = requireFromEmail();
+        try {
+            resendClient.post()
+                    .uri("/emails")
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "from", from,
+                            "to", List.of(toEmail),
+                            "subject", subject,
+                            "html", htmlBody
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException e) {
+            throw new MailSendException("Resend API email delivery failed.", e);
+        }
+    }
+
+    private void sendViaSmtp(String toEmail, String subject, String htmlBody) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            if (fromEmail != null && !fromEmail.isBlank()) {
+                helper.setFrom(fromEmail);
+            }
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            throw new MailSendException("SMTP email delivery failed.", e);
+        }
+    }
+
+    private String requireFromEmail() {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new MailSendException("Email sender is not configured. Set EMAIL_FROM.");
+        }
+        return fromEmail;
     }
 }
