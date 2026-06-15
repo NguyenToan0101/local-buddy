@@ -12,6 +12,7 @@
   "dependencies": {
     "@paypal/react-paypal-js": "^10.0.0",
     "@types/recharts": "^1.8.29",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.577.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",

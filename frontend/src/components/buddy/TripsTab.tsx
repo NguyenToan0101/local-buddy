@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { bookingService } from '../../services/api';
 import {
   Calendar as CalendarIcon,
@@ -7,22 +8,36 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  MessageCircle,
   Map,
   Activity,
   ShieldCheck,
-  User,
   ArrowRight,
   QrCode,
+  Camera,
   Play,
   CheckCircle2,
   X
 } from 'lucide-react';
 import Button from '../ui/Button';
 
+type TripSummary = {
+  id: string;
+  status: string;
+  meetupStatus?: string;
+  activity?: string;
+  title?: string;
+  price?: React.ReactNode;
+  date?: string;
+  time?: string;
+  hours?: number;
+  location?: string;
+};
+
 interface TripsTabProps {
-  upcomingTrips: any[];
+  upcomingTrips: TripSummary[];
 }
+
+const QR_READER_ID = 'buddy-trip-qr-reader';
 
 const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'completed' | 'cancelled'>('upcoming');
@@ -30,8 +45,20 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
   const [scannerTripId, setScannerTripId] = useState<string | null>(null);
   const [qrInput, setQrInput] = useState('');
   const [actionError, setActionError] = useState('');
-  const [tripOverrides, setTripOverrides] = useState<Record<string, any>>({});
+  const [scannerStatus, setScannerStatus] = useState('Point the camera at the traveler QR');
+  const [isStartingTrip, setIsStartingTrip] = useState(false);
+  const [tripOverrides, setTripOverrides] = useState<Record<string, Partial<TripSummary>>>({});
+  const qrScannerRef = useRef<Html5Qrcode | null>(null);
+  const detectedPayloadRef = useRef('');
+  const startWithQrPayloadRef = useRef<(payload: string) => Promise<void>>(async () => {});
   const itemsPerPage = 6; // increased slightly for better desktop utilization
+
+  const closeScanner = useCallback(() => {
+    setScannerTripId(null);
+    setQrInput('');
+    setScannerStatus('Point the camera at the traveler QR');
+    detectedPayloadRef.current = '';
+  }, []);
 
   const handleMeetupPoint = async (tripId: string) => {
     try {
@@ -47,19 +74,32 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
     }
   };
 
-  const handleStartWithQr = async () => {
-    if (!scannerTripId || !qrInput.trim()) return;
+  const handleStartWithQrPayload = useCallback(async (payload: string) => {
+    if (!scannerTripId || !payload.trim() || isStartingTrip) return;
     try {
       setActionError('');
-      const updated = await bookingService.startWithQr(scannerTripId, qrInput.trim());
+      setIsStartingTrip(true);
+      setScannerStatus('QR detected. Starting trip...');
+      const updated = await bookingService.startWithQr(scannerTripId, payload.trim());
       setTripOverrides((current) => ({ ...current, [scannerTripId]: updated }));
-      setScannerTripId(null);
-      setQrInput('');
+      closeScanner();
       window.location.href = `/buddy/live/${scannerTripId}`;
     } catch (error) {
       console.error("Error starting trip:", error);
       setActionError(error instanceof Error ? error.message : 'Unable to start trip.');
+      setScannerStatus('QR invalid or expired. Ask the traveler to refresh it.');
+      detectedPayloadRef.current = '';
+    } finally {
+      setIsStartingTrip(false);
     }
+  }, [closeScanner, isStartingTrip, scannerTripId]);
+
+  useEffect(() => {
+    startWithQrPayloadRef.current = handleStartWithQrPayload;
+  }, [handleStartWithQrPayload]);
+
+  const handleStartWithQr = async () => {
+    await handleStartWithQrPayload(qrInput);
   };
 
   const handleComplete = async (tripId: string) => {
@@ -84,6 +124,71 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
   // Pagination
   const totalPages = Math.ceil(filteredTrips.length / itemsPerPage);
   const paginatedTrips = filteredTrips.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    if (!scannerTripId) return;
+
+    let active = true;
+
+    const stopCamera = () => {
+      const scanner = qrScannerRef.current;
+      qrScannerRef.current = null;
+      if (!scanner) return;
+
+      const clearScanner = () => {
+        try {
+          scanner.clear();
+        } catch {
+          // Scanner may already be cleared when camera permission was denied.
+        }
+      };
+
+      if (scanner.isScanning) {
+        scanner.stop().then(clearScanner).catch(clearScanner);
+      } else {
+        clearScanner();
+      }
+    };
+
+    const startCamera = async () => {
+      try {
+        const scanner = new Html5Qrcode(QR_READER_ID, {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+        qrScannerRef.current = scanner;
+        setScannerStatus('Opening camera...');
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 220, height: 220 },
+            aspectRatio: 1,
+          },
+          async (decodedText) => {
+            if (!active || !decodedText || decodedText === detectedPayloadRef.current) return;
+            detectedPayloadRef.current = decodedText;
+            setQrInput(decodedText);
+            await startWithQrPayloadRef.current(decodedText);
+          },
+          () => {
+            if (active) setScannerStatus('Camera is active. Keep the QR centered and steady.');
+          }
+        );
+      } catch (error) {
+        console.error('Unable to start QR camera:', error);
+        setScannerStatus('Camera unavailable. Allow camera permission or paste the QR payload below.');
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      active = false;
+      stopCamera();
+    };
+  }, [scannerTripId]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -275,11 +380,11 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
       {/* QR Scanner Modal */}
       {scannerTripId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-sm" onClick={() => setScannerTripId(null)}></div>
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-sm" onClick={closeScanner}></div>
           <div className="bg-white rounded-[32px] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center space-y-6 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-secondary"></div>
             <button
-              onClick={() => setScannerTripId(null)}
+              onClick={closeScanner}
               className="absolute top-6 right-6 text-secondary/20 hover:text-primary transition-colors border-none bg-transparent cursor-pointer"
             >
               <X size={20} />
@@ -287,15 +392,17 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
 
             <div className="space-y-1.5 pt-4">
               <h4 className="text-xl font-black text-secondary tracking-tight">Start Trip With QR</h4>
-              <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">Paste scanned traveler QR payload or token</p>
+              <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">{scannerStatus}</p>
             </div>
 
-            <div className="relative mx-auto w-48 h-48 bg-surface rounded-[24px] flex items-center justify-center p-6 ring-4 ring-primary/5 transition-all">
-              <div className="absolute inset-0 border-2 border-dashed border-primary/20 rounded-[24px] animate-[spin_30s_linear_infinite]"></div>
-              <div className="relative z-10 w-full h-full text-secondary opacity-90">
-                <QrCode size="100%" strokeWidth={1.5} />
+            <div className="relative mx-auto w-56 h-56 bg-secondary rounded-[24px] overflow-hidden ring-4 ring-primary/5 transition-all">
+              <div id={QR_READER_ID} className="absolute inset-0 w-full h-full [&_video]:!w-full [&_video]:!h-full [&_video]:!object-cover [&_img]:hidden [&_button]:hidden [&_span]:hidden"></div>
+              <div className="absolute inset-0 bg-secondary/10"></div>
+              <div className="absolute inset-8 border-2 border-white/70 rounded-2xl shadow-[0_0_0_999px_rgba(0,0,0,0.22)]"></div>
+              <div className="absolute left-8 right-8 top-8 h-0.5 bg-primary/90 blur-[1px] rounded-full animate-[bounce_4s_infinite]"></div>
+              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-white">
+                <Camera size={12} /> Scan traveler code
               </div>
-              <div className="absolute left-4 right-4 top-4 h-0.5 bg-primary/40 blur-[1px] rounded-full animate-[bounce_4s_infinite]"></div>
             </div>
 
             <div className="space-y-3">
@@ -305,7 +412,7 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
                 placeholder="local-buddy://booking/.../start?token=..."
                 className="w-full min-h-24 rounded-2xl border border-gray-100 bg-slate-50 p-4 text-xs font-bold text-secondary outline-none focus:ring-4 focus:ring-primary/10"
               />
-              <Button onClick={handleStartWithQr} className="w-full py-3 text-xs flex items-center justify-center gap-2">
+              <Button onClick={handleStartWithQr} disabled={isStartingTrip || !qrInput.trim()} className="w-full py-3 text-xs flex items-center justify-center gap-2">
                 <Play size={14} /> Start trip
               </Button>
             </div>

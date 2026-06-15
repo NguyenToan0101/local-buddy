@@ -32,6 +32,7 @@ import EarningsTab from '../../components/buddy/EarningsTab';
 import ScheduleTab from '../../components/buddy/ScheduleTab';
 import SettingsTab from '../../components/buddy/SettingsTab';
 import BookingDetail from './BookingDetail';
+import NotificationPopover from '../../components/features/NotificationPopover';
 
 import { experienceService, bookingService, messageService, transactionService, type Experience } from '../../services/api';
 
@@ -42,6 +43,8 @@ const BuddyDashboard: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = React.useRef<HTMLDivElement>(null);
 
   // Real Data State
   const [travelerStories, setTravelerStories] = useState<Experience[]>([]);
@@ -99,6 +102,17 @@ const BuddyDashboard: React.FC = () => {
 
     fetchData();
   }, [user?.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const stats = useMemo(() => [
     { label: "Wallet Balance", value: `$${totalEarnings.toFixed(2)}`, icon: Wallet, color: "text-primary", bg: "bg-primary/10" },
@@ -260,10 +274,25 @@ const BuddyDashboard: React.FC = () => {
              </button>
 
              {/* Notifications */}
-             <button className="relative w-10 h-10 bg-white rounded-xl border border-gray-100 flex items-center justify-center text-secondary/40 hover:text-primary transition-all hover:shadow-premium group">
-                <Bell size={16} />
-                <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full border border-white group-hover:animate-pulse"></span>
-             </button>
+             <div ref={notifRef} className="relative">
+               <button
+                 onClick={() => setIsNotifOpen((open) => !open)}
+                 className={`relative w-10 h-10 bg-white rounded-xl border border-gray-100 flex items-center justify-center transition-all hover:shadow-premium group ${
+                   isNotifOpen ? 'text-primary' : 'text-secondary/40 hover:text-primary'
+                 }`}
+               >
+                  <Bell size={16} />
+                  <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full border border-white group-hover:animate-pulse"></span>
+               </button>
+               <NotificationPopover
+                 isOpen={isNotifOpen}
+                 onClose={() => setIsNotifOpen(false)}
+                 onScanStart={(booking) => {
+                   setIsNotifOpen(false);
+                   if (booking?.id) navigate(`/buddy/dashboard/trips/${booking.id}`);
+                 }}
+               />
+             </div>
 
 
 
