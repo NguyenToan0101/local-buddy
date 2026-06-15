@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface EarningsTransactionRepository extends JpaRepository<EarningsTransaction, UUID> {
     List<EarningsTransaction> findByBuddyIdOrderByCreatedAtDesc(UUID buddyId);
+
+    List<EarningsTransaction> findAllByOrderByCreatedAtDesc();
 }

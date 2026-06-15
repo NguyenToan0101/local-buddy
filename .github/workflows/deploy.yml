@@ -31,7 +31,8 @@ jobs:
             congtoan0101/vite-app:${{ github.sha }}
           # Truyền secret từ GitHub vào Docker
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
+              VITE_API_URL=${{ secrets.VITE_API_URL }}
+              VITE_PAYPAL_CLIENT_ID=${{ secrets.VITE_PAYPAL_CLIENT_ID }}
 
       # 2. Build và Push Backend Image (Spring Boot)
       - name: Build and Push Backend
@@ -54,12 +55,36 @@ jobs:
           script: |
             cd /root/local-buddy
             git pull origin main
+
             cat > .env << EOF
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
-            APP_OAUTH2_REDIRECT_URI_FRONTEND=${{ secrets.APP_OAUTH2_REDIRECT_URI_FRONTEND }}
+            SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}
+            SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }}
+            SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+
+            SPRING_MAIL_USERNAME=${{ secrets.SPRING_MAIL_USERNAME }}
+            SPRING_MAIL_PASSWORD=${{ secrets.SPRING_MAIL_PASSWORD }}
+
+            OAUTH2_REDIRECT_URI_FRONTEND=${{ secrets.OAUTH2_REDIRECT_URI_FRONTEND }}
+            API_FRONTEND=${{ secrets.API_FRONTEND }}
+
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+
+            AI_SERVICE_BASE_URL=${{ secrets.AI_SERVICE_BASE_URL }}
+            AI_SERVICE_TIMEOUT_SECONDS=${{ secrets.AI_SERVICE_TIMEOUT_SECONDS }}
+
+            ALLOWED_MEDIA_HOSTS=${{ secrets.ALLOWED_MEDIA_HOSTS }}
+            MAX_DOWNLOAD_MB=${{ secrets.MAX_DOWNLOAD_MB }}
+
+            ANTISPOOF_MODEL_PATH=${{ secrets.ANTISPOOF_MODEL_PATH }}
+
+            PAYPAL_CLIENT_ID=${{ secrets.PAYPAL_CLIENT_ID }}
+            PAYPAL_CLIENT_SECRET=${{ secrets.PAYPAL_CLIENT_SECRET }}
+            PAYPAL_MODE=${{ secrets.PAYPAL_MODE }}
             EOF
             # Kéo image mới nhất về và khởi động lại
             docker compose pull

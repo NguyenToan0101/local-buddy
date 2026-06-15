@@ -13,6 +13,7 @@ import localbuddy.backend.model.enums.PaymentType;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.PaymentRepository;
 import localbuddy.backend.repository.UserRepository;
+import localbuddy.backend.service.EarningsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
@@ -46,6 +47,7 @@ public class PaymentService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final EarningsService earningsService;
 
     private static final String PAYPAL_SANDBOX_URL = "https://api-m.sandbox.paypal.com";
     private static final String PAYPAL_LIVE_URL = "https://api-m.paypal.com";
@@ -163,6 +165,17 @@ public class PaymentService {
         bookingRepository.save(booking);
 
         createPaymentNotifications(booking);
+
+        // Create INCOME earnings transaction for the buddy
+        if (booking.getBuddy() != null) {
+            String incomeDescription = "Payment received for booking: " + booking.getTitle();
+            earningsService.createIncomeTransaction(
+                    booking.getBuddy().getId(),
+                    booking,
+                    booking.getTotalPrice(),
+                    incomeDescription
+            );
+        }
 
         return convertToDto(savedPayment);
     }

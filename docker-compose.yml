@@ -9,8 +9,6 @@ services:
   backend:
     build:
       context: ./backend
-    env_file:
-      - ${BACKEND_ENV_FILE:-/etc/local-buddy/backend.env}
     environment:
       AI_SERVICE_BASE_URL: http://ai-verification-service:8001
     ports:

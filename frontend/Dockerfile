@@ -6,8 +6,10 @@ RUN npm install
 # --- ĐOẠN QUAN TRỌNG ---
 # Khai báo ARG để nhận biến từ GitHub Actions truyền xuống
 ARG VITE_API_URL
-# Chuyển ARG thành ENV để Vite có thể đọc được lúc build
+ARG VITE_PAYPAL_CLIENT_ID
+
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_PAYPAL_CLIENT_ID=$VITE_PAYPAL_CLIENT_ID
 
 COPY . .
 RUN npm run build
