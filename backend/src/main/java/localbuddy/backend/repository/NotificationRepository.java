@@ -13,4 +13,6 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     List<Notification> findByReceiverIdOrderByCreatedAtDesc(UUID receiverId);
 
     Optional<Notification> findByIdAndReceiverId(UUID id, UUID receiverId);
+
+    boolean existsByReceiverIdAndTypeAndBookingId(UUID receiverId, String type, UUID bookingId);
 }

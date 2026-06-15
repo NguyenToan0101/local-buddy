@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Star, ArrowRight, CheckCircle2, Clock, Play, AlertTriangle, QrCode } from 'lucide-react';
+import { Bell, Star, CheckCircle2, Clock, Play, AlertTriangle, QrCode } from 'lucide-react';
 import { notificationService, bookingService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,6 +13,10 @@ interface NotificationPopoverProps {
 const getIcon = (type: string) => {
   switch (type) {
     case 'booking': return <CheckCircle2 size={18} />;
+    case 'booking_confirmed': return <CheckCircle2 size={18} />;
+    case 'payment_success': return <CheckCircle2 size={18} />;
+    case 'trip_started': return <Play size={18} />;
+    case 'review_request': return <Star size={18} />;
     case 'reminder': return <Clock size={18} />;
     case 'status': return <Play size={18} />;
     case 'warning': return <AlertTriangle size={18} />;
@@ -37,7 +41,7 @@ const NotificationPopover: React.FC<NotificationPopoverProps> = ({ isOpen, onClo
   const checkMeetupStatus = async () => {
     try {
       const bookings = await bookingService.getAll();
-      const waiting = bookings.find((b: any) => b.meetupStatus === 'BUDDY_WAITING' && b.userId === (user?.id || 'u1'));
+      const waiting = bookings.find((b: any) => b.meetupStatus === 'BUDDY_ARRIVED' && b.userId === (user?.id || 'u1'));
       setWaitingBooking(waiting);
     } catch (error) {
       console.error("Error checking meetup status for notifications:", error);
@@ -53,16 +57,6 @@ const NotificationPopover: React.FC<NotificationPopoverProps> = ({ isOpen, onClo
       console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
     }
   };
 
@@ -142,7 +136,13 @@ const NotificationPopover: React.FC<NotificationPopoverProps> = ({ isOpen, onClo
                   <div 
                     key={notif.id} 
                     className={`p-5 flex items-start gap-4 transition-all hover:bg-gray-50 cursor-pointer group ${notif.unread ? 'bg-primary/5' : ''}`}
-                    onClick={() => handleMarkAsRead(notif.id, {} as any)}
+                    onClick={async () => {
+                      await notificationService.markAsRead(notif.id);
+                      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+                      if (notif.linkUrl) {
+                        window.location.href = notif.linkUrl;
+                      }
+                    }}
                   >
                     <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${notif.color || 'bg-surface-dark text-secondary/40'} shadow-sm`}>
                       {getIcon(notif.type)}

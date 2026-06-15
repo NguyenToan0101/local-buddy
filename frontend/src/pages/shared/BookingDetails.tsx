@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, MessageSquare, MapPin, Calendar, Clock, Star, DollarSign, ArrowRight } from 'lucide-react';
+import { ChevronLeft, MessageSquare, MapPin, Calendar, Clock, Star, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { bookingService, buddyService } from '../../services/api';
-import Footer from '../../components/Footer';
 import Button from '../../components/ui/Button';
 
 const BookingDetails: React.FC = () => {
@@ -11,6 +11,9 @@ const BookingDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [buddy, setBuddy] = useState<any>(null);
+  const [qrToken, setQrToken] = useState<any>(null);
+  const [actionError, setActionError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const fetchBookingData = async () => {
@@ -34,6 +37,48 @@ const BookingDetails: React.FC = () => {
     fetchBookingData();
   }, [id]);
 
+  useEffect(() => {
+    const loadQrToken = async () => {
+      if (!id || booking?.meetupStatus !== 'BOTH_ARRIVED') return;
+      try {
+        const token = await bookingService.getQrToken(id);
+        setQrToken(token);
+      } catch (error) {
+        console.error("Error fetching QR token:", error);
+      }
+    };
+
+    loadQrToken();
+  }, [id, booking?.meetupStatus]);
+
+  const handleTravelerArrived = async () => {
+    if (!id) return;
+    try {
+      setActionLoading(true);
+      setActionError('');
+      const updated = await bookingService.markTravelerArrived(id);
+      setBooking(updated);
+    } catch (error: any) {
+      setActionError(error?.message || 'Unable to mark arrival.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCompleteTrip = async () => {
+    if (!id) return;
+    try {
+      setActionLoading(true);
+      setActionError('');
+      const updated = await bookingService.complete(id);
+      setBooking(updated);
+    } catch (error: any) {
+      setActionError(error?.message || 'Unable to complete trip.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-full flex flex-col items-center justify-center bg-[#FBFBFC] py-40">
@@ -55,6 +100,8 @@ const BookingDetails: React.FC = () => {
   const activityFee = booking.price || 0;
   const serviceFee = Math.round(activityFee * 0.1);
   const total = activityFee + serviceFee;
+  const meetupStatus = booking.meetupStatus || 'NOT_STARTED';
+  const isConfirmed = booking.status === 'CONFIRMED';
 
   return (
     <div className="min-h-full flex flex-col bg-[#FBFBFC]">
@@ -179,6 +226,51 @@ const BookingDetails: React.FC = () => {
               </div>
             </div>
           </section>
+
+          {isConfirmed && (
+            <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
+              <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Meetup Check-in</h3>
+              {actionError && <p className="text-[11px] font-bold text-red-500">{actionError}</p>}
+              {meetupStatus === 'NOT_STARTED' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-secondary/50">When you reach the meeting point, confirm your arrival so your buddy can start the trip.</p>
+                  <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full py-3 text-xs">
+                    Tôi đã đến điểm hẹn
+                  </Button>
+                </div>
+              )}
+              {meetupStatus === 'TRAVELER_ARRIVED' && (
+                <p className="text-xs font-bold text-secondary/50">Bạn đã xác nhận có mặt. Đang chờ buddy.</p>
+              )}
+              {meetupStatus === 'BUDDY_ARRIVED' && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-secondary/50">Buddy đã tới điểm hẹn. Hãy xác nhận bạn đã tới để tạo QR bắt đầu chuyến đi.</p>
+                  <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full py-3 text-xs">
+                    Tôi đã đến điểm hẹn
+                  </Button>
+                </div>
+              )}
+              {meetupStatus === 'BOTH_ARRIVED' && (
+                <div className="space-y-4 text-center">
+                  <div className="mx-auto w-56 h-56 rounded-2xl border border-gray-100 bg-white flex items-center justify-center p-4">
+                    {qrToken?.qrPayload ? <QRCodeSVG value={qrToken.qrPayload} size={192} /> : <QrCode size={96} className="text-secondary/20" />}
+                  </div>
+                  <p className="text-[10px] font-black text-secondary/40 uppercase tracking-widest">Show this QR to your buddy to start</p>
+                  {qrToken?.expiresAt && <p className="text-[10px] font-bold text-secondary/30">Expires at {new Date(qrToken.expiresAt).toLocaleTimeString()}</p>}
+                </div>
+              )}
+              {meetupStatus === 'IN_PROGRESS' && (
+                <div className="space-y-3">
+                  <Button onClick={() => navigate(`/traveller/experience/live/${booking.id}`)} className="w-full py-3 text-xs">
+                    Open live experience
+                  </Button>
+                  <button onClick={handleCompleteTrip} disabled={actionLoading} className="w-full py-3 bg-slate-50 border border-slate-100 rounded-xl text-secondary text-[10px] font-black uppercase tracking-widest">
+                    Complete trip
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
         {/* Right Column (Financials, Safety, Actions) */}

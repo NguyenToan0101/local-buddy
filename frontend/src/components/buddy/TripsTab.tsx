@@ -14,6 +14,8 @@ import {
   User,
   ArrowRight,
   QrCode,
+  Play,
+  CheckCircle2,
   X
 } from 'lucide-react';
 import Button from '../ui/Button';
@@ -25,22 +27,55 @@ interface TripsTabProps {
 const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'completed' | 'cancelled'>('upcoming');
   const [currentPage, setCurrentPage] = useState(1);
-  const [showQrModal, setShowQrModal] = useState<string | null>(null);
+  const [scannerTripId, setScannerTripId] = useState<string | null>(null);
+  const [qrInput, setQrInput] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [tripOverrides, setTripOverrides] = useState<Record<string, any>>({});
   const itemsPerPage = 6; // increased slightly for better desktop utilization
 
   const handleMeetupPoint = async (tripId: string) => {
     try {
-      await bookingService.updateMeetupStatus(tripId, 'BUDDY_WAITING');
-      setShowQrModal(tripId);
-      // Optimistic state update or full refresh
-      window.location.reload();
+      setActionError('');
+      const updated = await bookingService.markBuddyArrived(tripId);
+      setTripOverrides((current) => ({ ...current, [tripId]: updated }));
+      if (updated.meetupStatus === 'BOTH_ARRIVED') {
+        setScannerTripId(tripId);
+      }
     } catch (error) {
       console.error("Error updating meetup status:", error);
+      setActionError(error instanceof Error ? error.message : 'Unable to mark arrival.');
+    }
+  };
+
+  const handleStartWithQr = async () => {
+    if (!scannerTripId || !qrInput.trim()) return;
+    try {
+      setActionError('');
+      const updated = await bookingService.startWithQr(scannerTripId, qrInput.trim());
+      setTripOverrides((current) => ({ ...current, [scannerTripId]: updated }));
+      setScannerTripId(null);
+      setQrInput('');
+      window.location.href = `/buddy/live/${scannerTripId}`;
+    } catch (error) {
+      console.error("Error starting trip:", error);
+      setActionError(error instanceof Error ? error.message : 'Unable to start trip.');
+    }
+  };
+
+  const handleComplete = async (tripId: string) => {
+    try {
+      setActionError('');
+      const updated = await bookingService.complete(tripId);
+      setTripOverrides((current) => ({ ...current, [tripId]: updated }));
+    } catch (error) {
+      console.error("Error completing trip:", error);
+      setActionError(error instanceof Error ? error.message : 'Unable to complete trip.');
     }
   };
 
   // Filter trips based on activeTab
-  const filteredTrips = upcomingTrips.filter(trip => {
+  const mergedTrips = upcomingTrips.map((trip) => ({ ...trip, ...(tripOverrides[trip.id] || {}) }));
+  const filteredTrips = mergedTrips.filter(trip => {
     if (activeTab === 'pending') return trip.status === 'PENDING';
     if (activeTab === 'upcoming') return trip.status === 'CONFIRMED' || trip.status === 'UPCOMING';
     return trip.status === activeTab.toUpperCase();
@@ -76,6 +111,7 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
       </div>
 
       {/* Trips list */}
+      {actionError && <p className="text-xs font-bold text-red-500">{actionError}</p>}
       {paginatedTrips.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {paginatedTrips.map((trip) => (
@@ -147,27 +183,40 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
                 </Link>
                 <div className="flex items-center gap-2">
                   {trip.meetupStatus === 'IN_PROGRESS' && (
-                    <Link to={`/buddy/live/${trip.id}`}>
-                      <Button className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm bg-green-500 hover:bg-green-600 text-white border-none">
-                        Join Session
-                      </Button>
-                    </Link>
+                    <>
+                      <Link to={`/buddy/live/${trip.id}`}>
+                        <Button className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm bg-green-500 hover:bg-green-600 text-white border-none">
+                          Join Session
+                        </Button>
+                      </Link>
+                      <button
+                        onClick={() => handleComplete(trip.id)}
+                        className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white text-secondary border border-gray-100 shadow-sm flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 size={12} /> Complete
+                      </button>
+                    </>
                   )}
-                  {(trip.status === 'CONFIRMED' || trip.status === 'UPCOMING') && trip.meetupStatus === 'BUDDY_WAITING' && (
+                  {(trip.status === 'CONFIRMED' || trip.status === 'UPCOMING') && trip.meetupStatus === 'BOTH_ARRIVED' && (
                     <button
-                      onClick={() => setShowQrModal(trip.id)}
+                      onClick={() => setScannerTripId(trip.id)}
                       className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-secondary text-white hover:bg-secondary-dark border-none shadow-sm flex items-center gap-1.5 animate-pulse"
                     >
-                      <QrCode size={12} /> Show QR
+                      <QrCode size={12} /> Scan QR
                     </button>
                   )}
-                  {(trip.status === 'CONFIRMED' || trip.status === 'UPCOMING') && !trip.meetupStatus && (
+                  {(trip.status === 'CONFIRMED' || trip.status === 'UPCOMING') && ['NOT_STARTED', 'TRAVELER_ARRIVED'].includes(trip.meetupStatus || 'NOT_STARTED') && (
                     <button
                       onClick={() => handleMeetupPoint(trip.id)}
                       className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-primary text-white hover:bg-primary-dark border-none shadow-sm flex items-center gap-1.5"
                     >
                       <MapPin size={12} /> I'm Here
                     </button>
+                  )}
+                  {(trip.status === 'CONFIRMED' || trip.status === 'UPCOMING') && trip.meetupStatus === 'BUDDY_ARRIVED' && (
+                    <span className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
+                      Waiting traveler
+                    </span>
                   )}
                 </div>
               </div>
@@ -223,22 +272,22 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
         </div>
       )}
 
-      {/* Meetup QR Modal */}
-      {showQrModal && (
+      {/* QR Scanner Modal */}
+      {scannerTripId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-sm" onClick={() => setShowQrModal(null)}></div>
+          <div className="absolute inset-0 bg-secondary/60 backdrop-blur-sm" onClick={() => setScannerTripId(null)}></div>
           <div className="bg-white rounded-[32px] p-8 max-w-sm w-full relative z-10 shadow-2xl text-center space-y-6 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-secondary"></div>
             <button
-              onClick={() => setShowQrModal(null)}
+              onClick={() => setScannerTripId(null)}
               className="absolute top-6 right-6 text-secondary/20 hover:text-primary transition-colors border-none bg-transparent cursor-pointer"
             >
               <X size={20} />
             </button>
 
             <div className="space-y-1.5 pt-4">
-              <h4 className="text-xl font-black text-secondary tracking-tight">Meetup Waiting Signal</h4>
-              <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">Traveler scans this to verify coordinates</p>
+              <h4 className="text-xl font-black text-secondary tracking-tight">Start Trip With QR</h4>
+              <p className="text-[10px] font-bold text-secondary/40 uppercase tracking-widest">Paste scanned traveler QR payload or token</p>
             </div>
 
             <div className="relative mx-auto w-48 h-48 bg-surface rounded-[24px] flex items-center justify-center p-6 ring-4 ring-primary/5 transition-all">
@@ -250,16 +299,15 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
             </div>
 
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-100">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                <span className="text-[9px] font-black text-green-600 uppercase tracking-widest">Broadcasting coordinates...</span>
-              </div>
-              <p className="text-[9px] font-bold text-secondary/30 uppercase tracking-wider max-w-[220px] mx-auto leading-relaxed">
-                Stay at the specified meetup point. Payout activates when traveler scanning completes.
-              </p>
+              <textarea
+                value={qrInput}
+                onChange={(event) => setQrInput(event.target.value)}
+                placeholder="local-buddy://booking/.../start?token=..."
+                className="w-full min-h-24 rounded-2xl border border-gray-100 bg-slate-50 p-4 text-xs font-bold text-secondary outline-none focus:ring-4 focus:ring-primary/10"
+              />
+              <Button onClick={handleStartWithQr} className="w-full py-3 text-xs flex items-center justify-center gap-2">
+                <Play size={14} /> Start trip
+              </Button>
             </div>
           </div>
         </div>

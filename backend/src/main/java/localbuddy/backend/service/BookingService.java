@@ -2,14 +2,19 @@ package localbuddy.backend.service;
 
 import localbuddy.backend.dto.BookingDto;
 import localbuddy.backend.dto.BookingRequest;
+import localbuddy.backend.dto.QrTokenResponse;
+import localbuddy.backend.dto.ReviewDto;
+import localbuddy.backend.dto.ReviewRequest;
 import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.BuddyProfile;
+import localbuddy.backend.model.entity.Review;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.BookingStatus;
 import localbuddy.backend.model.enums.MeetupStatus;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.ReviewRepository;
 import localbuddy.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,11 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -37,6 +45,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final NotificationService notificationService;
+    private final ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
     public Page<BookingDto> getBookings(UUID currentUserId, Pageable pageable) {
@@ -73,11 +83,150 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingDto updateMeetupStatus(UUID currentUserId, UUID bookingId, String status) {
+    public BookingDto markTravelerArrived(UUID currentUserId, UUID bookingId) {
         Booking booking = getBookingForParticipant(currentUserId, bookingId);
-        booking.setMeetupStatus(status != null ? MeetupStatus.valueOf(status.toUpperCase()) : MeetupStatus.NOT_STARTED);
+        requireTraveler(currentUserId, booking);
+        requireConfirmedAndArrivalWindow(booking);
+
+        MeetupStatus status = booking.getMeetupStatus() != null ? booking.getMeetupStatus() : MeetupStatus.NOT_STARTED;
+        if (status == MeetupStatus.BUDDY_ARRIVED || status == MeetupStatus.BOTH_ARRIVED) {
+            booking.setMeetupStatus(MeetupStatus.BOTH_ARRIVED);
+        } else if (status == MeetupStatus.NOT_STARTED || status == MeetupStatus.TRAVELER_ARRIVED) {
+            booking.setMeetupStatus(MeetupStatus.TRAVELER_ARRIVED);
+        } else {
+            throw new IllegalArgumentException("Traveler arrival cannot be marked after the trip has started.");
+        }
         booking.setUpdatedAt(nowInBookingZone());
         return mapToDto(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public BookingDto markBuddyArrived(UUID currentUserId, UUID bookingId) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        requireBuddy(currentUserId, booking);
+        requireConfirmedAndArrivalWindow(booking);
+
+        MeetupStatus status = booking.getMeetupStatus() != null ? booking.getMeetupStatus() : MeetupStatus.NOT_STARTED;
+        if (status == MeetupStatus.TRAVELER_ARRIVED || status == MeetupStatus.BOTH_ARRIVED) {
+            booking.setMeetupStatus(MeetupStatus.BOTH_ARRIVED);
+        } else if (status == MeetupStatus.NOT_STARTED || status == MeetupStatus.BUDDY_ARRIVED) {
+            booking.setMeetupStatus(MeetupStatus.BUDDY_ARRIVED);
+        } else {
+            throw new IllegalArgumentException("Buddy arrival cannot be marked after the trip has started.");
+        }
+        booking.setUpdatedAt(nowInBookingZone());
+        return mapToDto(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public QrTokenResponse getQrToken(UUID currentUserId, UUID bookingId) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        requireTraveler(currentUserId, booking);
+        if (booking.getMeetupStatus() != MeetupStatus.BOTH_ARRIVED) {
+            throw new IllegalArgumentException("QR token is available only after both participants have arrived.");
+        }
+
+        OffsetDateTime now = nowInBookingZone();
+        if (!StringUtils.hasText(booking.getMeetupQrToken())
+                || booking.getMeetupQrExpiresAt() == null
+                || !booking.getMeetupQrExpiresAt().isAfter(now.plusSeconds(30))) {
+            booking.setMeetupQrToken(UUID.randomUUID().toString() + UUID.randomUUID());
+            booking.setMeetupQrExpiresAt(now.plusMinutes(10));
+            booking.setUpdatedAt(now);
+            bookingRepository.save(booking);
+        }
+        return buildQrResponse(booking);
+    }
+
+    @Transactional
+    public BookingDto startWithQr(UUID currentUserId, UUID bookingId, String qrToken) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        requireBuddy(currentUserId, booking);
+        if (booking.getMeetupStatus() != MeetupStatus.BOTH_ARRIVED) {
+            throw new IllegalArgumentException("Both participants must arrive before starting the trip.");
+        }
+
+        String token = extractToken(qrToken);
+        if (!StringUtils.hasText(token)
+                || !Objects.equals(token, booking.getMeetupQrToken())
+                || booking.getMeetupQrExpiresAt() == null
+                || !booking.getMeetupQrExpiresAt().isAfter(nowInBookingZone())) {
+            throw new IllegalArgumentException("QR token is invalid or expired.");
+        }
+
+        booking.setMeetupStatus(MeetupStatus.IN_PROGRESS);
+        booking.setMeetupQrToken(null);
+        booking.setMeetupQrExpiresAt(null);
+        booking.setUpdatedAt(nowInBookingZone());
+        Booking saved = bookingRepository.save(booking);
+        notificationService.createBookingNotification(
+                booking.getTraveler(),
+                booking.getBuddy(),
+                "trip_started",
+                "Trip started",
+                "Chuyến đi " + booking.getTitle() + " đã bắt đầu.",
+                booking.getId(),
+                "/traveller/booking/" + booking.getId()
+        );
+        notificationService.createBookingNotification(
+                booking.getBuddy(),
+                booking.getTraveler(),
+                "trip_started",
+                "Trip started",
+                "Chuyến đi " + booking.getTitle() + " đã bắt đầu.",
+                booking.getId(),
+                "/buddy/live/" + booking.getId()
+        );
+        return mapToDto(saved);
+    }
+
+    @Transactional
+    public BookingDto complete(UUID currentUserId, UUID bookingId) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        if (booking.getMeetupStatus() != MeetupStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException("Only in-progress trips can be completed.");
+        }
+        booking.setMeetupStatus(MeetupStatus.COMPLETED);
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setUpdatedAt(nowInBookingZone());
+        Booking saved = bookingRepository.save(booking);
+        notificationService.createBookingNotification(
+                booking.getTraveler(),
+                booking.getBuddy(),
+                "review_request",
+                "Trip completed",
+                "Chuyến đi " + booking.getTitle() + " đã kết thúc. Hãy đánh giá buddy của bạn.",
+                booking.getId(),
+                "/traveller/review/" + booking.getId()
+        );
+        return mapToDto(saved);
+    }
+
+    @Transactional
+    public ReviewDto createReview(UUID currentUserId, UUID bookingId, ReviewRequest request) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        requireTraveler(currentUserId, booking);
+        if (booking.getStatus() != BookingStatus.COMPLETED) {
+            throw new IllegalArgumentException("Only completed bookings can be reviewed.");
+        }
+        if (request.getRating() == null || request.getRating() < 1 || request.getRating() > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5.");
+        }
+        if (reviewRepository.existsByBookingIdAndReviewerId(bookingId, currentUserId)) {
+            throw new IllegalArgumentException("This booking has already been reviewed.");
+        }
+
+        Review review = new Review();
+        review.setBooking(booking);
+        review.setReviewer(booking.getTraveler());
+        review.setReviewee(booking.getBuddy());
+        review.setRating(request.getRating());
+        review.setComment(request.getComment());
+        review.setIsPublic(request.getIsPublic() == null || request.getIsPublic());
+        review.setCreatedAt(nowInBookingZone());
+        Review saved = reviewRepository.save(review);
+        updateBuddyRating(booking.getBuddy().getId(), request.getRating());
+        return mapReviewToDto(saved);
     }
 
     @Transactional
@@ -149,6 +298,89 @@ public class BookingService {
             throw new IllegalArgumentException("You are not allowed to access this booking.");
         }
         return booking;
+    }
+
+    private void requireTraveler(UUID currentUserId, Booking booking) {
+        if (!booking.getTraveler().getId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Only the traveler can perform this action.");
+        }
+    }
+
+    private void requireBuddy(UUID currentUserId, Booking booking) {
+        if (!booking.getBuddy().getId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Only the buddy can perform this action.");
+        }
+    }
+
+    private void requireConfirmedAndArrivalWindow(Booking booking) {
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Arrival can be marked only for confirmed bookings.");
+        }
+        OffsetDateTime allowedFrom = booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toOffsetDateTime().minusHours(2);
+        if (nowInBookingZone().isBefore(allowedFrom)) {
+            throw new IllegalArgumentException("Arrival can be marked within 2 hours before the trip starts.");
+        }
+    }
+
+    private QrTokenResponse buildQrResponse(Booking booking) {
+        String payload = "local-buddy://booking/" + booking.getId() + "/start?token=" + booking.getMeetupQrToken();
+        return QrTokenResponse.builder()
+                .token(booking.getMeetupQrToken())
+                .expiresAt(booking.getMeetupQrExpiresAt())
+                .qrPayload(payload)
+                .build();
+    }
+
+    private String extractToken(String qrToken) {
+        if (!StringUtils.hasText(qrToken)) {
+            return null;
+        }
+        String trimmed = qrToken.trim();
+        if (!trimmed.startsWith("local-buddy://")) {
+            return trimmed;
+        }
+        try {
+            URI uri = URI.create(trimmed);
+            String query = uri.getQuery();
+            if (!StringUtils.hasText(query)) {
+                return null;
+            }
+            for (String part : query.split("&")) {
+                String[] pieces = part.split("=", 2);
+                if (pieces.length == 2 && pieces[0].equals("token")) {
+                    return pieces[1];
+                }
+            }
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+        return null;
+    }
+
+    private void updateBuddyRating(UUID buddyUserId, short rating) {
+        buddyProfileRepository.findByUserId(buddyUserId).ifPresent(profile -> {
+            int reviewCount = profile.getReviewCount() != null ? profile.getReviewCount() : 0;
+            BigDecimal currentRating = profile.getRating() != null ? profile.getRating() : BigDecimal.ZERO;
+            BigDecimal total = currentRating.multiply(BigDecimal.valueOf(reviewCount)).add(BigDecimal.valueOf(rating));
+            int nextCount = reviewCount + 1;
+            profile.setRating(total.divide(BigDecimal.valueOf(nextCount), 1, RoundingMode.HALF_UP));
+            profile.setReviewCount(nextCount);
+            profile.setUpdatedAt(nowInBookingZone());
+            buddyProfileRepository.save(profile);
+        });
+    }
+
+    private ReviewDto mapReviewToDto(Review review) {
+        return ReviewDto.builder()
+                .id(review.getId())
+                .bookingId(review.getBooking().getId())
+                .reviewerId(review.getReviewer().getId())
+                .revieweeId(review.getReviewee().getId())
+                .rating(review.getRating())
+                .comment(review.getComment())
+                .isPublic(review.getIsPublic())
+                .createdAt(review.getCreatedAt())
+                .build();
     }
 
     private User getUser(UUID userId) {

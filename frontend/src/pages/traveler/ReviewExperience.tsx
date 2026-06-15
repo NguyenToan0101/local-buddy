@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Star, Check, ArrowRight, Share2, Home } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { bookingService, buddyService } from '../../services/api';
+import { bookingService, buddyService, reviewService } from '../../services/api';
 
 const ReviewExperience: React.FC = () => {
   const { id } = useParams();
@@ -47,25 +47,12 @@ const ReviewExperience: React.FC = () => {
 
     try {
       setSubmitting(true);
-      // In a real app, we'd send this to the backend
-      // For this demo, we'll update the buddy's reviews array if it exists
-      if (buddy) {
-        const newReview = {
-          id: Date.now(),
-          author: booking.traveler || "You",
-          date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-          content: feedback,
-          rating: rating,
-          avatar: "https://i.pravatar.cc/150?u=current_user"
-        };
-        
-        const updatedReviews = [...(buddy.reviews || []), newReview];
-        await buddyService.updateProfile(buddy.id, { 
-          reviews: updatedReviews,
-          rating: (buddy.rating * buddy.reviewCount + rating) / (buddy.reviewCount + 1),
-          reviewCount: buddy.reviewCount + 1
-        });
-      }
+      if (!id) return;
+      await reviewService.createForBooking(id, {
+        rating,
+        comment: feedback,
+        isPublic: true,
+      });
       
       setIsSuccess(true);
     } catch (error) {
@@ -114,7 +101,7 @@ const ReviewExperience: React.FC = () => {
                       <Share2 size={20} /> Yes, Share Now
                     </Button>
                     <button 
-                      onClick={() => navigate('/traveller/home')}
+                      onClick={() => navigate('/traveller/booking')}
                       className="flex-1 py-6 bg-white border border-gray-100 rounded-[24px] text-secondary font-black uppercase tracking-widest hover:bg-gray-50 flex items-center justify-center gap-3"
                     >
                       <Home size={18} /> Maybe later

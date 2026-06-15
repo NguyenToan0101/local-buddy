@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useState, useRef, useEffect } from 'react';
 import NotificationPopover from './features/NotificationPopover';
 import ScannerModal from './features/ScannerModal';
-import { bookingService } from '../services/api';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -37,13 +36,8 @@ const Navbar: React.FC = () => {
 
   const handleScanSuccess = async () => {
     if (!activeBooking) return;
-    try {
-      await bookingService.updateMeetupStatus(activeBooking.id, 'IN_PROGRESS');
-      setShowScanner(false);
-      navigate(isBuddy ? `/buddy/live/${activeBooking.id}` : `/traveller/experience/live/${activeBooking.id}`);
-    } catch (error) {
-      console.error("Error starting trip from scanner:", error);
-    }
+    setShowScanner(false);
+    navigate(isBuddy ? `/buddy/live/${activeBooking.id}` : `/traveller/booking/${activeBooking.id}`);
   };
 
   // Close popover when clicking outside

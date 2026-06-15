@@ -324,13 +324,56 @@ export const bookingService = {
     if (!response.ok) throw new Error('Failed to update booking status');
     return response.json();
   },
-  updateMeetupStatus: async (id: string, status: string | null) => {
-    const response = await fetch(`${API_BASE_URL}/bookings/${id}/meetup-status`, {
-      method: 'PATCH',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ status }),
+  markTravelerArrived: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/traveler-arrived`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to update meetup status');
+    if (!response.ok) throw new Error(await response.text() || 'Failed to mark traveler arrived');
+    return response.json();
+  },
+  markBuddyArrived: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/buddy-arrived`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to mark buddy arrived');
+    return response.json();
+  },
+  getQrToken: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/qr-token`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to fetch QR token');
+    return response.json();
+  },
+  startWithQr: async (id: string, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/start-with-qr`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ qrToken: token }),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to start trip');
+    return response.json();
+  },
+  complete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/complete`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to complete trip');
+    return response.json();
+  },
+};
+
+export const reviewService = {
+  createForBooking: async (bookingId: string, payload: { rating: number; comment?: string; isPublic?: boolean }) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/reviews`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to submit review');
     return response.json();
   },
 };
