@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Bell, Star, ArrowRight, CheckCircle2, Clock, Play, AlertTriangle } from 'lucide-react';
+import { Bell, Star, CheckCircle2, Clock, Play, AlertTriangle } from 'lucide-react';
 import Modal from '../ui/Modal';
 import { notificationService } from '../../services/api';
 
@@ -12,6 +11,10 @@ interface NotificationModalProps {
 const getIcon = (type: string) => {
   switch (type) {
     case 'booking': return <CheckCircle2 size={20} />;
+    case 'booking_confirmed': return <CheckCircle2 size={20} />;
+    case 'payment_success': return <CheckCircle2 size={20} />;
+    case 'trip_started': return <Play size={20} />;
+    case 'review_request': return <Star size={20} />;
     case 'reminder': return <Clock size={20} />;
     case 'status': return <Play size={20} />;
     case 'warning': return <AlertTriangle size={20} />;
@@ -43,10 +46,13 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }
     }
   };
 
-  const handleMarkAsRead = async (id: string) => {
+  const handleMarkAsRead = async (notification: any) => {
     try {
-      await notificationService.markAsRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, unread: false } : n));
+      await notificationService.markAsRead(notification.id);
+      setNotifications(notifications.map(n => n.id === notification.id ? { ...n, unread: false } : n));
+      if (notification.linkUrl) {
+        window.location.href = notification.linkUrl;
+      }
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -90,7 +96,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }
                 <div 
                   key={notif.id} 
                   className={`p-6 flex items-start gap-4 transition-all hover:bg-surface cursor-pointer group ${notif.unread ? 'bg-primary/5' : ''}`}
-                  onClick={() => handleMarkAsRead(notif.id)}
+                  onClick={() => handleMarkAsRead(notif)}
                 >
                   <div className={`relative shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${notif.color || 'bg-surface-dark text-secondary/40'} shadow-sm`}>
                     {getIcon(notif.type)}

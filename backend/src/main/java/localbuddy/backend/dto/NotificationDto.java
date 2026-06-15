@@ -22,6 +22,8 @@ public class NotificationDto {
     private String title;
     private String content;
     private String desc;
+    private UUID bookingId;
+    private String linkUrl;
     private Boolean unread;
     private String time;
 }

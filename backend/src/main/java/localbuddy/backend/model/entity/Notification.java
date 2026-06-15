@@ -39,6 +39,12 @@ public class Notification {
     @Column(name = "content", nullable = false, length = Integer.MAX_VALUE)
     private String content;
 
+    @Column(name = "booking_id")
+    private UUID bookingId;
+
+    @Column(name = "link_url")
+    private String linkUrl;
+
     @ColumnDefault("false")
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;

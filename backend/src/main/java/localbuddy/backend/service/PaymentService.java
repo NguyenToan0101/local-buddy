@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.UUID;
 
@@ -44,12 +46,15 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
     private final EarningsService earningsService;
 
     private static final String PAYPAL_SANDBOX_URL = "https://api-m.sandbox.paypal.com";
     private static final String PAYPAL_LIVE_URL = "https://api-m.paypal.com";
     private static final OkHttpClient httpClient = new OkHttpClient();
     private static final Gson gson = new Gson();
+    private static final ZoneId PAYMENT_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter PAYMENT_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'lúc' HH:mm");
 
     public String getPayPalApiUrl() {
         return "sandbox".equals(paypalMode) ? PAYPAL_SANDBOX_URL : PAYPAL_LIVE_URL;
@@ -96,6 +101,16 @@ public class PaymentService {
      */
     @Transactional
     public PaymentDto capturePayPalOrder(String paypalOrderId, UUID bookingId, UUID payerId) throws Exception {
+        Payment existingBookingPayment = paymentRepository.findByBookingId(bookingId)
+                .stream()
+                .filter(payment -> "PAYPAL".equalsIgnoreCase(payment.getPaymentMethod()))
+                .filter(payment -> payment.getStatus() == PaymentStatus.HELD || payment.getStatus() == PaymentStatus.RELEASED)
+                .findFirst()
+                .orElse(null);
+        if (existingBookingPayment != null) {
+            return convertToDto(existingBookingPayment);
+        }
+
         String accessToken = getPayPalAccessToken();
         JsonObject captureResponse = capturePayPalOrderApiCall(paypalOrderId, accessToken);
 
@@ -112,6 +127,11 @@ public class PaymentService {
                 .get(0).getAsJsonObject()
                 .get("id")
                 .getAsString();
+
+        Payment existingTransaction = paymentRepository.findByTransactionReference(transactionId).orElse(null);
+        if (existingTransaction != null) {
+            return convertToDto(existingTransaction);
+        }
 
         // Save payment record
         Booking booking = bookingRepository.findById(bookingId)
@@ -141,7 +161,10 @@ public class PaymentService {
 
         // Update booking status to CONFIRMED
         booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setUpdatedAt(OffsetDateTime.now(PAYMENT_ZONE));
         bookingRepository.save(booking);
+
+        createPaymentNotifications(booking);
 
         // Create INCOME earnings transaction for the buddy
         if (booking.getBuddy() != null) {
@@ -303,5 +326,29 @@ public class PaymentService {
                 .createdAt(payment.getCreatedAt())
                 .paidAt(payment.getPaidAt())
                 .build();
+    }
+
+    private void createPaymentNotifications(Booking booking) {
+        String startTime = booking.getStartTime()
+                .atZoneSameInstant(PAYMENT_ZONE)
+                .format(PAYMENT_TIME_FORMATTER);
+        notificationService.createBookingNotification(
+                booking.getBuddy(),
+                booking.getTraveler(),
+                "booking_confirmed",
+                "Trip confirmed",
+                "Traveler đã xác nhận chuyến đi " + booking.getTitle() + ". Vui lòng chuẩn bị cho buổi hẹn.",
+                booking.getId(),
+                "/buddy/dashboard/trips/" + booking.getId()
+        );
+        notificationService.createBookingNotification(
+                booking.getTraveler(),
+                booking.getBuddy(),
+                "payment_success",
+                "Payment successful",
+                "Cảm ơn bạn đã đặt chuyến đi " + booking.getTitle() + ". Chuyến đi của bạn sẽ bắt đầu vào ngày " + startTime + ".",
+                booking.getId(),
+                "/traveller/booking/" + booking.getId()
+        );
     }
 }

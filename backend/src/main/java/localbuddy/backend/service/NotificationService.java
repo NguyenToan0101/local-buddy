@@ -49,9 +49,38 @@ public class NotificationService {
         notification.setType(StringUtils.hasText(dto.getType()) ? dto.getType().trim() : "general");
         notification.setTitle(requiredText(dto.getTitle(), "Notification title is required."));
         notification.setContent(requiredText(firstText(dto.getContent(), dto.getDesc()), "Notification content is required."));
+        notification.setBookingId(dto.getBookingId());
+        notification.setLinkUrl(dto.getLinkUrl());
         notification.setIsRead(false);
         notification.setCreatedAt(nowInNotificationZone());
         return mapToDto(notificationRepository.save(notification));
+    }
+
+    @Transactional
+    public void createBookingNotification(
+            User receiver,
+            User sender,
+            String type,
+            String title,
+            String content,
+            UUID bookingId,
+            String linkUrl
+    ) {
+        if (notificationRepository.existsByReceiverIdAndTypeAndBookingId(receiver.getId(), type, bookingId)) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setReceiver(receiver);
+        notification.setSender(sender);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setBookingId(bookingId);
+        notification.setLinkUrl(linkUrl);
+        notification.setIsRead(false);
+        notification.setCreatedAt(nowInNotificationZone());
+        notificationRepository.save(notification);
     }
 
     @Transactional
@@ -77,6 +106,8 @@ public class NotificationService {
                 .title(notification.getTitle())
                 .content(notification.getContent())
                 .desc(notification.getContent())
+                .bookingId(notification.getBookingId())
+                .linkUrl(notification.getLinkUrl())
                 .unread(!Boolean.TRUE.equals(notification.getIsRead()))
                 .time(formatRelativeTime(notification.getCreatedAt()))
                 .build();

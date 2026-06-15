@@ -3,6 +3,9 @@ package localbuddy.backend.controller;
 import jakarta.validation.Valid;
 import localbuddy.backend.dto.BookingDto;
 import localbuddy.backend.dto.BookingRequest;
+import localbuddy.backend.dto.QrTokenResponse;
+import localbuddy.backend.dto.ReviewDto;
+import localbuddy.backend.dto.ReviewRequest;
 import localbuddy.backend.service.BookingService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -46,12 +49,40 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.updateStatus(getCurrentUserId(), bookingId, request.getStatus()));
     }
 
-    @PatchMapping("/{bookingId}/meetup-status")
-    public ResponseEntity<BookingDto> updateMeetupStatus(
+    @PostMapping("/{bookingId}/traveler-arrived")
+    public ResponseEntity<BookingDto> markTravelerArrived(@PathVariable UUID bookingId) {
+        return ResponseEntity.ok(bookingService.markTravelerArrived(getCurrentUserId(), bookingId));
+    }
+
+    @PostMapping("/{bookingId}/buddy-arrived")
+    public ResponseEntity<BookingDto> markBuddyArrived(@PathVariable UUID bookingId) {
+        return ResponseEntity.ok(bookingService.markBuddyArrived(getCurrentUserId(), bookingId));
+    }
+
+    @GetMapping("/{bookingId}/qr-token")
+    public ResponseEntity<QrTokenResponse> getQrToken(@PathVariable UUID bookingId) {
+        return ResponseEntity.ok(bookingService.getQrToken(getCurrentUserId(), bookingId));
+    }
+
+    @PostMapping("/{bookingId}/start-with-qr")
+    public ResponseEntity<BookingDto> startWithQr(
             @PathVariable UUID bookingId,
-            @RequestBody StatusRequest request
+            @RequestBody QrStartRequest request
     ) {
-        return ResponseEntity.ok(bookingService.updateMeetupStatus(getCurrentUserId(), bookingId, request.getStatus()));
+        return ResponseEntity.ok(bookingService.startWithQr(getCurrentUserId(), bookingId, request.getQrToken()));
+    }
+
+    @PostMapping("/{bookingId}/complete")
+    public ResponseEntity<BookingDto> complete(@PathVariable UUID bookingId) {
+        return ResponseEntity.ok(bookingService.complete(getCurrentUserId(), bookingId));
+    }
+
+    @PostMapping("/{bookingId}/reviews")
+    public ResponseEntity<ReviewDto> createReview(
+            @PathVariable UUID bookingId,
+            @RequestBody ReviewRequest request
+    ) {
+        return ResponseEntity.ok(bookingService.createReview(getCurrentUserId(), bookingId, request));
     }
 
     private UUID getCurrentUserId() {
@@ -72,5 +103,11 @@ public class BookingController {
     @Setter
     public static class StatusRequest {
         private String status;
+    }
+
+    @Getter
+    @Setter
+    public static class QrStartRequest {
+        private String qrToken;
     }
 }

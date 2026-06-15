@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Star, Users, QrCode, Bell, Shield, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { buddyService, experienceService, bookingService } from '../../services/api';
+import { buddyService, experienceService } from '../../services/api';
 import type { Buddy, Experience } from '../../services/api';
 import BuddyCard from '../../components/features/BuddyCard';
 import ExperienceCard from '../../components/features/ExperienceCard';
@@ -79,13 +79,8 @@ const HomePage: React.FC = () => {
 
   const handleScanSuccess = async () => {
     if (!activeBooking) return;
-    try {
-      await bookingService.updateMeetupStatus(activeBooking.id, 'IN_PROGRESS');
-      setShowScanner(false);
-      navigate(`/traveller/experience/live/${activeBooking.id}`);
-    } catch (error) {
-      console.error("Error starting trip from scanner:", error);
-    }
+    setShowScanner(false);
+    navigate(`/traveller/booking/${activeBooking.id}`);
   };
 
   const filteredBuddies = searchQuery
