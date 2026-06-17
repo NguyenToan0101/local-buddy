@@ -46,6 +46,18 @@ public class Booking {
     @Column(name = "location", nullable = false)
     private String location;
 
+    @Column(name = "booking_type", nullable = false)
+    private String bookingType;
+
+    @Column(name = "meeting_point")
+    private String meetingPoint;
+
+    @Column(name = "route_stops", length = Integer.MAX_VALUE)
+    private String routeStops;
+
+    @Column(name = "itinerary_notes", length = Integer.MAX_VALUE)
+    private String itineraryNotes;
+
     @Column(name = "start_time", nullable = false)
     private OffsetDateTime startTime;
 

@@ -132,8 +132,12 @@ public class ChatService {
         BookingRequest bookingRequest = new BookingRequest();
         bookingRequest.setTitle(firstText(request.getActivity(), request.getText(), "Custom Offer"));
         bookingRequest.setActivity(request.getActivity());
-        bookingRequest.setDescription(request.getDescription());
-        bookingRequest.setLocation(request.getLocation());
+        bookingRequest.setDescription(firstText(request.getItineraryNotes(), request.getDescription()));
+        bookingRequest.setLocation(firstText(request.getLocation(), request.getMeetingPoint(), firstRouteStop(request.getRouteStops()), "To be confirmed"));
+        bookingRequest.setBookingType(firstText(request.getBookingType(), "CONSULTATION"));
+        bookingRequest.setMeetingPoint(request.getMeetingPoint());
+        bookingRequest.setRouteStops(request.getRouteStops());
+        bookingRequest.setItineraryNotes(request.getItineraryNotes());
         bookingRequest.setDate(StringUtils.hasText(request.getDate()) ? LocalDate.parse(request.getDate()) : null);
         bookingRequest.setTime(request.getTime());
         bookingRequest.setDuration(request.getDuration());
@@ -217,6 +221,10 @@ public class ChatService {
                 .duration(hours != null ? hours + " hours" : null)
                 .guests(booking != null ? booking.getGuestCount() : null)
                 .location(booking != null ? booking.getLocation() : null)
+                .bookingType(booking != null ? booking.getBookingType() : null)
+                .meetingPoint(booking != null ? booking.getMeetingPoint() : null)
+                .routeStops(booking != null ? bookingService.mapToDto(booking).getRouteStops() : null)
+                .itineraryNotes(booking != null ? booking.getItineraryNotes() : null)
                 .hours(hours)
                 .price(price)
                 .time(formatTime(message.getCreatedAt()))
@@ -239,5 +247,15 @@ public class ChatService {
             }
         }
         return "";
+    }
+
+    private String firstRouteStop(List<String> routeStops) {
+        if (routeStops == null) {
+            return null;
+        }
+        return routeStops.stream()
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
     }
 }

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -22,6 +23,10 @@ public class BookingDto {
     private String activity;
     private String description;
     private String location;
+    private String bookingType;
+    private String meetingPoint;
+    private List<String> routeStops;
+    private String itineraryNotes;
     private String date;
     private String time;
     private Integer hours;

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Globe, CheckCircle2, ChevronLeft, Shield, Award, Calendar, MessageSquare } from 'lucide-react';
-import { buddyService, experienceService } from '../../services/api';
-import type { Buddy, Experience } from '../../services/api';
+import { availabilityService, buddyService } from '../../services/api';
+import type { AvailabilitySlot, Buddy } from '../../services/api';
 import DirectBookingModal from '../../components/features/DirectBookingModal';
+import { trackingService } from '../../services/tracking';
 
 const BuddyProfile: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [buddy, setBuddy] = useState<Buddy | null>(null);
   const [loading, setLoading] = useState(true);
-  const [buddyStories, setBuddyStories] = useState<Experience[]>([]);
-  const [freeSlots, setFreeSlots] = useState<any[]>([]);
+  const [freeSlots, setFreeSlots] = useState<AvailabilitySlot[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'about' | 'slots' | 'reviews'>('about');
@@ -20,32 +20,19 @@ const BuddyProfile: React.FC = () => {
     const fetchBuddy = async () => {
       if (!id) return;
       try {
-        const [buddyData, experiencesData] = await Promise.all([
-          buddyService.getById(id),
-          experienceService.getByBuddyId(id)
-        ]);
+        const buddyData = await buddyService.getById(id);
         setBuddy(buddyData);
-        const sortedStories = (experiencesData || []).sort((a: any, b: any) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-        setBuddyStories(sortedStories);
+        void trackingService.track('VIEW_BUDDY_PROFILE', {
+          buddyId: buddyData.id,
+          location: buddyData.location,
+        });
 
         try {
-          const savedSlots = localStorage.getItem(`freeSlots_buddy_${id}`);
-          if (savedSlots && JSON.parse(savedSlots).length > 0) {
-            setFreeSlots(JSON.parse(savedSlots));
-          } else {
-            const today = new Date();
-            const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-            const dayAfter = new Date(today); dayAfter.setDate(today.getDate() + 2);
-            const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-            setFreeSlots([
-              { id: 'm1', date: formatDate(tomorrow), time: '09:00 AM', status: 'FREE' },
-              { id: 'm2', date: formatDate(tomorrow), time: '11:00 AM', status: 'FREE' },
-              { id: 'm3', date: formatDate(dayAfter), time: '02:00 PM', status: 'FREE' },
-              { id: 'm4', date: formatDate(dayAfter), time: '04:00 PM', status: 'FREE' }
-            ]);
-          }
+          const slotsData = await availabilityService.fetchAvailabilities(id);
+          setFreeSlots(slotsData.filter(slot => slot.status === 'FREE'));
         } catch (e) {
           console.error("Could not load free slots", e);
+          setFreeSlots([]);
         }
       } catch (error) {
         console.error("Error fetching buddy details:", error);

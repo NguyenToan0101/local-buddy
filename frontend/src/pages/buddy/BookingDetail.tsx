@@ -11,7 +11,9 @@ import {
   Compass,
   ArrowRight,
   Star,
-  User as UserIcon
+  User as UserIcon,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { bookingService } from '../../services/api';
 import Button from '../../components/ui/Button';
@@ -21,6 +23,16 @@ const BookingDetail: React.FC = () => {
   const navigate = useNavigate();
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [savingItinerary, setSavingItinerary] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [itineraryDraft, setItineraryDraft] = useState({
+    meetingPoint: '',
+    routeStops: [''],
+    itineraryNotes: '',
+    location: '',
+    hours: 3,
+    price: '',
+  });
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -28,6 +40,14 @@ const BookingDetail: React.FC = () => {
       try {
         const data = await bookingService.getById(id);
         setBooking(data);
+        setItineraryDraft({
+          meetingPoint: data.meetingPoint || '',
+          routeStops: Array.isArray(data.routeStops) && data.routeStops.length > 0 ? data.routeStops : [''],
+          itineraryNotes: data.itineraryNotes || data.description || '',
+          location: data.location || '',
+          hours: data.hours || 3,
+          price: String(data.totalPrice ?? data.price ?? ''),
+        });
       } catch (error) {
         console.error("Error fetching booking detail:", error);
       } finally {
@@ -36,6 +56,56 @@ const BookingDetail: React.FC = () => {
     };
     fetchBooking();
   }, [id]);
+
+  const routeStops: string[] = Array.isArray(booking?.routeStops) ? booking.routeStops.filter(Boolean) : [];
+
+  const updateRouteStop = (index: number, value: string) => {
+    setItineraryDraft((current) => ({
+      ...current,
+      routeStops: current.routeStops.map((stop, stopIndex) => (stopIndex === index ? value : stop)),
+    }));
+  };
+
+  const addRouteStop = () => {
+    setItineraryDraft((current) => ({
+      ...current,
+      routeStops: current.routeStops.length >= 20 ? current.routeStops : [...current.routeStops, ''],
+    }));
+  };
+
+  const removeRouteStop = (index: number) => {
+    setItineraryDraft((current) => ({
+      ...current,
+      routeStops: current.routeStops.length === 1 ? [''] : current.routeStops.filter((_, stopIndex) => stopIndex !== index),
+    }));
+  };
+
+  const handleSaveItinerary = async () => {
+    if (!id) return;
+    const cleanedStops = itineraryDraft.routeStops.map((stop) => stop.trim()).filter(Boolean);
+    if (!itineraryDraft.meetingPoint.trim() && cleanedStops.length === 0) {
+      setActionError('Meeting point or at least one route stop is required.');
+      return;
+    }
+    try {
+      setSavingItinerary(true);
+      setActionError('');
+      const updated = await bookingService.updateItinerary(id, {
+        location: itineraryDraft.location.trim() || itineraryDraft.meetingPoint.trim() || cleanedStops[0],
+        meetingPoint: itineraryDraft.meetingPoint.trim(),
+        routeStops: cleanedStops,
+        itineraryNotes: itineraryDraft.itineraryNotes.trim(),
+        hours: itineraryDraft.hours,
+        price: itineraryDraft.price ? Number(itineraryDraft.price) : undefined,
+      });
+      setBooking(updated);
+    } catch (error) {
+      console.error("Error updating itinerary:", error);
+      setActionError(error instanceof Error ? error.message : 'Unable to update itinerary.');
+    } finally {
+      setSavingItinerary(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -195,38 +265,104 @@ const BookingDetail: React.FC = () => {
             <div className="space-y-6">
               <h5 className="text-sm font-black text-secondary uppercase tracking-wider border-l-4 border-primary pl-4">Itinerary details</h5>
 
-              <div className="relative ml-2 space-y-8">
-                <div className="absolute left-[3px] top-2 bottom-2 w-0.5 bg-primary/10 border-l border-dashed border-primary/25"></div>
+              {actionError && <p className="text-xs font-bold text-rose-500">{actionError}</p>}
 
-                <div className="relative pl-8 group">
-                  <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-sm"></div>
-                  <div className="space-y-1">
-                    <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest flex items-center gap-1">
-                      <MapPin size={8} className="text-primary" /> Proposed Meetup Spot
+              {booking.status === 'PENDING' ? (
+                <div className="space-y-4">
+                  <input
+                    value={itineraryDraft.meetingPoint}
+                    onChange={(event) => setItineraryDraft((current) => ({ ...current, meetingPoint: event.target.value }))}
+                    placeholder="Meeting point"
+                    className="w-full rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">Route stops</span>
+                      <button onClick={addRouteStop} className="h-8 w-8 rounded-xl bg-primary text-white flex items-center justify-center">
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    {itineraryDraft.routeStops.map((stop, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="h-9 w-9 rounded-xl bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center">{index + 1}</span>
+                        <input
+                          value={stop}
+                          onChange={(event) => updateRouteStop(index, event.target.value)}
+                          placeholder="Cafe XYZ, Cho ABC, Bien 123..."
+                          className="min-w-0 flex-1 rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                        />
+                        <button onClick={() => removeRouteStop(index)} className="h-9 w-9 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      value={itineraryDraft.location}
+                      onChange={(event) => setItineraryDraft((current) => ({ ...current, location: event.target.value }))}
+                      placeholder="Main area"
+                      className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={itineraryDraft.hours}
+                      onChange={(event) => setItineraryDraft((current) => ({ ...current, hours: Number(event.target.value) || 1 }))}
+                      className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={itineraryDraft.price}
+                      onChange={(event) => setItineraryDraft((current) => ({ ...current, price: event.target.value }))}
+                      placeholder="Price"
+                      className="rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                    />
+                  </div>
+                  <textarea
+                    value={itineraryDraft.itineraryNotes}
+                    onChange={(event) => setItineraryDraft((current) => ({ ...current, itineraryNotes: event.target.value }))}
+                    placeholder="Notes for traveler"
+                    className="min-h-24 w-full resize-none rounded-2xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs font-bold text-secondary outline-none focus:border-primary/30"
+                  />
+                  <Button onClick={handleSaveItinerary} disabled={savingItinerary} className="w-full py-3 text-[10px] uppercase tracking-widest">
+                    {savingItinerary ? 'Saving...' : 'Save Itinerary For Traveler'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="relative ml-2 space-y-8">
+                  <div className="absolute left-[3px] top-2 bottom-2 w-0.5 bg-primary/10 border-l border-dashed border-primary/25"></div>
+
+                  {(booking.meetingPoint || booking.location) && (
+                    <div className="relative pl-8 group">
+                      <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-sm"></div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest flex items-center gap-1">
+                          <MapPin size={8} className="text-primary" /> Meetup Spot
+                        </p>
+                        <h6 className="font-black text-secondary text-sm">{booking.meetingPoint || booking.location}</h6>
+                      </div>
+                    </div>
+                  )}
+
+                  {routeStops.map((stop, index) => (
+                    <div key={`${stop}-${index}`} className="relative pl-8 group">
+                      <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-sm"></div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest">Stop {index + 1}</p>
+                        <h6 className="font-black text-secondary text-sm">{stop}</h6>
+                      </div>
+                    </div>
+                  ))}
+
+                  {booking.itineraryNotes && (
+                    <p className="rounded-2xl bg-gray-50 p-4 text-[11px] font-bold text-secondary/40 italic leading-normal">
+                      {booking.itineraryNotes}
                     </p>
-                    <h6 className="font-black text-secondary text-sm">St. Joseph's Cathedral, Old Quarter</h6>
-                    <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">Wait near the side entrance. I'll be wearing a Local Buddy orange lanyard.</p>
-                  </div>
+                  )}
                 </div>
-
-                <div className="relative pl-8 group">
-                  <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white shadow-sm"></div>
-                  <div className="space-y-1">
-                    <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest">Tour Highlight</p>
-                    <h6 className="font-black text-secondary text-sm">Exploring Hidden Train Street Cafe</h6>
-                    <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">We'll secure a safe spot for photos and enjoy the signature egg coffee while talking about local railways history.</p>
-                  </div>
-                </div>
-
-                <div className="relative pl-8 group">
-                  <div className="absolute left-0 top-1 w-2.5 h-2.5 rounded-full bg-gray-300 border-2 border-white shadow-sm"></div>
-                  <div className="space-y-1">
-                    <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest">Ending Location</p>
-                    <h6 className="font-black text-secondary text-sm">Long Bien Bridge Sunset</h6>
-                    <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">Session concludes with a panoramic sunset view over the Red River.</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Footer assurances */}

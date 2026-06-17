@@ -20,6 +20,7 @@ import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -68,6 +69,7 @@ public class PaymentService {
         
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        requireReadyForPayment(booking);
 
         // Create order request
         JsonObject orderRequest = new JsonObject();
@@ -136,6 +138,7 @@ public class PaymentService {
         // Save payment record
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+        requireReadyForPayment(booking);
 
         // If payerId is null, use the booking traveler as payer
         User payer;
@@ -350,5 +353,16 @@ public class PaymentService {
                 booking.getId(),
                 "/traveller/booking/" + booking.getId()
         );
+    }
+
+    private void requireReadyForPayment(Booking booking) {
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending bookings can be paid.");
+        }
+        boolean hasRoute = StringUtils.hasText(booking.getRouteStops()) && !"[]".equals(booking.getRouteStops().trim());
+        boolean hasMeetingPoint = StringUtils.hasText(booking.getMeetingPoint());
+        if ("CONSULTATION".equals(booking.getBookingType()) && !hasRoute && !hasMeetingPoint) {
+            throw new IllegalArgumentException("Buddy must prepare an itinerary before this consultation booking can be paid.");
+        }
     }
 }

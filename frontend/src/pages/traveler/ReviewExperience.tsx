@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { X, Star, Check, ArrowRight, Share2, Home } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { bookingService, buddyService, reviewService } from '../../services/api';
+import type { Buddy } from '../../services/api';
 
 const ReviewExperience: React.FC = () => {
   const { id } = useParams();
@@ -14,8 +15,7 @@ const ReviewExperience: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
-  const [buddy, setBuddy] = useState<any>(null);
+  const [buddy, setBuddy] = useState<Buddy | null>(null);
 
   useEffect(() => {
     const fetchBookingData = async () => {
@@ -23,7 +23,6 @@ const ReviewExperience: React.FC = () => {
         if (!id) return;
         setLoading(true);
         const bookingData = await bookingService.getById(id);
-        setBooking(bookingData);
         
         if (bookingData.buddyId) {
           const buddyData = await buddyService.getById(bookingData.buddyId);
@@ -130,7 +129,7 @@ const ReviewExperience: React.FC = () => {
             <div className="space-y-6">
                <div className="relative inline-block">
                   <div className="w-32 h-32 rounded-full p-1 bg-surface shadow-2xl">
-                     <img src={buddy?.image || "/assets/img/Linh.jpg"} alt={buddy?.name} className="w-full h-full rounded-full border-4 border-white shadow-inner" />
+                     {buddy?.image && <img src={buddy.image} alt={buddy?.name} className="w-full h-full rounded-full border-4 border-white shadow-inner object-cover" />}
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full border-4 border-white flex items-center justify-center text-white shadow-xl">
                      <Check size={18} strokeWidth={4} />

@@ -1,4 +1,5 @@
 import { mockData } from '../mock/mockData';
+import { trackingService } from './tracking';
 
 type Db = Record<string, any>;
 const DB_KEY = 'mock_db_v1';
@@ -188,7 +189,16 @@ export const buddyService = {
     if (!response.ok) {
       throw new Error('Failed to search buddies');
     }
-    return await response.json() as PageResponse<Buddy>;
+    const data = await response.json() as PageResponse<Buddy>;
+    void trackingService.track('SEARCH_BUDDY', {
+      searchQuery: params.searchQuery,
+      tags: params.tags,
+      rating: params.rating,
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+      resultCount: Array.isArray(data.content) ? data.content.length : 0,
+    });
+    return data;
   },
   getById: async (id: string) => {
     const token = localStorage.getItem('token');
@@ -300,7 +310,14 @@ export const bookingService = {
       body: JSON.stringify(bookingData),
     });
     if (!response.ok) throw new Error('Failed to create booking');
-    return response.json();
+    const data = await response.json();
+    void trackingService.track('CREATE_BOOKING', {
+      bookingId: data?.id,
+      buddyId: bookingData?.buddyId ?? data?.buddy?.id,
+      bookingType: bookingData?.bookingType ?? data?.bookingType,
+      status: data?.status,
+    });
+    return data;
   },
   getMyBookings: async (page: number = 0, size: number = 10) => {
     const response = await fetch(`${API_BASE_URL}/bookings?page=${page}&size=${size}`, {
@@ -322,6 +339,24 @@ export const bookingService = {
       body: JSON.stringify({ status }),
     });
     if (!response.ok) throw new Error('Failed to update booking status');
+    return response.json();
+  },
+  updateItinerary: async (id: string, itineraryData: any) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/itinerary`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(itineraryData),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to update booking itinerary');
+    return response.json();
+  },
+  cancel: async (id: string, reason?: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to cancel booking');
     return response.json();
   },
   markTravelerArrived: async (id: string) => {
@@ -366,6 +401,18 @@ export const bookingService = {
   },
 };
 
+export const reportService = {
+  create: async (payload: { reportedUserId: string; reason: string; description?: string; evidenceUrl?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/reports`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to submit report');
+    return response.json();
+  },
+};
+
 export const reviewService = {
   createForBooking: async (bookingId: string, payload: { rating: number; comment?: string; isPublic?: boolean }) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/reviews`, {
@@ -399,7 +446,14 @@ export const paymentService = {
       const errorText = await response.text();
       throw new Error(errorText || 'Failed to capture PayPal order');
     }
-    return response.json();
+    const data = await response.json();
+    void trackingService.track('COMPLETE_PAYMENT', {
+      bookingId,
+      paymentId: data?.id,
+      status: data?.status,
+      amount: data?.amount,
+    });
+    return data;
   },
   getPayment: async (paymentId: string) => {
     const response = await fetch(`${API_BASE_URL}/payments/${paymentId}`, {
@@ -501,6 +555,41 @@ export const adminService = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error('Failed to fetch earnings transactions');
+    return response.json();
+  },
+  getAnalyticsOverview: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch analytics overview');
+    return response.json();
+  },
+  getPopularPages: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/admin/analytics/popular-pages?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch popular pages');
+    return response.json();
+  },
+  getTopEvents: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/admin/analytics/top-events?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch top events');
+    return response.json();
+  },
+  getTrafficSources: async (limit = 10) => {
+    const response = await fetch(`${API_BASE_URL}/admin/analytics/traffic-sources?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch traffic sources');
+    return response.json();
+  },
+  getRecentActivity: async (limit = 25) => {
+    const response = await fetch(`${API_BASE_URL}/admin/analytics/recent-activity?limit=${limit}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to fetch recent activity');
     return response.json();
   },
 };
@@ -672,12 +761,23 @@ export const messageService = {
         duration: message.duration,
         guests: message.guests,
         location: message.location,
+        bookingType: message.bookingType,
+        meetingPoint: message.meetingPoint,
+        routeStops: message.routeStops,
+        itineraryNotes: message.itineraryNotes,
         hours: message.hours,
         price: message.price,
       }),
     });
     if (!response.ok) throw new Error('Failed to send message');
-    return response.json();
+    const data = await response.json();
+    void trackingService.track('SEND_MESSAGE', {
+      conversationId: convId,
+      messageId: data?.id,
+      isOffer: Boolean(message?.isOffer),
+      bookingType: message?.bookingType,
+    });
+    return data;
   },
   subscribe: (callback: () => void, onStatusChange?: (connected: boolean) => void) => {
     const token = localStorage.getItem('token');

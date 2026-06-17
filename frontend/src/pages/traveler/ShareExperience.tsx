@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, Camera, Send, ArrowRight, Tag, MapPin, Star, Sparkles } from 'lucide-react';
+import { X, Camera, Send, Tag, MapPin, Sparkles } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { bookingService, experienceService, buddyService } from '../../services/api';
+import type { Buddy } from '../../services/api';
+
+type ShareBooking = {
+  id: string;
+  traveler?: string;
+  travelerAvatar?: string;
+  buddyId?: string;
+  buddyName?: string;
+  buddyAvatar?: string;
+  location?: string;
+};
 
 const ShareExperience: React.FC = () => {
   const { bookingId } = useParams();
@@ -12,8 +23,9 @@ const ShareExperience: React.FC = () => {
   const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
-  const [buddy, setBuddy] = useState<any>(null);
+  const [booking, setBooking] = useState<ShareBooking | null>(null);
+  const [buddy, setBuddy] = useState<Buddy | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,6 +41,7 @@ const ShareExperience: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching data for sharing experience:", error);
+        setError('Unable to load this booking.');
       } finally {
         setLoading(false);
       }
@@ -38,19 +51,37 @@ const ShareExperience: React.FC = () => {
   }, [bookingId]);
 
   const handleSubmit = async () => {
+    if (!booking) {
+      setError('A real completed booking is required before sharing a story.');
+      return;
+    }
     if (!title || !content) {
-      alert("Please provide a title and your story content.");
+      setError('Please provide a title and your story content.');
+      return;
+    }
+    if (!booking.traveler || !booking.buddyId || !booking.buddyName) {
+      setError('This booking is missing traveler or buddy details.');
+      return;
+    }
+    if (!booking.location) {
+      setError('This booking is missing a real location for the story.');
+      return;
+    }
+    const storyImage = booking.buddyAvatar || buddy?.image;
+    if (!storyImage) {
+      setError('This booking is missing a real image for the story.');
       return;
     }
 
     try {
       setSubmitting(true);
+      setError('');
       const experienceData = {
         title,
-        travelerName: booking.traveler || "Hoang An", // Default for demo
-        travelerAvatar: booking.travelerAvatar || "https://i.pravatar.cc/150?u=current_user",
-        image: booking.buddyAvatar || "/assets/img/hoian.jpg", // Fallback
-        location: booking.location || "Vietnam",
+        travelerName: booking.traveler,
+        travelerAvatar: booking.travelerAvatar,
+        image: storyImage,
+        location: booking.location,
         date: new Date().toISOString().split('T')[0],
         tags: (tags || '').split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         storyContent: content,
@@ -60,10 +91,10 @@ const ShareExperience: React.FC = () => {
       };
 
       await experienceService.create(experienceData);
-      alert("Your experience has been shared successfully!");
       navigate('/traveller/home');
     } catch (error) {
       console.error("Error sharing experience:", error);
+      setError('Unable to publish your story.');
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +104,18 @@ const ShareExperience: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-[32px] p-8 text-center space-y-5 border border-gray-100 shadow-premium">
+          <h1 className="text-2xl font-black text-secondary">Story unavailable</h1>
+          <p className="text-sm font-bold text-secondary/40">{error || 'This booking could not be loaded.'}</p>
+          <Button onClick={() => navigate('/traveller/booking')} className="w-full py-4">Back to bookings</Button>
+        </div>
       </div>
     );
   }
@@ -105,6 +148,11 @@ const ShareExperience: React.FC = () => {
           {/* Left: Input Form */}
           <div className="lg:col-span-12 space-y-10">
             <div className="bg-white p-12 rounded-[56px] shadow-premium border border-gray-50 space-y-10">
+              {error && (
+                <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-xs font-bold text-red-600">
+                  {error}
+                </div>
+              )}
 
               {/* Experience Title */}
               <div className="space-y-4">

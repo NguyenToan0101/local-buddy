@@ -92,9 +92,6 @@ const ExperienceDetail: React.FC = () => {
             src={experience.image} 
             alt={experience.title} 
             className="w-full h-full absolute inset-0 object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&q=80&w=1200';
-            }}
           />
           {/* Rich gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
@@ -172,10 +169,10 @@ const ExperienceDetail: React.FC = () => {
                 </div>
                 <div className="md:col-span-5 grid grid-rows-2 gap-6">
                   <div className="rounded-[24px] overflow-hidden shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px] relative">
-                    <img src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&q=80&w=600" className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
+                    <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
                   </div>
                   <div className="rounded-[24px] overflow-hidden relative shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px]">
-                    <img src="https://images.unsplash.com/photo-1533055640609-24b498dfd74c?auto=format&fit=crop&q=80&w=600" className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
+                    <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
                     <div className="absolute inset-0 bg-secondary/85 backdrop-blur-sm flex flex-col items-center justify-center group/btn cursor-pointer transition-all hover:bg-secondary/70">
                       <span className="text-white font-black text-sm uppercase tracking-widest transition-transform group-hover/btn:scale-105">+ 8 Photos</span>
                       <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em] mt-1">Live Gallery</span>
