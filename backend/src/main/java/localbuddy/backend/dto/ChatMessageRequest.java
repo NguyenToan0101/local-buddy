@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,6 +19,10 @@ public class ChatMessageRequest {
     private String duration;
     private Integer guests;
     private String location;
+    private String bookingType;
+    private String meetingPoint;
+    private List<String> routeStops;
+    private String itineraryNotes;
     private Integer hours;
     private BigDecimal price;
 }

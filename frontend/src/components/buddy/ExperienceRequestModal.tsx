@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { 
   X, Utensils, Coffee, ShoppingBag, Footprints, 
-  Calendar, Clock, Timer, MapPin, Users, Send, DollarSign
+  Calendar, Clock, Timer, MapPin, Users, Send, DollarSign,
+  Plus, Trash2
 } from 'lucide-react';
 import Button from '../ui/Button';
 
@@ -29,6 +30,9 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
   const [duration, setDuration] = useState('2 hours');
   const [guests, setGuests] = useState(1);
   const [location, setLocation] = useState('');
+  const [meetingPoint, setMeetingPoint] = useState('');
+  const [routeStops, setRouteStops] = useState<string[]>(['']);
+  const [itineraryNotes, setItineraryNotes] = useState('');
   const [price, setPrice] = useState(45);
   const [priceEdited, setPriceEdited] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
@@ -64,17 +68,34 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
   ];
 
   const handleSubmit = () => {
+    const cleanedRouteStops = routeStops.map((stop) => stop.trim()).filter(Boolean);
     onSend({
       activity,
       description,
+      bookingType: 'CONSULTATION',
       date,
       time,
       duration,
       hours,
       guests,
-      location,
+      location: location || meetingPoint || cleanedRouteStops[0],
+      meetingPoint,
+      routeStops: cleanedRouteStops,
+      itineraryNotes,
       price
     });
+  };
+
+  const updateRouteStop = (index: number, value: string) => {
+    setRouteStops((current) => current.map((stop, stopIndex) => (stopIndex === index ? value : stop)));
+  };
+
+  const addRouteStop = () => {
+    setRouteStops((current) => (current.length >= 20 ? current : [...current, '']));
+  };
+
+  const removeRouteStop = (index: number) => {
+    setRouteStops((current) => (current.length === 1 ? [''] : current.filter((_, stopIndex) => stopIndex !== index)));
   };
 
   if (!isOpen) return null;
@@ -228,7 +249,7 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
 
           {/* Meeting Area */}
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Meeting Area</label>
+            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Main Area</label>
             <div className="relative flex items-center gap-3">
               <div className="relative flex-1">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
@@ -247,6 +268,66 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
                 <MapPin size={22} className={isPinning ? 'animate-bounce' : ''} />
               </button>
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Meeting Point</label>
+            <div className="relative">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
+              <input
+                type="text"
+                value={meetingPoint}
+                onChange={(e) => setMeetingPoint(e.target.value)}
+                placeholder="Cafe XYZ, hotel lobby, station gate..."
+                className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Route Stops</label>
+              <button
+                type="button"
+                onClick={addRouteStop}
+                className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center border-none shadow-primary-glow"
+              >
+                <Plus size={15} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {routeStops.map((stop, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="h-10 w-10 rounded-xl bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
+                    {index + 1}
+                  </span>
+                  <input
+                    type="text"
+                    value={stop}
+                    onChange={(e) => updateRouteStop(index, e.target.value)}
+                    placeholder={index === 0 ? 'Cho ABC, beach 123...' : 'Next stop'}
+                    className="min-w-0 flex-1 bg-gray-50 border-none rounded-2xl py-3.5 px-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeRouteStop(index)}
+                    className="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center border-none"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Itinerary Notes</label>
+            <textarea
+              value={itineraryNotes}
+              onChange={(e) => setItineraryNotes(e.target.value)}
+              placeholder="Explain why this route fits the traveler, timing notes, food stops, backup plan..."
+              className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-bold text-secondary placeholder:text-secondary/20 min-h-[100px] outline-none focus:ring-2 focus:ring-primary/5 transition-all resize-none"
+            />
           </div>
 
           {/* Map Preview */}
@@ -277,6 +358,7 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
         <div className="p-8 border-t border-gray-50 space-y-4">
           <Button 
             onClick={handleSubmit}
+            disabled={!date || !time || (!location.trim() && !meetingPoint.trim() && routeStops.every((stop) => !stop.trim()))}
             className="w-full bg-primary text-white py-5 rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-primary-glow flex items-center justify-center gap-3 border-none hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Send size={18} />

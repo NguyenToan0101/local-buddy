@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Calendar, Clock, MapPin, Plus, Shield, Trash2, Users, X } from 'lucide-react';
-import { bookingService } from '../../services/api';
+import { bookingService, messageService } from '../../services/api';
 import type { AvailabilitySlot, Buddy } from '../../services/api';
 import Button from '../ui/Button';
 
@@ -153,6 +153,29 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
   const handleBooking = async () => {
     setError(null);
 
+    if (bookingType === 'CONSULTATION') {
+      setLoading(true);
+      try {
+        const conversation = await messageService.getOrCreateConversationByBuddyId(buddy.id);
+        const adviceMessage = itineraryNotes.trim()
+          ? `Hi ${buddy.name}, I do not know where to go yet. Can you help me plan an itinerary? ${itineraryNotes.trim()}`
+          : `Hi ${buddy.name}, I do not know where to go yet. Can you help me plan an itinerary?`;
+        await messageService.sendMessage(conversation.id, {
+          type: 'sent',
+          senderRole: 'TRAVELER',
+          text: adviceMessage,
+          content: adviceMessage,
+        });
+        navigate(`/traveller/messages?buddyId=${buddy.id}`);
+      } catch (err: unknown) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : 'Failed to start consultation chat.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!selectedDate) {
       setError('Please select a booking date.');
       return;
@@ -177,7 +200,7 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
       setError('Guest count must be between 1 and 6.');
       return;
     }
-    if (bookingType === 'PLANNED_ROUTE' && !meetingPoint.trim() && cleanedRouteStops.length === 0) {
+    if (!meetingPoint.trim() && cleanedRouteStops.length === 0) {
       setError('Please enter a meeting point or at least one route stop.');
       return;
     }
@@ -187,14 +210,10 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
       const baseLocation = meetingPoint.trim() || cleanedRouteStops[0] || buddy.location || 'To be confirmed';
       const bookingPayload = {
         buddyId: buddy.id,
-        title: bookingType === 'CONSULTATION' ? `Trip planning with ${buddy.name}` : `Local experience with ${buddy.name}`,
-        activity: bookingType === 'CONSULTATION' ? 'Buddy consultation request' : 'Custom local experience',
-        description: itineraryNotes.trim() || (
-          bookingType === 'CONSULTATION'
-            ? `Traveler wants ${buddy.name} to suggest and prepare an itinerary before payment.`
-            : `Direct booking for ${hours} hour${hours > 1 ? 's' : ''} with ${guests} guest${guests > 1 ? 's' : ''}.`
-        ),
-        bookingType,
+        title: `Local experience with ${buddy.name}`,
+        activity: 'Custom local experience',
+        description: itineraryNotes.trim() || `Direct booking for ${hours} hour${hours > 1 ? 's' : ''} with ${guests} guest${guests > 1 ? 's' : ''}.`,
+        bookingType: 'PLANNED_ROUTE',
         location: baseLocation,
         meetingPoint: meetingPoint.trim(),
         routeStops: cleanedRouteStops,
@@ -208,11 +227,7 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
       };
 
       const booking = await bookingService.create(bookingPayload);
-      if (bookingType === 'CONSULTATION') {
-        navigate(`/traveller/booking/${booking.id}`);
-      } else {
-        navigate('/traveller/checkout', { state: { bookingId: booking.id } });
-      }
+      navigate('/traveller/checkout', { state: { bookingId: booking.id } });
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Failed to initialize booking.');
@@ -282,46 +297,49 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
           </div>
         </div>
 
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
-            <Calendar size={14} className="text-primary" /> Select Date
-          </label>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {hasPublishedSlots ? (
-              uniqueDates.map((dateIso) => {
-                const display = formatSlotDate(dateIso);
-                const isSelected = selectedDate === dateIso;
+        {bookingType === 'PLANNED_ROUTE' && (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
+              <Calendar size={14} className="text-primary" /> Select Date
+            </label>
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {hasPublishedSlots ? (
+                uniqueDates.map((dateIso) => {
+                  const display = formatSlotDate(dateIso);
+                  const isSelected = selectedDate === dateIso;
 
-                return (
-                  <button
-                    key={dateIso}
-                    type="button"
-                    onClick={() => handleDateSelect(dateIso)}
-                    className={`flex h-20 min-w-[74px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 transition-all ${
-                      isSelected
-                        ? 'scale-105 border-primary bg-primary/5 font-bold text-primary shadow-sm'
-                        : 'border-gray-100 bg-white text-secondary/50 hover:border-gray-200'
-                    }`}
-                  >
-                    <span className="text-[8px] font-black uppercase tracking-wider">{display.weekday}</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider">{display.month}</span>
-                    <span className="text-lg font-black">{display.day}</span>
-                  </button>
-                );
-              })
-            ) : (
-              <input
-                type="date"
-                value={selectedDate}
-                min={todayIso()}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-6 py-4.5 font-bold text-secondary outline-none focus:border-primary/20 focus:bg-white"
-              />
-            )}
+                  return (
+                    <button
+                      key={dateIso}
+                      type="button"
+                      onClick={() => handleDateSelect(dateIso)}
+                      className={`flex h-20 min-w-[74px] shrink-0 flex-col items-center justify-center rounded-2xl border-2 transition-all ${
+                        isSelected
+                          ? 'scale-105 border-primary bg-primary/5 font-bold text-primary shadow-sm'
+                          : 'border-gray-100 bg-white text-secondary/50 hover:border-gray-200'
+                      }`}
+                    >
+                      <span className="text-[8px] font-black uppercase tracking-wider">{display.weekday}</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider">{display.month}</span>
+                      <span className="text-lg font-black">{display.day}</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min={todayIso()}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  className="w-full rounded-2xl border border-gray-100 bg-gray-50 px-6 py-4.5 font-bold text-secondary outline-none focus:border-primary/20 focus:bg-white"
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="space-y-4">
+        {bookingType === 'PLANNED_ROUTE' ? (
+          <div className="space-y-4">
           <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
             <MapPin size={14} className="text-primary" /> Meeting Point
           </label>
@@ -376,12 +394,26 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
           <textarea
             value={itineraryNotes}
             onChange={(event) => setItineraryNotes(event.target.value)}
-            placeholder={bookingType === 'CONSULTATION' ? 'Tell the buddy your travel style, budget, food preferences...' : 'Extra notes for this route'}
+            placeholder="Extra notes for this route"
             className="min-h-24 w-full resize-none rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-secondary outline-none focus:border-primary/20 focus:bg-white"
           />
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
+              <MapPin size={14} className="text-primary" /> Consultation Notes
+            </label>
+            <textarea
+              value={itineraryNotes}
+              onChange={(event) => setItineraryNotes(event.target.value)}
+              placeholder="Tell the buddy your travel style, budget, food preferences, or how much time you have..."
+              className="min-h-28 w-full resize-none rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4 text-sm font-bold text-secondary outline-none focus:border-primary/20 focus:bg-white"
+            />
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
+        {bookingType === 'PLANNED_ROUTE' && (
+          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
               <Clock size={14} className="text-primary" /> Start Time
@@ -435,9 +467,11 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-4">
+        {bookingType === 'PLANNED_ROUTE' && (
+          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em]">
               <Users size={14} className="text-primary" /> Guests
@@ -469,9 +503,11 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
               {buddy.location || 'To be confirmed'}
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="space-y-3 rounded-3xl border border-gray-100/50 bg-gray-50 p-6 text-sm">
+        {bookingType === 'PLANNED_ROUTE' && (
+          <div className="space-y-3 rounded-3xl border border-gray-100/50 bg-gray-50 p-6 text-sm">
           <div className="flex justify-between gap-4 font-bold text-secondary/50">
             <span>Buddy rate (${hourlyRate} x {hours} hrs)</span>
             <span className="font-black text-secondary">${total}</span>
@@ -485,7 +521,8 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
               Times shown are from this buddy's published availability.
             </p>
           )}
-        </div>
+          </div>
+        )}
 
         <Button
           onClick={handleBooking}
@@ -496,7 +533,7 @@ const DirectBookingModal: React.FC<DirectBookingModalProps> = ({
             <div className="h-5 w-5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
           ) : (
             <>
-              {bookingType === 'CONSULTATION' ? 'Request Advice' : 'Confirm & Pay'} <ArrowRight size={16} />
+              {bookingType === 'CONSULTATION' ? 'Chat For Advice' : 'Confirm & Pay'} <ArrowRight size={16} />
             </>
           )}
         </Button>

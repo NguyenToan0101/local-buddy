@@ -87,6 +87,27 @@ const MessageBubble: React.FC<{
           </div>
           {/* Details */}
           <div className="px-4 py-3 space-y-3">
+            {(msg.meetingPoint || msg.location) && (
+              <div className="rounded-xl bg-white/5 border border-white/5 p-3">
+                <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Meeting Point</p>
+                <p className="mt-1 text-[10px] font-black text-white/80">{msg.meetingPoint || msg.location}</p>
+              </div>
+            )}
+            {Array.isArray(msg.routeStops) && msg.routeStops.length > 0 && (
+              <div className="rounded-xl bg-white/5 border border-white/5 p-3 space-y-2">
+                <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Route</p>
+                <div className="space-y-1.5">
+                  {msg.routeStops.map((stop: string, index: number) => (
+                    <div key={`${stop}-${index}`} className="flex items-start gap-2 text-[10px] font-bold text-white/70">
+                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[8px] text-primary">
+                        {index + 1}
+                      </span>
+                      <span>{stop}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               {[
                 { icon: Timer, value: msg.duration || `${msg.hours} hrs` },

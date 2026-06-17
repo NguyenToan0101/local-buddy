@@ -371,6 +371,31 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
                                 )}
                               </div>
 
+                              {(m.meetingPoint || m.location) && (
+                                <div className="bg-white/[0.02] p-3 rounded-xl border border-white/[0.04] space-y-1">
+                                  <p className="text-[7px] font-black text-white/30 uppercase tracking-widest flex items-center gap-1">
+                                    <MapPin size={8} className="text-primary" /> Meeting Point
+                                  </p>
+                                  <p className="text-[10px] font-black text-white/90">{m.meetingPoint || m.location}</p>
+                                </div>
+                              )}
+
+                              {Array.isArray(m.routeStops) && m.routeStops.length > 0 && (
+                                <div className="bg-white/[0.02] p-3 rounded-xl border border-white/[0.04] space-y-2">
+                                  <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">Route</p>
+                                  <div className="space-y-1.5">
+                                    {m.routeStops.map((stop: string, index: number) => (
+                                      <div key={`${stop}-${index}`} className="flex items-start gap-2 text-[10px] font-bold text-white/70">
+                                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[8px] text-primary">
+                                          {index + 1}
+                                        </span>
+                                        <span>{stop}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Price display */}
                               <div className="bg-white/[0.02] p-3.5 rounded-xl border border-white/[0.06] flex items-center justify-between">
                                 <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Escrow Total Payout</span>
