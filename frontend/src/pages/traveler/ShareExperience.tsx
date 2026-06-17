@@ -12,7 +12,7 @@ type ShareBooking = {
   buddyId?: string;
   buddyName?: string;
   buddyAvatar?: string;
-  location?: string;
+  meetingPoint?: string;
 };
 
 const ShareExperience: React.FC = () => {
@@ -63,7 +63,7 @@ const ShareExperience: React.FC = () => {
       setError('This booking is missing traveler or buddy details.');
       return;
     }
-    if (!booking.location) {
+    if (!booking.meetingPoint) {
       setError('This booking is missing a real location for the story.');
       return;
     }
@@ -81,7 +81,7 @@ const ShareExperience: React.FC = () => {
         travelerName: booking.traveler,
         travelerAvatar: booking.travelerAvatar,
         image: storyImage,
-        location: booking.location,
+        location: booking.meetingPoint,
         date: new Date().toISOString().split('T')[0],
         tags: (tags || '').split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
         storyContent: content,
@@ -215,7 +215,7 @@ const ShareExperience: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3 bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
                     <MapPin size={16} className="text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{booking?.location}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{booking?.meetingPoint}</span>
                   </div>
                 </div>
               )}

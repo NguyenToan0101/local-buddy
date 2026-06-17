@@ -20,9 +20,7 @@ public class BookingDto {
     private String buddyName;
     private String buddyAvatar;
     private String title;
-    private String activity;
     private String description;
-    private String location;
     private String bookingType;
     private String meetingPoint;
     private List<String> routeStops;

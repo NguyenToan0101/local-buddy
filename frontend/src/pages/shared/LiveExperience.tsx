@@ -23,7 +23,7 @@ type Booking = {
   title?: string;
   activity?: string;
   description?: string;
-  location?: string;
+  meetingPoint?: string;
   date?: string;
   time?: string;
   hours?: number;
@@ -77,6 +77,12 @@ function formatDuration(seconds: number) {
   };
 }
 
+const InitialAvatar = ({ name }: { name?: string }) => (
+  <div className="flex h-full w-full items-center justify-center bg-primary/10 text-base font-black uppercase text-primary">
+    {(name || 'LB').slice(0, 2)}
+  </div>
+);
+
 const LiveExperience: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -129,7 +135,7 @@ const LiveExperience: React.FC = () => {
 
   const time = formatDuration(remainingSeconds);
   const experienceTitle = booking?.title || booking?.activity || 'Local Experience';
-  const location = booking?.location || FALLBACK_LOCATION;
+  const location = booking?.meetingPoint || FALLBACK_LOCATION;
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`;
   const meetupStatus = booking?.meetupStatus || 'IN_PROGRESS';
 
@@ -236,11 +242,15 @@ const LiveExperience: React.FC = () => {
                 <div className="space-y-5">
                   <div className="flex items-center gap-4">
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                      <img
-                        src={booking.buddyAvatar || `https://i.pravatar.cc/150?u=${booking.buddyId || booking.id}`}
-                        alt={booking.buddyName || 'Local buddy'}
-                        className="h-full w-full object-cover"
-                      />
+                      {booking.buddyAvatar ? (
+                        <img
+                          src={booking.buddyAvatar}
+                          alt={booking.buddyName || 'Local buddy'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <InitialAvatar name={booking.buddyName} />
+                      )}
                       <span className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div className="min-w-0">
@@ -248,7 +258,7 @@ const LiveExperience: React.FC = () => {
                       <h2 className="truncate text-xl font-black tracking-tight">{booking.buddyName || 'Local Buddy'}</h2>
                       <div className="mt-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-secondary/40">
                         <ShieldCheck size={13} strokeWidth={3} className="text-emerald-500" />
-                        Verified local buddy
+                        Verified Local Buddy
                       </div>
                     </div>
                   </div>
@@ -318,14 +328,14 @@ const LiveExperience: React.FC = () => {
                   icon: MapPin,
                 },
                 {
-                  label: 'Current experience',
+                  label: 'Active experience',
                   title: experienceTitle,
                   detail: `${booking.buddyName || 'Your buddy'} is hosting this ${booking.hours || 1}-hour session.`,
                   active: meetupStatus === 'IN_PROGRESS',
                   icon: Activity,
                 },
                 {
-                  label: 'Wrap up',
+                  label: 'Session wrap-up',
                   title: 'Complete the trip',
                   detail: 'After the session ends, you can return to bookings and leave a review.',
                   active: false,

@@ -894,7 +894,7 @@ const AdminAnalytics: React.FC = () => {
                             {formatDateTime(act.createdAt)}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="text-[10px] font-bold text-admin-muted">Kênh nguồn:</span>
+                            <span className="text-[10px] font-bold text-admin-muted">Referral Source:</span>
                             <span className="text-xs font-black text-indigo-500 capitalize">{source}</span>
                           </div>
                           {act.landingPage && (

@@ -145,11 +145,11 @@ const BuddyPreview: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Face Match Biometrics: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
+                <span>Biometric Face Match: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Safe Meetup Conduct: 100% compliant</span>
+                <span>Safety Guidelines Compliance: 100%</span>
               </div>
             </div>
           </div>
@@ -351,7 +351,7 @@ const BuddyPreview: React.FC = () => {
             <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
               <Shield className="text-primary shrink-0" size={16} />
               <p className="text-[8px] font-black text-secondary/40 leading-normal uppercase tracking-widest">
-                This is a preview of your public page as visible to traveler feeds.
+                This is a preview of your public profile page.
               </p>
             </div>
           </aside>

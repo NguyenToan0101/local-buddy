@@ -21,9 +21,6 @@ public class BookingItineraryRequest {
     @Size(max = 2000, message = "Description must be at most 2000 characters.")
     private String description;
 
-    @Size(max = 255, message = "Location must be at most 255 characters.")
-    private String location;
-
     @Size(max = 255, message = "Meeting point must be at most 255 characters.")
     private String meetingPoint;
 

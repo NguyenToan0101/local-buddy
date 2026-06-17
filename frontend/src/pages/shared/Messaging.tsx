@@ -87,10 +87,10 @@ const MessageBubble: React.FC<{
           </div>
           {/* Details */}
           <div className="px-4 py-3 space-y-3">
-            {(msg.meetingPoint || msg.location) && (
+            {msg.meetingPoint && (
               <div className="rounded-xl bg-white/5 border border-white/5 p-3">
                 <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Meeting Point</p>
-                <p className="mt-1 text-[10px] font-black text-white/80">{msg.meetingPoint || msg.location}</p>
+                <p className="mt-1 text-[10px] font-black text-white/80">{msg.meetingPoint}</p>
               </div>
             )}
             {Array.isArray(msg.routeStops) && msg.routeStops.length > 0 && (

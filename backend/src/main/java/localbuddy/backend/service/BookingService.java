@@ -114,49 +114,7 @@ public class BookingService {
     public BookingDto updateItinerary(UUID currentUserId, UUID bookingId, BookingItineraryRequest request) {
         Booking booking = getBookingForParticipant(currentUserId, bookingId);
         requireBuddy(currentUserId, booking);
-        if (booking.getStatus() != BookingStatus.PENDING) {
-            throw new IllegalArgumentException("Only pending bookings can be adjusted before traveler payment.");
-        }
-
-        if (StringUtils.hasText(request.getTitle())) {
-            booking.setTitle(request.getTitle().trim());
-        }
-        if (request.getDescription() != null) {
-            booking.setDescription(trimOrNull(request.getDescription()));
-        }
-        if (StringUtils.hasText(request.getLocation())) {
-            booking.setLocation(request.getLocation().trim());
-        }
-        if (request.getMeetingPoint() != null) {
-            booking.setMeetingPoint(trimOrNull(request.getMeetingPoint()));
-        }
-        if (request.getRouteStops() != null) {
-            List<String> stops = normalizeRouteStops(request.getRouteStops());
-            validateRouteStops(booking.getMeetingPoint(), stops, booking.getBookingType());
-            booking.setRouteStops(writeRouteStops(stops));
-        }
-        if (request.getItineraryNotes() != null) {
-            booking.setItineraryNotes(trimOrNull(request.getItineraryNotes()));
-        }
-        if (request.getDate() != null || StringUtils.hasText(request.getTime())) {
-            LocalDate date = request.getDate() != null ? request.getDate() : booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toLocalDate();
-            String time = StringUtils.hasText(request.getTime())
-                    ? request.getTime()
-                    : booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toLocalTime().format(TIME_FORMATTER);
-            OffsetDateTime startTime = resolveStartTime(date, time);
-            int hours = request.getHours() != null && request.getHours() > 0 ? request.getHours() : booking.getTotalHours();
-            booking.setStartTime(startTime);
-            booking.setEndTime(startTime.plusHours(hours));
-            booking.setTotalHours(hours);
-        } else if (request.getHours() != null && request.getHours() > 0) {
-            booking.setTotalHours(request.getHours());
-            booking.setEndTime(booking.getStartTime().plusHours(request.getHours()));
-        }
-        if (request.getPrice() != null) {
-            booking.setTotalPrice(request.getPrice());
-        }
-        booking.setUpdatedAt(nowInBookingZone());
-        return mapToDto(bookingRepository.save(booking));
+        throw new IllegalArgumentException("Traveler-created bookings are read-only for buddies.");
     }
 
     @Transactional
@@ -365,15 +323,13 @@ public class BookingService {
         OffsetDateTime startTime = resolveStartTime(request.getDate(), request.getTime());
         OffsetDateTime endTime = startTime.plusHours(hours);
         BigDecimal price = request.getPrice() != null ? request.getPrice() : calculateDefaultPrice(buddy, hours);
-        String activity = firstText(request.getActivity(), request.getTitle(), "Custom Experience");
-        String title = firstText(request.getTitle(), activity);
+        String title = firstText(request.getTitle(), "Custom Experience");
 
         Booking booking = new Booking();
         booking.setTraveler(traveler);
         booking.setBuddy(buddy);
         booking.setTitle(title);
         booking.setDescription(request.getDescription());
-        booking.setLocation(firstText(request.getLocation(), "To be confirmed"));
         booking.setBookingType(resolveBookingType(request.getBookingType()));
         booking.setMeetingPoint(trimOrNull(request.getMeetingPoint()));
         List<String> stops = normalizeRouteStops(request.getRouteStops());
@@ -407,9 +363,7 @@ public class BookingService {
                 .buddyName(booking.getBuddy().getFullName())
                 .buddyAvatar(AvatarService.getDisplayAvatarUrl(booking.getBuddy()))
                 .title(booking.getTitle())
-                .activity(booking.getTitle())
                 .description(booking.getDescription())
-                .location(booking.getLocation())
                 .bookingType(booking.getBookingType())
                 .meetingPoint(booking.getMeetingPoint())
                 .routeStops(readRouteStops(booking.getRouteStops()))

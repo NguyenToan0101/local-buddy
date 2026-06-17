@@ -125,7 +125,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({ chats }) => {
       isOffer: true,
       offerTime: data.time,
       hours: data.hours,
-      text: `Custom Offer: ${data.duration} of ${data.activity}`,
+      text: data.title || `Custom Offer: ${data.duration} of ${data.activity}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 

@@ -1,9 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MessageSquare, MapPin, Calendar, Clock, Star, QrCode } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  MapPin,
+  MessageSquare,
+  QrCode,
+  ShieldCheck,
+  Star,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { bookingService, buddyService } from '../../services/api';
 import Button from '../../components/ui/Button';
+
+const statusClass = (status?: string) => {
+  if (status === 'PENDING') return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (status === 'COMPLETED') return 'bg-slate-100 text-slate-600 border-slate-200';
+  if (status === 'CANCELLED') return 'bg-rose-50 text-rose-700 border-rose-200';
+  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+};
+
+const money = (value: unknown) => `$${Number(value || 0).toFixed(0)}`;
+
+const InfoTile = ({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ElementType;
+}) => (
+  <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+    <Icon size={16} className="text-primary" />
+    <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-secondary/35">{label}</p>
+    <p className="mt-1 text-sm font-black text-secondary">{value || '-'}</p>
+  </div>
+);
 
 const BookingDetails: React.FC = () => {
   const { id } = useParams();
@@ -22,13 +61,13 @@ const BookingDetails: React.FC = () => {
         setLoading(true);
         const bookingData = await bookingService.getById(id);
         setBooking(bookingData);
-        
+
         if (bookingData.buddyId) {
           const buddyData = await buddyService.getById(bookingData.buddyId);
           setBuddy(buddyData);
         }
       } catch (error) {
-        console.error("Error fetching booking details:", error);
+        console.error('Error fetching booking details:', error);
       } finally {
         setLoading(false);
       }
@@ -44,7 +83,7 @@ const BookingDetails: React.FC = () => {
         const token = await bookingService.getQrToken(id);
         setQrToken(token);
       } catch (error) {
-        console.error("Error fetching QR token:", error);
+        console.error('Error fetching QR token:', error);
       }
     };
 
@@ -81,283 +120,283 @@ const BookingDetails: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-full flex flex-col items-center justify-center bg-[#FBFBFC] py-40">
-        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black text-secondary/30 uppercase tracking-widest mt-4">Loading Booking...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Loading booking details</p>
       </div>
     );
   }
 
   if (!booking) {
     return (
-      <div className="min-h-full flex flex-col items-center justify-center bg-[#FBFBFC] py-40 px-6 text-center space-y-4">
-        <h2 className="text-xl font-black text-secondary">Booking Not Found</h2>
-        <button onClick={() => navigate('/traveller/booking')} className="btn-primary py-3 px-6 text-xs uppercase">Back to Bookings</button>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
+        <h2 className="text-xl font-black text-secondary">Booking not found</h2>
+        <button
+          onClick={() => navigate('/traveller/booking')}
+          className="rounded-xl bg-primary px-5 py-3 text-xs font-black uppercase tracking-widest text-white"
+        >
+          Back to bookings
+        </button>
       </div>
     );
   }
 
-  const activityFee = booking.price || 0;
+  const activityFee = Number(booking.price || booking.totalPrice || 0);
   const serviceFee = Math.round(activityFee * 0.1);
   const total = activityFee + serviceFee;
   const meetupStatus = booking.meetupStatus || 'NOT_STARTED';
   const isConfirmed = booking.status === 'CONFIRMED';
   const routeStops: string[] = Array.isArray(booking.routeStops) ? booking.routeStops.filter(Boolean) : [];
 
+  const steps = [
+    { label: 'Requested', done: ['PENDING', 'CONFIRMED', 'COMPLETED'].includes(booking.status) },
+    { label: 'Paid', done: ['CONFIRMED', 'COMPLETED'].includes(booking.status) },
+    { label: 'Meetup', done: ['BOTH_ARRIVED', 'IN_PROGRESS'].includes(meetupStatus) || booking.status === 'COMPLETED' },
+    { label: 'Completed', done: booking.status === 'COMPLETED' },
+  ];
+
   return (
-    <div className="min-h-full flex flex-col bg-[#FBFBFC]">
-      {/* App Header */}
-      <header className="px-6 py-4 bg-white border-b border-gray-50 sticky top-0 z-40 flex items-center gap-3 shrink-0 md:bg-transparent md:border-b-0 md:px-0 md:max-w-5xl md:mx-auto md:w-full md:relative md:pt-8 md:pb-2">
-        <button 
-          onClick={() => navigate('/traveller/booking')}
-          className="w-10 h-10 rounded-2xl border border-gray-100 bg-slate-50 flex items-center justify-center text-secondary/60 hover:text-primary transition-all shadow-sm cursor-pointer"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <h1 className="text-xl font-black text-secondary tracking-tight">Booking Details</h1>
-      </header>
-
-      {/* Main Column scroll container */}
-      <main className="flex-1 overflow-y-auto px-6 py-4 space-y-6 md:max-w-5xl md:mx-auto md:w-full md:grid md:grid-cols-12 md:gap-8 md:space-y-0 md:py-6 md:overflow-visible">
-        
-        {/* Left Column (Buddy spotlight, Progress, Logistics) */}
-        <div className="md:col-span-7 space-y-6">
-          {/* Buddy Guide Spotlight Card */}
-          {buddy && (
-            <div className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm flex items-center gap-4">
-              <div className="w-16 h-16 rounded-[20px] overflow-hidden border border-gray-100 shrink-0 relative shadow-sm">
-                <img src={buddy?.image} alt={buddy.name} className="w-full h-full object-cover" />
+    <div className="min-h-screen bg-slate-50 pb-24 md:pb-12">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <button
+            onClick={() => navigate('/traveller/booking')}
+            className="mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-secondary/50 transition hover:text-primary"
+          >
+            <ArrowLeft size={16} /> Back to bookings
+          </button>
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusClass(booking.status)}`}>
+                  {booking.status}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-secondary/45">
+                  LB-{String(booking.id).slice(0, 8)}
+                </span>
               </div>
-              <div className="flex-1 min-w-0 space-y-1">
-                <span className="text-[7px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded uppercase tracking-wider">Verified guide</span>
-                <h3 className="text-base font-black text-secondary tracking-tight truncate leading-none pt-0.5">{buddy.name}</h3>
-                <div className="flex items-center gap-1.5 text-[10px] text-secondary/40 font-bold">
-                  <Star size={11} className="fill-primary text-primary" />
-                  <span>{buddy.rating} Rating</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => navigate(`/traveller/messages?buddyId=${buddy.id}`)}
-                className="px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-secondary border border-slate-100 rounded-xl transition-all flex items-center justify-center cursor-pointer"
-              >
-                <MessageSquare size={16} />
-              </button>
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-secondary md:text-4xl">
+                {booking.title || booking.activity || 'Local experience'}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-secondary/55">
+                {booking.description || 'Review the schedule, route, payment and check-in status before your meetup.'}
+              </p>
             </div>
-          )}
-
-          {/* Stepper Progress Nodes */}
-          <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
-            <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Meetup Progress</h3>
-            <div className="relative pl-6 space-y-4">
-              {/* Vertical linking line */}
-              <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-slate-100"></div>
-
-              {/* Step 1 */}
-              <div className="relative flex gap-3.5 items-start">
-                <div className={`absolute -left-6 w-5 h-5 rounded-full border-4 border-white flex items-center justify-center text-[8px] font-black shrink-0 ${
-                  ['PENDING', 'CONFIRMED', 'COMPLETED'].includes(booking.status) ? 'bg-primary text-white' : 'bg-slate-100 text-secondary/20'
-                }`}></div>
-                <div>
-                  <h4 className="text-xs font-black text-secondary">Meetup Booked</h4>
-                  <p className="text-[9px] text-secondary/40 font-bold uppercase mt-0.5">Requested slot slot-allocated</p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="relative flex gap-3.5 items-start">
-                <div className={`absolute -left-6 w-5 h-5 rounded-full border-4 border-white flex items-center justify-center text-[8px] font-black shrink-0 ${
-                  ['CONFIRMED', 'COMPLETED'].includes(booking.status) ? 'bg-primary text-white' : 'bg-slate-100 text-secondary/20'
-                }`}></div>
-                <div>
-                  <h4 className="text-xs font-black text-secondary">Payment Escrowed</h4>
-                  <p className="text-[9px] text-secondary/40 font-bold uppercase mt-0.5">Transaction payment held safely</p>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="relative flex gap-3.5 items-start">
-                <div className={`absolute -left-6 w-5 h-5 rounded-full border-4 border-white flex items-center justify-center text-[8px] font-black shrink-0 ${
-                  ['CONFIRMED', 'COMPLETED'].includes(booking.status) ? 'bg-primary text-white animate-pulse' : 'bg-slate-100 text-secondary/20'
-                }`}></div>
-                <div>
-                  <h4 className="text-xs font-black text-secondary">Chat Active</h4>
-                  <p className="text-[9px] text-secondary/40 font-bold uppercase mt-0.5">Coordinate meeting point</p>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className="relative flex gap-3.5 items-start">
-                <div className={`absolute -left-6 w-5 h-5 rounded-full border-4 border-white flex items-center justify-center text-[8px] font-black shrink-0 ${
-                  booking.status === 'COMPLETED' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-secondary/20'
-                }`}></div>
-                <div>
-                  <h4 className="text-xs font-black text-secondary">Finished</h4>
-                  <p className="text-[9px] text-secondary/40 font-bold uppercase mt-0.5">Leave a feedback review</p>
-                </div>
-              </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:w-80">
+              <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Total estimate</p>
+              <p className="mt-1 text-3xl font-black text-secondary">{money(total)}</p>
+              <p className="mt-1 text-xs font-bold text-secondary/45">Includes platform service fee</p>
             </div>
+          </div>
+        </section>
 
-            {booking.status === 'COMPLETED' && (
-              <Link to={`/traveller/review/${booking.id}`} className="block pt-2">
-                <button className="btn-primary w-full py-3.5 text-xs">
-                  Review local buddy
-                </button>
-              </Link>
+        <main className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-8">
+            {buddy && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <img src={buddy.image} alt={buddy.name} className="h-16 w-16 rounded-xl object-cover" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary">Your local buddy</p>
+                      <h2 className="truncate text-xl font-black text-secondary">{buddy.name}</h2>
+                      <div className="mt-1 flex items-center gap-2 text-xs font-bold text-secondary/50">
+                        <Star size={14} className="fill-amber-400 text-amber-400" />
+                        {buddy.rating || '5.0'} rating
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/traveller/messages?buddyId=${buddy.id}`)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-secondary/70 transition hover:border-primary/30 hover:text-primary"
+                  >
+                    <MessageSquare size={15} /> Message
+                  </button>
+                </div>
+              </section>
             )}
-          </section>
 
-          {/* Meetup logistics */}
-          <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
-            <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Meeting Details</h3>
-            <div className="space-y-3">
-              <div className="flex gap-3 items-center">
-                <Calendar size={14} className="text-primary shrink-0" />
-                <span className="text-xs font-black text-secondary">{booking.date}</span>
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-black text-secondary">Trip overview</h2>
+              <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <InfoTile label="Date" value={booking.date} icon={Calendar} />
+                <InfoTile label="Start" value={booking.time} icon={Clock} />
+                <InfoTile label="Duration" value={`${booking.hours || 3} hours`} icon={Zap} />
+                <InfoTile label="Guests" value={booking.guests || booking.guestCount || 1} icon={Users} />
               </div>
-              <div className="flex gap-3 items-center">
-                <Clock size={14} className="text-primary shrink-0" />
-                <span className="text-xs font-black text-secondary">{booking.time} ({booking.hours} hours)</span>
-              </div>
-              <div className="flex gap-3 items-start">
-                <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-xs font-black text-secondary">{booking.meetingPoint || booking.location}</span>
-                  <p className="text-[10px] text-secondary/40 font-medium leading-relaxed mt-1">{booking.description || "Meet at the designated spot discussed in messaging."}</p>
+              <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+                <div className="flex items-start gap-3">
+                  <MapPin size={18} className="mt-0.5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Meeting point</p>
+                    <p className="mt-1 text-sm font-black text-secondary">{booking.meetingPoint || 'To be confirmed'}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {(routeStops.length > 0 || booking.itineraryNotes || booking.bookingType === 'CONSULTATION') && (
-            <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Itinerary</h3>
-              {booking.bookingType === 'CONSULTATION' && routeStops.length === 0 && (
-                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs font-bold leading-relaxed text-amber-700">
-                  Waiting for your buddy to suggest the route before payment.
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-black text-secondary">Itinerary</h2>
+              {booking.bookingType === 'CONSULTATION' && routeStops.length === 0 && !booking.meetingPoint ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-700">
+                  Your buddy is preparing route details. Payment opens after the itinerary is ready.
                 </div>
-              )}
-              {routeStops.length > 0 && (
-                <div className="relative ml-2 space-y-4">
-                  <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-primary/10" />
+              ) : routeStops.length > 0 ? (
+                <div className="mt-5 space-y-4">
                   {routeStops.map((stop, index) => (
-                    <div key={`${stop}-${index}`} className="relative pl-8">
-                      <div className="absolute left-0 top-1 h-3 w-3 rounded-full border-2 border-white bg-primary shadow-sm" />
-                      <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest">Stop {index + 1}</p>
-                      <p className="text-sm font-black text-secondary">{stop}</p>
+                    <div key={`${stop}-${index}`} className="flex gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-black text-white">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/70 p-3 flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Stop {index + 1}</p>
+                        <p className="mt-1 text-sm font-black text-secondary">{stop}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="mt-4 text-sm font-medium text-secondary/50">No route stops added yet.</p>
               )}
               {booking.itineraryNotes && (
-                <p className="rounded-2xl bg-slate-50 p-4 text-xs font-bold leading-relaxed text-secondary/50">
-                  {booking.itineraryNotes}
-                </p>
+                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Notes</p>
+                  <p className="mt-2 text-sm font-medium leading-6 text-secondary/60">{booking.itineraryNotes}</p>
+                </div>
               )}
             </section>
-          )}
 
-          {isConfirmed && (
-            <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
-              <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Meetup Check-in</h3>
-              {actionError && <p className="text-[11px] font-bold text-red-500">{actionError}</p>}
-              {meetupStatus === 'NOT_STARTED' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-secondary/50">When you reach the meeting point, confirm your arrival so your buddy can start the trip.</p>
-                  <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full py-3 text-xs">
-                    Tôi đã đến điểm hẹn
-                  </Button>
-                </div>
-              )}
-              {meetupStatus === 'TRAVELER_ARRIVED' && (
-                <p className="text-xs font-bold text-secondary/50">Bạn đã xác nhận có mặt. Đang chờ buddy.</p>
-              )}
-              {meetupStatus === 'BUDDY_ARRIVED' && (
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-secondary/50">Buddy đã tới điểm hẹn. Hãy xác nhận bạn đã tới để tạo QR bắt đầu chuyến đi.</p>
-                  <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full py-3 text-xs">
-                    Tôi đã đến điểm hẹn
-                  </Button>
-                </div>
-              )}
-              {meetupStatus === 'BOTH_ARRIVED' && (
-                <div className="space-y-4 text-center">
-                  <div className="mx-auto w-56 h-56 rounded-2xl border border-gray-100 bg-white flex items-center justify-center p-4">
-                    {qrToken?.qrPayload ? <QRCodeSVG value={qrToken.qrPayload} size={192} /> : <QrCode size={96} className="text-secondary/20" />}
+            {isConfirmed && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-base font-black text-secondary">Meetup verification</h2>
+                {actionError && (
+                  <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-700">{actionError}</div>
+                )}
+
+                {meetupStatus === 'NOT_STARTED' && (
+                  <div className="mt-4 space-y-4">
+                    <p className="text-sm font-medium leading-6 text-secondary/55">
+                      Confirm when you arrive at the meeting point. Your buddy will receive the meetup signal.
+                    </p>
+                    <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full rounded-xl py-3 text-xs font-black uppercase tracking-widest">
+                      {actionLoading ? 'Confirming...' : 'I have arrived'}
+                    </Button>
                   </div>
-                  <p className="text-[10px] font-black text-secondary/40 uppercase tracking-widest">Show this QR to your buddy to start</p>
-                  {qrToken?.expiresAt && <p className="text-[10px] font-bold text-secondary/30">Expires at {new Date(qrToken.expiresAt).toLocaleTimeString()}</p>}
-                </div>
-              )}
-              {meetupStatus === 'IN_PROGRESS' && (
-                <div className="space-y-3">
-                  <Button onClick={() => navigate(`/traveller/experience/live/${booking.id}`)} className="w-full py-3 text-xs">
-                    Open live experience
-                  </Button>
-                  <button onClick={handleCompleteTrip} disabled={actionLoading} className="w-full py-3 bg-slate-50 border border-slate-100 rounded-xl text-secondary text-[10px] font-black uppercase tracking-widest">
-                    Complete trip
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
-        </div>
-
-        {/* Right Column (Financials, Safety, Actions) */}
-        <div className="md:col-span-5 space-y-6 md:sticky md:top-6 h-fit">
-          {/* Financial overview */}
-          <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-3">
-            <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Financial Review</h3>
-            <div className="flex justify-between text-[10px] text-secondary/40 font-black uppercase tracking-wider">
-              <span>Guide fee</span>
-              <span>${activityFee}</span>
-            </div>
-            <div className="flex justify-between text-[10px] text-secondary/40 font-black uppercase tracking-wider pb-3 border-b border-gray-50">
-              <span>Service fee</span>
-              <span>${serviceFee}</span>
-            </div>
-            <div className="flex justify-between items-baseline pt-1">
-              <span className="text-xs font-black text-secondary italic">Total Paid</span>
-              <span className="text-2xl font-black text-secondary tracking-tight">${total}</span>
-            </div>
-          </section>
-
-
-          {/* Desktop feed back-out actions */}
-          <div className="hidden md:block">
-            {booking.status === 'PENDING' && (
-              <Link to={`/traveller/booking/${booking.id}/cancel`} className="mb-3 block">
-                <button className="w-full py-3.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center shadow-sm">
-                  Cancel Pending Booking
-                </button>
-              </Link>
+                )}
+                {meetupStatus === 'TRAVELER_ARRIVED' && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-700">
+                    Arrival confirmed. Waiting for your buddy to check in.
+                  </div>
+                )}
+                {meetupStatus === 'BUDDY_ARRIVED' && (
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm font-bold text-secondary">
+                      Your buddy has arrived. Confirm your arrival to generate the QR start code.
+                    </div>
+                    <Button onClick={handleTravelerArrived} disabled={actionLoading} className="w-full rounded-xl py-3 text-xs font-black uppercase tracking-widest">
+                      I have arrived
+                    </Button>
+                  </div>
+                )}
+                {meetupStatus === 'BOTH_ARRIVED' && (
+                  <div className="mt-5 text-center">
+                    <div className="mx-auto flex h-60 w-60 items-center justify-center rounded-2xl border border-slate-200 bg-white p-5 shadow-inner">
+                      {qrToken?.qrPayload ? <QRCodeSVG value={qrToken.qrPayload} size={190} /> : <QrCode size={86} className="text-secondary/20" />}
+                    </div>
+                    <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-secondary/45">
+                      Show this QR to your buddy to start the session
+                    </p>
+                  </div>
+                )}
+                {meetupStatus === 'IN_PROGRESS' && (
+                  <div className="mt-4 space-y-3">
+                    <Button
+                      onClick={() => navigate(`/traveller/experience/live/${booking.id}`)}
+                      className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-black uppercase tracking-widest hover:bg-emerald-700"
+                    >
+                      Open live experience
+                    </Button>
+                    <button
+                      onClick={handleCompleteTrip}
+                      disabled={actionLoading}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 text-xs font-black uppercase tracking-widest text-secondary/70"
+                    >
+                      Complete session
+                    </button>
+                  </div>
+                )}
+              </section>
             )}
-            <button 
-              onClick={() => navigate('/traveller/booking')}
-              className="w-full py-3.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center shadow-sm"
-            >
-              My Bookings Feed
-            </button>
           </div>
-        </div>
 
-      </main>
+          <aside className="space-y-6 lg:col-span-4">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-24">
+              <h2 className="text-base font-black text-secondary">Booking progress</h2>
+              <div className="mt-5 space-y-4">
+                {steps.map((step, index) => (
+                  <div key={step.label} className="flex items-center gap-3">
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${step.done ? 'bg-primary text-white' : 'bg-slate-100 text-secondary/35'}`}>
+                      {step.done ? <Check size={15} /> : index + 1}
+                    </span>
+                    <p className={`text-sm font-black ${step.done ? 'text-secondary' : 'text-secondary/40'}`}>{step.label}</p>
+                  </div>
+                ))}
+              </div>
 
-      {/* Sticky Bottom back-out actions */}
-      <footer className="bg-white border-t border-gray-50 p-4 flex gap-3 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] md:hidden">
-        {booking.status === 'PENDING' && (
-          <Link to={`/traveller/booking/${booking.id}/cancel`} className="w-full">
-            <button className="w-full py-3.5 bg-rose-50 border border-rose-100 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center">
-              Cancel
-            </button>
-          </Link>
-        )}
-        <button 
-          onClick={() => navigate('/traveller/booking')}
-          className="w-full py-3.5 bg-slate-50 border border-slate-100 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center"
-        >
-          My Bookings Feed
-        </button>
-      </footer>
+              <div className="my-5 border-t border-slate-100" />
+
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between font-bold text-secondary/55">
+                  <span>Guide fee</span>
+                  <span className="text-secondary">{money(activityFee)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-secondary/55">
+                  <span>Service fee</span>
+                  <span className="text-secondary">{money(serviceFee)}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-100 pt-3 text-base font-black text-secondary">
+                  <span>Total</span>
+                  <span>{money(total)}</span>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-700">
+                  <ShieldCheck size={15} /> Escrow protected
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {booking.status === 'PENDING' && (
+                  <>
+                    <Link
+                      to="/traveller/checkout"
+                      state={{ bookingId: booking.id }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-primary-dark"
+                    >
+                      <CreditCard size={15} /> Pay booking
+                    </Link>
+                    <Link
+                      to={`/traveller/booking/${booking.id}/cancel`}
+                      className="flex w-full items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-rose-600"
+                    >
+                      Cancel request
+                    </Link>
+                  </>
+                )}
+                {booking.status === 'COMPLETED' && (
+                  <Link
+                    to={`/traveller/review/${booking.id}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+                  >
+                    <CheckCircle2 size={15} /> Review buddy
+                  </Link>
+                )}
+              </div>
+            </section>
+          </aside>
+        </main>
+      </div>
     </div>
   );
 };
