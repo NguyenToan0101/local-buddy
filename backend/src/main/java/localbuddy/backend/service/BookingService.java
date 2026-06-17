@@ -1,12 +1,18 @@
 package localbuddy.backend.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import localbuddy.backend.dto.BookingDto;
+import localbuddy.backend.dto.BookingItineraryRequest;
 import localbuddy.backend.dto.BookingRequest;
+import localbuddy.backend.dto.CancellationRequest;
 import localbuddy.backend.dto.QrTokenResponse;
 import localbuddy.backend.dto.ReviewDto;
 import localbuddy.backend.dto.ReviewRequest;
 import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.BuddyProfile;
+import localbuddy.backend.model.entity.Cancellation;
 import localbuddy.backend.model.entity.Review;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.BookingStatus;
@@ -14,6 +20,7 @@ import localbuddy.backend.model.enums.MeetupStatus;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.CancellationRepository;
 import localbuddy.backend.repository.ReviewRepository;
 import localbuddy.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +38,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -41,12 +49,18 @@ public class BookingService {
     private static final ZoneId BOOKING_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final String BOOKING_TYPE_PLANNED_ROUTE = "PLANNED_ROUTE";
+    private static final String BOOKING_TYPE_CONSULTATION = "CONSULTATION";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
+    };
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
     private final NotificationService notificationService;
     private final ReviewRepository reviewRepository;
+    private final CancellationRepository cancellationRepository;
 
     @Transactional(readOnly = true)
     public Page<BookingDto> getBookings(UUID currentUserId, Pageable pageable) {
@@ -77,9 +91,121 @@ public class BookingService {
     @Transactional
     public BookingDto updateStatus(UUID currentUserId, UUID bookingId, String status) {
         Booking booking = getBookingForParticipant(currentUserId, bookingId);
-        booking.setStatus(BookingStatus.valueOf(status.toUpperCase()));
+        BookingStatus nextStatus = BookingStatus.valueOf(status.toUpperCase());
+        if (nextStatus == BookingStatus.CONFIRMED) {
+            throw new IllegalArgumentException("Bookings are confirmed only after traveler payment succeeds.");
+        }
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending bookings can be updated manually.");
+        }
+        if (nextStatus == BookingStatus.REJECTED) {
+            requireBuddy(currentUserId, booking);
+        } else if (nextStatus == BookingStatus.CANCELLED) {
+            throw new IllegalArgumentException("Use the cancellation endpoint so a reason can be recorded.");
+        } else if (nextStatus != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Unsupported manual booking status.");
+        }
+        booking.setStatus(nextStatus);
         booking.setUpdatedAt(nowInBookingZone());
         return mapToDto(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public BookingDto updateItinerary(UUID currentUserId, UUID bookingId, BookingItineraryRequest request) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        requireBuddy(currentUserId, booking);
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending bookings can be adjusted before traveler payment.");
+        }
+
+        if (StringUtils.hasText(request.getTitle())) {
+            booking.setTitle(request.getTitle().trim());
+        }
+        if (request.getDescription() != null) {
+            booking.setDescription(trimOrNull(request.getDescription()));
+        }
+        if (StringUtils.hasText(request.getLocation())) {
+            booking.setLocation(request.getLocation().trim());
+        }
+        if (request.getMeetingPoint() != null) {
+            booking.setMeetingPoint(trimOrNull(request.getMeetingPoint()));
+        }
+        if (request.getRouteStops() != null) {
+            List<String> stops = normalizeRouteStops(request.getRouteStops());
+            validateRouteStops(booking.getMeetingPoint(), stops, booking.getBookingType());
+            booking.setRouteStops(writeRouteStops(stops));
+        }
+        if (request.getItineraryNotes() != null) {
+            booking.setItineraryNotes(trimOrNull(request.getItineraryNotes()));
+        }
+        if (request.getDate() != null || StringUtils.hasText(request.getTime())) {
+            LocalDate date = request.getDate() != null ? request.getDate() : booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toLocalDate();
+            String time = StringUtils.hasText(request.getTime())
+                    ? request.getTime()
+                    : booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toLocalTime().format(TIME_FORMATTER);
+            OffsetDateTime startTime = resolveStartTime(date, time);
+            int hours = request.getHours() != null && request.getHours() > 0 ? request.getHours() : booking.getTotalHours();
+            booking.setStartTime(startTime);
+            booking.setEndTime(startTime.plusHours(hours));
+            booking.setTotalHours(hours);
+        } else if (request.getHours() != null && request.getHours() > 0) {
+            booking.setTotalHours(request.getHours());
+            booking.setEndTime(booking.getStartTime().plusHours(request.getHours()));
+        }
+        if (request.getPrice() != null) {
+            booking.setTotalPrice(request.getPrice());
+        }
+        booking.setUpdatedAt(nowInBookingZone());
+        return mapToDto(bookingRepository.save(booking));
+    }
+
+    @Transactional
+    public BookingDto cancel(UUID currentUserId, UUID bookingId, CancellationRequest request) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        if (request == null || !StringUtils.hasText(request.getReason())) {
+            throw new IllegalArgumentException("Cancellation reason is required.");
+        }
+        if (booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new IllegalArgumentException("Completed bookings cannot be cancelled.");
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            return mapToDto(booking);
+        }
+        if (booking.getMeetupStatus() == MeetupStatus.IN_PROGRESS || booking.getMeetupStatus() == MeetupStatus.COMPLETED) {
+            throw new IllegalArgumentException("Trips that have started cannot be cancelled.");
+        }
+
+        OffsetDateTime now = nowInBookingZone();
+        BigDecimal total = booking.getTotalPrice() != null ? booking.getTotalPrice() : BigDecimal.ZERO;
+        OffsetDateTime noRefundAfter = booking.getStartTime().atZoneSameInstant(BOOKING_ZONE).toOffsetDateTime().minusHours(24);
+        BigDecimal cancellationFee = now.isAfter(noRefundAfter) ? total : BigDecimal.ZERO;
+        BigDecimal refund = total.subtract(cancellationFee).max(BigDecimal.ZERO);
+
+        Cancellation cancellation = cancellationRepository.findByBookingId(bookingId).orElseGet(Cancellation::new);
+        cancellation.setBooking(booking);
+        cancellation.setCancelledByUser(getUser(currentUserId));
+        cancellation.setReason(request.getReason().trim());
+        cancellation.setCancellationFee(cancellationFee);
+        cancellation.setRefundAmount(refund);
+        cancellation.setCreatedAt(now);
+        cancellationRepository.save(cancellation);
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setUpdatedAt(now);
+        Booking saved = bookingRepository.save(booking);
+
+        User recipient = booking.getTraveler().getId().equals(currentUserId) ? booking.getBuddy() : booking.getTraveler();
+        notificationService.createBookingNotification(
+                recipient,
+                getUser(currentUserId),
+                "booking_cancelled",
+                "Booking cancelled",
+                "Booking " + booking.getTitle() + " has been cancelled.",
+                booking.getId(),
+                recipient.getRole() == UserRole.BUDDY ? "/buddy/dashboard/trips" : "/traveller/booking/" + booking.getId()
+        );
+
+        return mapToDto(saved);
     }
 
     @Transactional
@@ -248,6 +374,12 @@ public class BookingService {
         booking.setTitle(title);
         booking.setDescription(request.getDescription());
         booking.setLocation(firstText(request.getLocation(), "To be confirmed"));
+        booking.setBookingType(resolveBookingType(request.getBookingType()));
+        booking.setMeetingPoint(trimOrNull(request.getMeetingPoint()));
+        List<String> stops = normalizeRouteStops(request.getRouteStops());
+        validateRouteStops(booking.getMeetingPoint(), stops, booking.getBookingType());
+        booking.setRouteStops(writeRouteStops(stops));
+        booking.setItineraryNotes(trimOrNull(request.getItineraryNotes()));
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
         booking.setTotalHours(hours);
@@ -278,6 +410,10 @@ public class BookingService {
                 .activity(booking.getTitle())
                 .description(booking.getDescription())
                 .location(booking.getLocation())
+                .bookingType(booking.getBookingType())
+                .meetingPoint(booking.getMeetingPoint())
+                .routeStops(readRouteStops(booking.getRouteStops()))
+                .itineraryNotes(booking.getItineraryNotes())
                 .date(startTime != null ? startTime.format(DATE_FORMATTER) : "")
                 .time(startTime != null ? startTime.format(TIME_FORMATTER) : "")
                 .hours(booking.getTotalHours())
@@ -437,5 +573,56 @@ public class BookingService {
             }
         }
         return "";
+    }
+
+    private String resolveBookingType(String bookingType) {
+        if (!StringUtils.hasText(bookingType)) {
+            return BOOKING_TYPE_PLANNED_ROUTE;
+        }
+        String normalized = bookingType.trim().toUpperCase();
+        if (!BOOKING_TYPE_PLANNED_ROUTE.equals(normalized) && !BOOKING_TYPE_CONSULTATION.equals(normalized)) {
+            throw new IllegalArgumentException("Booking type must be PLANNED_ROUTE or CONSULTATION.");
+        }
+        return normalized;
+    }
+
+    private List<String> normalizeRouteStops(List<String> stops) {
+        if (stops == null) {
+            return List.of();
+        }
+        return stops.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .limit(20)
+                .toList();
+    }
+
+    private void validateRouteStops(String meetingPoint, List<String> stops, String bookingType) {
+        if (BOOKING_TYPE_PLANNED_ROUTE.equals(bookingType) && !StringUtils.hasText(meetingPoint) && stops.isEmpty()) {
+            throw new IllegalArgumentException("Meeting point or at least one route stop is required for planned route bookings.");
+        }
+    }
+
+    private String writeRouteStops(List<String> stops) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(stops != null ? stops : List.of());
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Route stops could not be saved.");
+        }
+    }
+
+    private List<String> readRouteStops(String routeStops) {
+        if (!StringUtils.hasText(routeStops)) {
+            return List.of();
+        }
+        try {
+            return OBJECT_MAPPER.readValue(routeStops, STRING_LIST_TYPE);
+        } catch (JsonProcessingException e) {
+            return List.of();
+        }
+    }
+
+    private String trimOrNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 }

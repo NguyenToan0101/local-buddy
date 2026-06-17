@@ -324,6 +324,24 @@ export const bookingService = {
     if (!response.ok) throw new Error('Failed to update booking status');
     return response.json();
   },
+  updateItinerary: async (id: string, itineraryData: any) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/itinerary`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(itineraryData),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to update booking itinerary');
+    return response.json();
+  },
+  cancel: async (id: string, reason?: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to cancel booking');
+    return response.json();
+  },
   markTravelerArrived: async (id: string) => {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}/traveler-arrived`, {
       method: 'POST',
@@ -362,6 +380,18 @@ export const bookingService = {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error(await response.text() || 'Failed to complete trip');
+    return response.json();
+  },
+};
+
+export const reportService = {
+  create: async (payload: { reportedUserId: string; reason: string; description?: string; evidenceUrl?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/reports`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Failed to submit report');
     return response.json();
   },
 };

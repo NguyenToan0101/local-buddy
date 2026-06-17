@@ -102,6 +102,7 @@ const BookingDetails: React.FC = () => {
   const total = activityFee + serviceFee;
   const meetupStatus = booking.meetupStatus || 'NOT_STARTED';
   const isConfirmed = booking.status === 'CONFIRMED';
+  const routeStops: string[] = Array.isArray(booking.routeStops) ? booking.routeStops.filter(Boolean) : [];
 
   return (
     <div className="min-h-full flex flex-col bg-[#FBFBFC]">
@@ -220,12 +221,40 @@ const BookingDetails: React.FC = () => {
               <div className="flex gap-3 items-start">
                 <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
                 <div>
-                  <span className="text-xs font-black text-secondary">{booking.location}</span>
+                  <span className="text-xs font-black text-secondary">{booking.meetingPoint || booking.location}</span>
                   <p className="text-[10px] text-secondary/40 font-medium leading-relaxed mt-1">{booking.description || "Meet at the designated spot discussed in messaging."}</p>
                 </div>
               </div>
             </div>
           </section>
+
+          {(routeStops.length > 0 || booking.itineraryNotes || booking.bookingType === 'CONSULTATION') && (
+            <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
+              <h3 className="text-xs font-black text-secondary/30 uppercase tracking-widest">Itinerary</h3>
+              {booking.bookingType === 'CONSULTATION' && routeStops.length === 0 && (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-xs font-bold leading-relaxed text-amber-700">
+                  Waiting for your buddy to suggest the route before payment.
+                </div>
+              )}
+              {routeStops.length > 0 && (
+                <div className="relative ml-2 space-y-4">
+                  <div className="absolute left-[5px] top-2 bottom-2 w-0.5 bg-primary/10" />
+                  {routeStops.map((stop, index) => (
+                    <div key={`${stop}-${index}`} className="relative pl-8">
+                      <div className="absolute left-0 top-1 h-3 w-3 rounded-full border-2 border-white bg-primary shadow-sm" />
+                      <p className="text-[8px] font-black text-secondary/30 uppercase tracking-widest">Stop {index + 1}</p>
+                      <p className="text-sm font-black text-secondary">{stop}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {booking.itineraryNotes && (
+                <p className="rounded-2xl bg-slate-50 p-4 text-xs font-bold leading-relaxed text-secondary/50">
+                  {booking.itineraryNotes}
+                </p>
+              )}
+            </section>
+          )}
 
           {isConfirmed && (
             <section className="bg-white rounded-3xl p-5 border border-gray-50 shadow-sm space-y-4">
@@ -295,6 +324,13 @@ const BookingDetails: React.FC = () => {
 
           {/* Desktop feed back-out actions */}
           <div className="hidden md:block">
+            {booking.status === 'PENDING' && (
+              <Link to={`/traveller/booking/${booking.id}/cancel`} className="mb-3 block">
+                <button className="w-full py-3.5 bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center shadow-sm">
+                  Cancel Pending Booking
+                </button>
+              </Link>
+            )}
             <button 
               onClick={() => navigate('/traveller/booking')}
               className="w-full py-3.5 bg-slate-50 border border-slate-100 hover:bg-slate-100 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center shadow-sm"
@@ -308,6 +344,13 @@ const BookingDetails: React.FC = () => {
 
       {/* Sticky Bottom back-out actions */}
       <footer className="bg-white border-t border-gray-50 p-4 flex gap-3 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] md:hidden">
+        {booking.status === 'PENDING' && (
+          <Link to={`/traveller/booking/${booking.id}/cancel`} className="w-full">
+            <button className="w-full py-3.5 bg-rose-50 border border-rose-100 text-rose-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center">
+              Cancel
+            </button>
+          </Link>
+        )}
         <button 
           onClick={() => navigate('/traveller/booking')}
           className="w-full py-3.5 bg-slate-50 border border-slate-100 text-secondary text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center"

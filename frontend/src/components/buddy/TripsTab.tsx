@@ -113,6 +113,19 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
     }
   };
 
+  const handleCancelPending = async (tripId: string) => {
+    const reason = window.prompt('Reason for cancelling this pending booking?');
+    if (!reason?.trim()) return;
+    try {
+      setActionError('');
+      const updated = await bookingService.cancel(tripId, reason.trim());
+      setTripOverrides((current) => ({ ...current, [tripId]: updated }));
+    } catch (error) {
+      console.error("Error cancelling pending booking:", error);
+      setActionError(error instanceof Error ? error.message : 'Unable to cancel booking.');
+    }
+  };
+
   // Filter trips based on activeTab
   const mergedTrips = upcomingTrips.map((trip) => ({ ...trip, ...(tripOverrides[trip.id] || {}) }));
   const filteredTrips = mergedTrips.filter(trip => {
@@ -322,6 +335,14 @@ const TripsTab: React.FC<TripsTabProps> = ({ upcomingTrips }) => {
                     <span className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100">
                       Waiting traveler
                     </span>
+                  )}
+                  {trip.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleCancelPending(trip.id)}
+                      className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-100 shadow-sm flex items-center gap-1.5"
+                    >
+                      <X size={12} /> Cancel
+                    </button>
                   )}
                 </div>
               </div>

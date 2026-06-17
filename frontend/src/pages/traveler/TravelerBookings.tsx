@@ -76,6 +76,10 @@ const BookingCard: React.FC<{ booking: any; index: number }> = ({ booking, index
   const navigate = useNavigate();
   const statusCfg = getStatusConfig(booking.status);
   const StatusIcon = statusCfg.icon;
+  const routeStops = Array.isArray(booking.routeStops) ? booking.routeStops.filter(Boolean) : [];
+  const pendingLabel = booking.bookingType === 'CONSULTATION' && !booking.meetingPoint && routeStops.length === 0
+    ? 'Awaiting Itinerary'
+    : statusCfg.label;
 
   return (
     <div
@@ -129,7 +133,7 @@ const BookingCard: React.FC<{ booking: any; index: number }> = ({ booking, index
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${statusCfg.bg} ${statusCfg.color} ${statusCfg.border}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot} ${statusCfg.pulse ? 'animate-pulse' : ''}`} />
-            {statusCfg.label}
+            {pendingLabel}
           </span>
           {booking.meetupStatus === 'IN_PROGRESS' && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-500 text-white animate-pulse">

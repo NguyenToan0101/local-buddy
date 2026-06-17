@@ -2,7 +2,9 @@ package localbuddy.backend.controller;
 
 import jakarta.validation.Valid;
 import localbuddy.backend.dto.BookingDto;
+import localbuddy.backend.dto.BookingItineraryRequest;
 import localbuddy.backend.dto.BookingRequest;
+import localbuddy.backend.dto.CancellationRequest;
 import localbuddy.backend.dto.QrTokenResponse;
 import localbuddy.backend.dto.ReviewDto;
 import localbuddy.backend.dto.ReviewRequest;
@@ -47,6 +49,22 @@ public class BookingController {
             @RequestBody StatusRequest request
     ) {
         return ResponseEntity.ok(bookingService.updateStatus(getCurrentUserId(), bookingId, request.getStatus()));
+    }
+
+    @PatchMapping("/{bookingId}/itinerary")
+    public ResponseEntity<BookingDto> updateItinerary(
+            @PathVariable UUID bookingId,
+            @Valid @RequestBody BookingItineraryRequest request
+    ) {
+        return ResponseEntity.ok(bookingService.updateItinerary(getCurrentUserId(), bookingId, request));
+    }
+
+    @PostMapping("/{bookingId}/cancel")
+    public ResponseEntity<BookingDto> cancel(
+            @PathVariable UUID bookingId,
+            @Valid @RequestBody CancellationRequest request
+    ) {
+        return ResponseEntity.ok(bookingService.cancel(getCurrentUserId(), bookingId, request));
     }
 
     @PostMapping("/{bookingId}/traveler-arrived")
