@@ -201,7 +201,7 @@ const LandingPage: React.FC = () => {
               {[
                 { icon: <Shield size={28} />, title: "Identity verification", desc: "All buddies undergo identity verification and background checks." },
                 { icon: <Smartphone size={28} />, title: "Live itinerary tracking", desc: "Real-time emergency assistance and share your location with loved ones." },
-                { icon: <AlertTriangle size={28} />, title: "SOS emergency support", desc: "Red-focus feedback and 24/7 support for peace of mind." }
+                { icon: <AlertTriangle size={28} />, title: "SOS emergency support", desc: "Instant alert system and 24/7 support for peace of mind." }
               ].map((item, idx) => (
                 <div key={idx} className="flex gap-8 items-start group">
                   <div className="p-5 bg-white/5 rounded-[22px] border border-white/10 shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-500 text-primary">

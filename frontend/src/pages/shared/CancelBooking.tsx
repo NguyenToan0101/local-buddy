@@ -9,7 +9,7 @@ type Booking = {
   title?: string;
   date?: string;
   time?: string;
-  location?: string;
+  meetingPoint?: string;
   buddyAvatar?: string;
   totalPrice?: number | string;
   price?: number | string;
@@ -124,7 +124,9 @@ const CancelBooking: React.FC = () => {
               <h3 className="text-2xl font-extrabold text-secondary tracking-tight">{booking.title}</h3>
               <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-xs font-bold text-secondary/40 uppercase tracking-widest">
                 <div className="flex items-center gap-2"><Clock size={16} /> {booking.date} - {booking.time}</div>
-                <div className="flex items-center gap-2"><ArrowRight size={16} /> {booking.location}</div>
+                {booking.meetingPoint && (
+                  <div className="flex items-center gap-2"><ArrowRight size={16} /> {booking.meetingPoint}</div>
+                )}
               </div>
             </div>
           </div>

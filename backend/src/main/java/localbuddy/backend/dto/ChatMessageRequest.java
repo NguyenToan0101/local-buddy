@@ -12,13 +12,11 @@ public class ChatMessageRequest {
     private String text;
     private String content;
     private Boolean isOffer;
-    private String activity;
     private String description;
     private String date;
     private String time;
     private String duration;
     private Integer guests;
-    private String location;
     private String bookingType;
     private String meetingPoint;
     private List<String> routeStops;

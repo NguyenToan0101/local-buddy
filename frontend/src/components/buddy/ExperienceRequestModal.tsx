@@ -1,8 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  X, Utensils, Coffee, ShoppingBag, Footprints, 
-  Calendar, Clock, Timer, MapPin, Users, Send, DollarSign,
-  Plus, Trash2
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  MapPin,
+  Plus,
+  Route,
+  Send,
+  Shield,
+  Sparkles,
+  Timer,
+  Trash2,
+  Users,
+  X,
 } from 'lucide-react';
 import Button from '../ui/Button';
 
@@ -15,27 +25,63 @@ interface ExperienceRequestModalProps {
   hourlyRate?: number;
 }
 
-const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({ 
-  isOpen, 
-  onClose, 
+const InitialAvatar = ({ name }: { name?: string }) => (
+  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-sm font-black uppercase text-primary">
+    {(name || 'LB').slice(0, 2)}
+  </div>
+);
+
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <label className="text-[10px] font-black uppercase tracking-widest text-secondary/45">{children}</label>
+);
+
+const Section = ({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  description?: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) => (
+  <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-4 flex items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon size={18} />
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-black text-secondary">{title}</h3>
+        {description && <p className="mt-1 text-xs font-medium leading-5 text-secondary/50">{description}</p>}
+      </div>
+    </div>
+    {children}
+  </section>
+);
+
+const inputClass =
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-secondary outline-none transition focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10 placeholder:text-secondary/25';
+
+const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
+  isOpen,
+  onClose,
   onSend,
   buddyName,
   buddyAvatar,
-  hourlyRate = 0
+  hourlyRate = 0,
 }) => {
-  const [activity, setActivity] = useState('Food');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState('2 hours');
   const [guests, setGuests] = useState(1);
-  const [location, setLocation] = useState('');
   const [meetingPoint, setMeetingPoint] = useState('');
   const [routeStops, setRouteStops] = useState<string[]>(['']);
   const [itineraryNotes, setItineraryNotes] = useState('');
   const [price, setPrice] = useState(45);
   const [priceEdited, setPriceEdited] = useState(false);
-  const [isPinning, setIsPinning] = useState(false);
 
   const hours = useMemo(() => {
     if (duration.toLowerCase().includes('full')) return 8;
@@ -47,30 +93,32 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
     return Number((baseRate * hours).toFixed(2));
   }, [hourlyRate, hours]);
 
+  const cleanedRouteStops = useMemo(() => routeStops.map((stop) => stop.trim()).filter(Boolean), [routeStops]);
+  const canSend = Boolean(date && time && (meetingPoint.trim() || cleanedRouteStops.length > 0));
+
   useEffect(() => {
-    if (isOpen) {
-      setPriceEdited(false);
-      setPrice(calculatedPrice);
-    }
+    if (!isOpen) return;
+    setTitle('');
+    setDescription('');
+    setDate('');
+    setTime('');
+    setDuration('2 hours');
+    setGuests(1);
+    setMeetingPoint('');
+    setRouteStops(['']);
+    setItineraryNotes('');
+    setPriceEdited(false);
+    setPrice(calculatedPrice);
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && !priceEdited) {
-      setPrice(calculatedPrice);
-    }
+    if (isOpen && !priceEdited) setPrice(calculatedPrice);
   }, [calculatedPrice, isOpen, priceEdited]);
 
-  const activities = [
-    { id: 'Food', icon: Utensils, label: 'Food' },
-    { id: 'Coffee', icon: Coffee, label: 'Coffee' },
-    { id: 'Market Visit', icon: ShoppingBag, label: 'Market Visit' },
-    { id: 'City Walk', icon: Footprints, label: 'City Walk' },
-  ];
-
   const handleSubmit = () => {
-    const cleanedRouteStops = routeStops.map((stop) => stop.trim()).filter(Boolean);
+    if (!canSend) return;
     onSend({
-      activity,
+      title: title.trim() || `Custom proposal from ${buddyName}`,
       description,
       bookingType: 'CONSULTATION',
       date,
@@ -78,11 +126,10 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
       duration,
       hours,
       guests,
-      location: location || meetingPoint || cleanedRouteStops[0],
-      meetingPoint,
+      meetingPoint: meetingPoint.trim(),
       routeStops: cleanedRouteStops,
       itineraryNotes,
-      price
+      price,
     });
   };
 
@@ -101,274 +148,288 @@ const ExperienceRequestModal: React.FC<ExperienceRequestModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-secondary/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-[40px] w-full max-w-xl shadow-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        
-        {/* Header */}
-        <div className="p-8 border-b border-gray-50 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <img src={buddyAvatar} alt={buddyName} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-primary/5 shadow-lg" />
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
-                 <div className="w-4 h-4 bg-primary/10 rounded-full flex items-center justify-center text-primary">
-                    <Send size={10} />
-                 </div>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary/70 p-3 backdrop-blur-md">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/60 bg-slate-50 shadow-2xl">
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white p-5">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="relative shrink-0">
+              {buddyAvatar ? (
+                <img src={buddyAvatar} alt={buddyName} className="h-12 w-12 rounded-xl object-cover" />
+              ) : (
+                <InitialAvatar name={buddyName} />
+              )}
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-primary text-white">
+                <Send size={10} />
+              </span>
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-secondary tracking-tight">Plan Your Experience</h2>
-              <p className="text-[10px] font-bold text-secondary/30 uppercase tracking-widest">
-                Booking with <span className="text-secondary/60">{buddyName}</span> • Local Expert
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Custom offer</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-secondary">Create Proposal Offer</h2>
+              <p className="mt-1 text-xs font-semibold text-secondary/50">
+                Sending as <span className="font-black text-secondary">{buddyName}</span>
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-2xl hover:bg-gray-100 flex items-center justify-center text-secondary/40 transition-all border-none bg-transparent">
-            <X size={20} />
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-secondary/45 transition hover:text-rose-600"
+            aria-label="Close proposal modal"
+          >
+            <X size={18} />
           </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+            <div className="space-y-4 lg:col-span-3">
+              <Section
+                title="Offer summary"
+                description="Give the traveler a concise reason to accept this proposal."
+                icon={Sparkles}
+              >
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <FieldLabel>Proposal headline</FieldLabel>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                      placeholder={`Custom experience with ${buddyName}`}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel>Proposal details</FieldLabel>
+                    <textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      placeholder="Describe highlights, local tips, food stops, pacing and what makes this route useful."
+                      className={`${inputClass} min-h-28 resize-none leading-6`}
+                    />
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Route plan" description="Meeting point or at least one route stop is required." icon={Route}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <FieldLabel>Meeting point</FieldLabel>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                      <input
+                        type="text"
+                        value={meetingPoint}
+                        onChange={(event) => setMeetingPoint(event.target.value)}
+                        placeholder="Hotel lobby, cafe name, station exit..."
+                        className={`${inputClass} pl-11`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <FieldLabel>Route stops</FieldLabel>
+                      <button
+                        type="button"
+                        onClick={addRouteStop}
+                        className="inline-flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-primary"
+                      >
+                        <Plus size={13} /> Add stop
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {routeStops.map((stop, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xs font-black text-primary">
+                            {index + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={stop}
+                            onChange={(event) => updateRouteStop(index, event.target.value)}
+                            placeholder={index === 0 ? 'First stop or highlight' : 'Next stop'}
+                            className={inputClass}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeRouteStop(index)}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                            aria-label="Remove stop"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <FieldLabel>Itinerary notes</FieldLabel>
+                    <textarea
+                      value={itineraryNotes}
+                      onChange={(event) => setItineraryNotes(event.target.value)}
+                      placeholder="What to bring, pickup guidance, safety notes, food preferences..."
+                      className={`${inputClass} min-h-24 resize-none leading-6`}
+                    />
+                  </div>
+                </div>
+              </Section>
+            </div>
+
+            <aside className="space-y-4 lg:col-span-2">
+              <Section title="Schedule" icon={Calendar}>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <FieldLabel>Date</FieldLabel>
+                    <div className="relative">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(event) => setDate(event.target.value)}
+                        className={`${inputClass} pl-11`}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel>Time</FieldLabel>
+                    <div className="relative">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                      <input
+                        type="time"
+                        value={time}
+                        onChange={(event) => setTime(event.target.value)}
+                        className={`${inputClass} pl-11`}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <FieldLabel>Duration</FieldLabel>
+                      <div className="relative">
+                        <Timer className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                        <select
+                          value={duration}
+                          onChange={(event) => setDuration(event.target.value)}
+                          className={`${inputClass} appearance-none pl-11`}
+                        >
+                          <option>1 hour</option>
+                          <option>2 hours</option>
+                          <option>3 hours</option>
+                          <option>4 hours</option>
+                          <option>5 hours</option>
+                          <option>Full day</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <FieldLabel>Guests</FieldLabel>
+                      <div className="relative">
+                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={guests}
+                          onChange={(event) => setGuests(Math.max(1, parseInt(event.target.value, 10) || 1))}
+                          className={`${inputClass} pl-11`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Pricing" icon={DollarSign}>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <FieldLabel>Total offer price</FieldLabel>
+                    <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/30" size={16} />
+                      <input
+                        type="number"
+                        min="1"
+                        value={price}
+                        onChange={(event) => {
+                          setPriceEdited(true);
+                          setPrice(Math.max(1, Number(event.target.value) || 1));
+                        }}
+                        className={`${inputClass} pl-11`}
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Rate calculation</p>
+                    <p className="mt-1 text-sm font-black text-secondary">
+                      ${Number(hourlyRate || 45).toFixed(2)} x {hours}h = ${calculatedPrice.toFixed(2)}
+                    </p>
+                    {priceEdited && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPriceEdited(false);
+                          setPrice(calculatedPrice);
+                        }}
+                        className="mt-3 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-dark"
+                      >
+                        Reset to rate
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </Section>
+
+              <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Proposal preview</p>
+                <h3 className="mt-2 text-lg font-black leading-tight text-secondary">
+                  {title.trim() || `Custom proposal from ${buddyName}`}
+                </h3>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-secondary/35">When</p>
+                    <p className="mt-1 truncate text-xs font-black text-secondary">{date || 'No date'} {time || ''}</p>
+                  </div>
+                  <div className="rounded-xl bg-white p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-secondary/35">Total</p>
+                    <p className="mt-1 text-xs font-black text-secondary">${price}</p>
+                  </div>
+                  <div className="col-span-2 rounded-xl bg-white p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-secondary/35">Route</p>
+                    <p className="mt-1 line-clamp-2 text-xs font-bold text-secondary/60">
+                      {meetingPoint.trim() || cleanedRouteStops[0] || 'Meeting point required'}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
-          
-          {/* Activity Type */}
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Activity Type</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {activities.map((act) => (
-                <button
-                  key={act.id}
-                  onClick={() => setActivity(act.id)}
-                  className={`flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-[11px] font-black transition-all border-2 ${
-                    activity === act.id 
-                      ? 'bg-primary/5 border-primary text-primary shadow-sm shadow-primary/10' 
-                      : 'bg-white border-gray-100 text-secondary/40 hover:border-gray-200'
-                  }`}
-                >
-                  <act.icon size={16} />
-                  {act.label}
-                </button>
-              ))}
+        <footer className="border-t border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-secondary/35">
+              <Shield size={14} className="text-primary" />
+              Traveler pays through secure checkout after accepting
             </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Description</label>
-            <textarea 
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Share details about what you want to do, dietary restrictions, or specific interests..."
-              className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-bold text-secondary placeholder:text-secondary/20 min-h-[120px] outline-none focus:ring-2 focus:ring-primary/5 transition-all resize-none"
-            />
-          </div>
-
-          {/* Date & Time */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-                <input 
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-                />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Time</label>
-              <div className="relative">
-                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-                <input 
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Offer Price */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Offer Price</label>
-            <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-              <input
-                type="number"
-                min="1"
-                value={price}
-                onChange={(e) => {
-                  setPriceEdited(true);
-                  setPrice(Math.max(1, Number(e.target.value) || 1));
-                }}
-                className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-              />
-            </div>
-            <p className="text-[9px] font-bold text-secondary/25 uppercase tracking-widest ml-1">
-              Base ${Number(hourlyRate || 45).toFixed(2)}/hour x {hours}h
-            </p>
-          </div>
-
-          {/* Duration & Guests */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Duration</label>
-              <div className="relative">
-                <Timer className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-                <select 
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-10 text-sm font-bold text-secondary outline-none appearance-none focus:ring-2 focus:ring-primary/5 cursor-pointer"
-                >
-                  <option>1 hour</option>
-                  <option>2 hours</option>
-                  <option>3 hours</option>
-                  <option>4 hours</option>
-                  <option>5 hours</option>
-                  <option>Full day</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Guests</label>
-              <div className="relative">
-                <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-                <input 
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={guests}
-                  onChange={(e) => setGuests(parseInt(e.target.value))}
-                  className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Meeting Area */}
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Main Area</label>
-            <div className="relative flex items-center gap-3">
-              <div className="relative flex-1">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-                <input 
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Hoan Kiem Lake, Old Quarter"
-                  className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-                />
-              </div>
-              <button 
-                onClick={() => setIsPinning(!isPinning)}
-                className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all border-none ${isPinning ? 'bg-primary text-white shadow-primary-glow' : 'bg-gray-50 text-secondary/20 hover:text-primary hover:bg-primary/5'}`}
-              >
-                <MapPin size={22} className={isPinning ? 'animate-bounce' : ''} />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Meeting Point</label>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/20" size={18} />
-              <input
-                type="text"
-                value={meetingPoint}
-                onChange={(e) => setMeetingPoint(e.target.value)}
-                placeholder="Cafe XYZ, hotel lobby, station gate..."
-                className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Route Stops</label>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <button
                 type="button"
-                onClick={addRouteStop}
-                className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center border-none shadow-primary-glow"
+                onClick={onClose}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-widest text-secondary/60 transition hover:text-secondary"
               >
-                <Plus size={15} />
+                Cancel
               </button>
-            </div>
-            <div className="space-y-2">
-              {routeStops.map((stop, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="h-10 w-10 rounded-xl bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
-                    {index + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={stop}
-                    onChange={(e) => updateRouteStop(index, e.target.value)}
-                    placeholder={index === 0 ? 'Cho ABC, beach 123...' : 'Next stop'}
-                    className="min-w-0 flex-1 bg-gray-50 border-none rounded-2xl py-3.5 px-4 text-sm font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/5"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeRouteStop(index)}
-                    className="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center border-none"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))}
+              <Button
+                onClick={handleSubmit}
+                disabled={!canSend}
+                className="rounded-xl px-6 py-3 text-xs font-black uppercase tracking-widest"
+              >
+                <Send size={14} /> Send proposal
+              </Button>
             </div>
           </div>
-
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.2em] ml-1">Itinerary Notes</label>
-            <textarea
-              value={itineraryNotes}
-              onChange={(e) => setItineraryNotes(e.target.value)}
-              placeholder="Explain why this route fits the traveler, timing notes, food stops, backup plan..."
-              className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-bold text-secondary placeholder:text-secondary/20 min-h-[100px] outline-none focus:ring-2 focus:ring-primary/5 transition-all resize-none"
-            />
-          </div>
-
-          {/* Map Preview */}
-          <div className="relative rounded-[32px] overflow-hidden border border-gray-100 shadow-inner group h-48 bg-gray-50">
-             <iframe 
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(location || 'Hanoi, Vietnam')}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                width="100%" 
-                height="100%" 
-                style={{ border: 0 }} 
-                allowFullScreen 
-                loading="lazy" 
-                referrerPolicy="no-referrer-when-downgrade"
-                className={`w-full h-full transition-opacity duration-700 ${isPinning ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none'}`}
-             ></iframe>
-             {!isPinning && (
-               <div className="absolute inset-0 flex items-center justify-center bg-black/5 pointer-events-none">
-                  <div className="bg-white/80 backdrop-blur px-4 py-2 rounded-full border border-white shadow-sm flex items-center gap-2">
-                    <MapPin size={12} className="text-secondary/30" />
-                    <p className="text-[10px] font-black text-secondary/40 uppercase tracking-widest">Click pin to activate map</p>
-                  </div>
-               </div>
-             )}
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="p-8 border-t border-gray-50 space-y-4">
-          <Button 
-            onClick={handleSubmit}
-            disabled={!date || !time || (!location.trim() && !meetingPoint.trim() && routeStops.every((stop) => !stop.trim()))}
-            className="w-full bg-primary text-white py-5 rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-primary-glow flex items-center justify-center gap-3 border-none hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <Send size={18} />
-            Send Request
-          </Button>
-          <p className="text-[10px] text-center text-secondary/20 font-bold uppercase tracking-widest leading-relaxed px-10">
-            You won't be charged yet. The Traveler will review your offer and can accept or decline.
-          </p>
-        </div>
-
+        </footer>
       </div>
     </div>
   );

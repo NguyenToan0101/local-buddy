@@ -10,6 +10,12 @@ interface DashboardOverviewProps {
   chats: any[];
 }
 
+const InitialAvatar: React.FC<{ name?: string }> = ({ name }) => (
+  <div className="flex h-full w-full items-center justify-center bg-primary/10 text-xs font-black uppercase text-primary">
+    {(name || 'TR').slice(0, 2)}
+  </div>
+);
+
 const DashboardOverview: React.FC<DashboardOverviewProps> = ({ stats, upcomingTrips, chats }) => {
   const { user } = useAuth();
   
@@ -39,7 +45,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ stats, upcomingTr
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "My Schedule", path: "schedule", icon: Clock, desc: "Slots & Calendar" },
-          { label: "Sales Center", path: "messages", icon: MessageSquare, desc: "Custom Offers" },
+          { label: "Messages & Offers", path: "messages", icon: MessageSquare, desc: "Custom Offers" },
           { label: "My Wallet", path: "earnings", icon: Wallet, desc: "Payouts & Logs" },
           { label: "My Settings", path: "settings", icon: Settings, desc: "Verification & Bio" }
         ].map((action, idx) => (
@@ -114,7 +120,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ stats, upcomingTr
                     <div className="flex justify-between items-center gap-4">
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="w-12 h-12 rounded-xl bg-surface-dark overflow-hidden ring-2 ring-primary/5 shrink-0">
-                          <img src={`https://i.pravatar.cc/100?u=${trip.id}`} alt="Traveler" className="w-full h-full object-cover" />
+                          {trip.travelerAvatar ? (
+                            <img src={trip.travelerAvatar} alt={trip.traveler || 'Traveler'} className="w-full h-full object-cover" />
+                          ) : (
+                            <InitialAvatar name={trip.traveler} />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <h4 className="font-black text-secondary text-sm truncate leading-snug group-hover:text-primary transition-colors">
@@ -153,7 +163,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ stats, upcomingTr
                 <MessageSquare size={24} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-secondary tracking-tight">Sales & Offers Center</h3>
+                <h3 className="text-xl font-black text-secondary tracking-tight">Messages & Offers</h3>
                 <p className="text-xs text-secondary/40 font-bold leading-relaxed max-w-sm">
                   Send custom pricing, itinerary duration adjustments, and securely close bookings with traveler requests. You have {chats.length} active threads.
                 </p>
@@ -161,7 +171,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ stats, upcomingTr
             </div>
 
             <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-between">
-              <p className="text-[9px] font-black text-secondary/30 uppercase tracking-[0.2em]">Negotiate & Book</p>
+              <p className="text-[9px] font-black text-secondary/30 uppercase tracking-[0.2em]">Chat & Negotiate</p>
               <Link to="messages">
                 <Button className="bg-primary text-white pl-6 pr-5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-primary-glow border-none flex items-center gap-2 group/btn">
                   Open Chats

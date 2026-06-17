@@ -229,7 +229,7 @@ const BuddyOnboarding: React.FC = () => {
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="space-y-1">
                 <h2 className="text-xl font-black text-secondary tracking-tight">Tell us <span className="text-primary italic">who you are</span></h2>
-                <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Let's verify your basic contact parameters</p>
+                <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Let's verify your basic contact details</p>
               </div>
 
               <div className="space-y-4">
@@ -335,8 +335,8 @@ const BuddyOnboarding: React.FC = () => {
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <h2 className="text-xl font-black text-secondary tracking-tight">Identity <span className="text-primary italic">Verify</span></h2>
-                  <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Platform security relies on active guides audits</p>
+                  <h2 className="text-xl font-black text-secondary tracking-tight">Identity <span className="text-primary italic">Verification</span></h2>
+                  <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Platform security relies on guide verification</p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-200/20 text-[7px] font-black uppercase tracking-wider flex items-center gap-1.5">
                   <Shield size={8} /> OCR SCAN
@@ -369,7 +369,7 @@ const BuddyOnboarding: React.FC = () => {
 
                   {buddyData.idCardFront && buddyData.qualityScore !== undefined && (
                     <div className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider ${buddyData.qualityScore >= 70 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                      {buddyData.qualityScore >= 70 ? '✅ Resolution checked passed' : '⚠️ Image resolution blurry'} ({Math.round(buddyData.qualityScore)}%)
+                      {buddyData.qualityScore >= 70 ? '✅ Resolution check passed' : '⚠️ Image resolution blurry'} ({Math.round(buddyData.qualityScore)}%)
                     </div>
                   )}
                   {buddyData.idCardFront && buddyData.extractedFullName && (
@@ -435,7 +435,7 @@ const BuddyOnboarding: React.FC = () => {
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="space-y-1">
                 <h2 className="text-xl font-black text-secondary tracking-tight">Your <span className="text-primary italic">Story</span></h2>
-                <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Write down your biography narrative introduction</p>
+                <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Write a short biography introducing yourself</p>
               </div>
 
               <div className="space-y-4">
@@ -467,9 +467,9 @@ const BuddyOnboarding: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-black text-secondary tracking-tight">Wizard Completed!</h2>
+                <h2 className="text-xl font-black text-secondary tracking-tight">Onboarding Complete!</h2>
                 <p className="text-xs font-bold text-secondary/50 max-w-xs mx-auto leading-relaxed">
-                  Your documentation has been loaded into platform queues.
+                  Your documents have been submitted for review.
                 </p>
               </div>
 

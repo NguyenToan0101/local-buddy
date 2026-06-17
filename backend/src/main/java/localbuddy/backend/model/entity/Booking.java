@@ -43,9 +43,6 @@ public class Booking {
     @Column(name = "description", length = Integer.MAX_VALUE)
     private String description;
 
-    @Column(name = "location", nullable = false)
-    private String location;
-
     @Column(name = "booking_type", nullable = false)
     private String bookingType;
 
@@ -111,6 +108,4 @@ public class Booking {
 
     @OneToMany(mappedBy = "booking")
     private Set<Review> reviews = new LinkedHashSet<>();
-
-
 }

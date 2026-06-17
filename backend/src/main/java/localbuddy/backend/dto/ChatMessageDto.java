@@ -21,13 +21,11 @@ public class ChatMessageDto {
     private Boolean isOffer;
     private UUID bookingId;
     private String bookingStatus;
-    private String activity;
     private String description;
     private String date;
     private String offerTime;
     private String duration;
     private Integer guests;
-    private String location;
     private String bookingType;
     private String meetingPoint;
     private List<String> routeStops;

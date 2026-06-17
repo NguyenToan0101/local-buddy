@@ -25,17 +25,11 @@ public class BookingRequest {
     @Size(max = 255, message = "Title must be at most 255 characters.")
     private String title;
 
-    private String activity;
-
     @Size(max = 2000, message = "Description must be at most 2000 characters.")
     private String description;
 
     @Pattern(regexp = "PLANNED_ROUTE|CONSULTATION", message = "Booking type must be PLANNED_ROUTE or CONSULTATION.")
     private String bookingType;
-
-    @NotBlank(message = "Location is required.")
-    @Size(max = 255, message = "Location must be at most 255 characters.")
-    private String location;
 
     @Size(max = 255, message = "Meeting point must be at most 255 characters.")
     private String meetingPoint;

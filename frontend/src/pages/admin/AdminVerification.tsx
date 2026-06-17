@@ -565,13 +565,13 @@ const AdminVerification: React.FC = () => {
                         onClick={() => handleApprove(selectedUser)}
                         className="w-full h-20 bg-emerald-600 text-white rounded-3xl font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all"
                       >
-                        Approve Match
+                        Approve Verification
                       </button>
                       <button
                         onClick={() => setShowRejectForm(true)}
                         className="w-full h-16 admin-btn-muted border border-admin font-black uppercase tracking-widest"
                       >
-                        Decline Entry
+                        Decline Verification
                       </button>
                     </>
                   ) : (

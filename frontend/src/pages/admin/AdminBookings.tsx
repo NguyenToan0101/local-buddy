@@ -14,7 +14,7 @@ interface BookingRecord {
     buddyAvatar: string;
     title: string;
     description: string;
-    location: string;
+    meetingPoint?: string;
     date: string;
     time: string;
     hours: number;
@@ -25,6 +25,16 @@ interface BookingRecord {
 }
 
 type FilterStatus = 'All' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
+
+const BookingAvatar = ({ src, name, className }: { src?: string; name?: string; className: string }) => (
+    src ? (
+        <img src={src} className={`${className} object-cover shadow-lg`} alt={name || 'User'} />
+    ) : (
+        <div className={`${className} flex items-center justify-center bg-indigo-100 text-xs font-black uppercase text-indigo-600 shadow-lg`}>
+            {(name || 'LB').slice(0, 2)}
+        </div>
+    )
+);
 
 const AdminBookings: React.FC = () => {
     const [filter, setFilter] = useState<FilterStatus>('All');
@@ -65,7 +75,7 @@ const AdminBookings: React.FC = () => {
                 item.traveler.toLowerCase().includes(query) ||
                 item.buddyName.toLowerCase().includes(query) ||
                 item.title.toLowerCase().includes(query) ||
-                item.location.toLowerCase().includes(query)
+                (item.meetingPoint || '').toLowerCase().includes(query)
             );
         });
 
@@ -248,22 +258,14 @@ const AdminBookings: React.FC = () => {
                                             <td className="px-8 py-6">
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-3">
-                                                        <img
-                                                            src={booking.travelerAvatar || `https://i.pravatar.cc/150?u=${booking.traveler}`}
-                                                            className="w-10 h-10 rounded-xl object-cover shadow-lg"
-                                                            alt={booking.traveler}
-                                                        />
+                                                        <BookingAvatar src={booking.travelerAvatar} name={booking.traveler} className="w-10 h-10 rounded-xl" />
                                                         <div>
                                                             <p className="text-xs font-black text-admin-main">{booking.traveler}</p>
                                                             <p className="text-[10px] font-bold text-admin-muted">Traveler</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <img
-                                                            src={booking.buddyAvatar || `https://i.pravatar.cc/150?u=${booking.buddyName}`}
-                                                            className="w-10 h-10 rounded-xl object-cover shadow-lg"
-                                                            alt={booking.buddyName}
-                                                        />
+                                                        <BookingAvatar src={booking.buddyAvatar} name={booking.buddyName} className="w-10 h-10 rounded-xl" />
                                                         <div>
                                                             <p className="text-xs font-black text-admin-main">{booking.buddyName}</p>
                                                             <p className="text-[10px] font-bold text-admin-muted">Buddy</p>
@@ -287,7 +289,7 @@ const AdminBookings: React.FC = () => {
                                             <td className="px-8 py-6 md:table-cell hidden">
                                                 <div className="flex items-center gap-2 text-admin-muted text-xs font-black">
                                                     <MapPin size={16} className="text-indigo-500" />
-                                                    {booking.location}
+                                                    {booking.meetingPoint || 'To be confirmed'}
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
@@ -352,11 +354,7 @@ const AdminBookings: React.FC = () => {
                                             Traveler
                                         </p>
                                         <div className="flex items-center gap-3">
-                                            <img
-                                                src={selectedBooking.travelerAvatar || `https://i.pravatar.cc/150?u=${selectedBooking.traveler}`}
-                                                className="w-12 h-12 rounded-2xl object-cover shadow-lg"
-                                                alt={selectedBooking.traveler}
-                                            />
+                                            <BookingAvatar src={selectedBooking.travelerAvatar} name={selectedBooking.traveler} className="w-12 h-12 rounded-2xl" />
                                             <div>
                                                 <p className="text-sm font-black text-admin-main">{selectedBooking.traveler}</p>
                                             </div>
@@ -368,11 +366,7 @@ const AdminBookings: React.FC = () => {
                                             Buddy
                                         </p>
                                         <div className="flex items-center gap-3">
-                                            <img
-                                                src={selectedBooking.buddyAvatar || `https://i.pravatar.cc/150?u=${selectedBooking.buddyName}`}
-                                                className="w-12 h-12 rounded-2xl object-cover shadow-lg"
-                                                alt={selectedBooking.buddyName}
-                                            />
+                                            <BookingAvatar src={selectedBooking.buddyAvatar} name={selectedBooking.buddyName} className="w-12 h-12 rounded-2xl" />
                                             <div>
                                                 <p className="text-sm font-black text-admin-main">{selectedBooking.buddyName}</p>
                                             </div>
@@ -384,7 +378,7 @@ const AdminBookings: React.FC = () => {
                                     {[
                                         { icon: Calendar, label: 'Date', value: new Date(selectedBooking.date).toLocaleDateString() },
                                         { icon: Clock, label: 'Time & Duration', value: `${selectedBooking.time} (${selectedBooking.hours} hours)` },
-                                        { icon: MapPin, label: 'Location', value: selectedBooking.location },
+                                        { icon: MapPin, label: 'Location', value: selectedBooking.meetingPoint || 'To be confirmed' },
                                         { icon: Users, label: 'Guests', value: `${selectedBooking.guests} guest(s)` },
                                         { icon: DollarSign, label: 'Total Price', value: `$${selectedBooking.totalPrice}` },
                                     ].map((info, i) => (

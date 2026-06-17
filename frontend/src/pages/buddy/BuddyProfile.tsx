@@ -113,11 +113,11 @@ const BuddyProfile: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Face Match Biometrics: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
+                <span>Biometric Face Match: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Safe Meetup Conduct: 100% compliant</span>
+                <span>Safety Guidelines Compliance: 100%</span>
               </div>
             </div>
           </div>

@@ -13,6 +13,12 @@ import { bookingService } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 
+const InitialAvatar = ({ name }: { name?: string }) => (
+  <div className="flex h-full w-full items-center justify-center bg-primary/10 text-base font-black uppercase text-primary">
+    {(name || 'TR').slice(0, 2)}
+  </div>
+);
+
 const BuddyLiveExperience: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -120,7 +126,11 @@ const BuddyLiveExperience: React.FC = () => {
            <div className="flex items-center gap-3">
               <div className="relative">
                  <div className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-primary/5">
-                    <img src={booking?.travelerAvatar || `https://i.pravatar.cc/150?u=${booking?.userId}`} alt="Traveler" className="w-full h-full object-cover" />
+                    {booking?.travelerAvatar ? (
+                      <img src={booking.travelerAvatar} alt={booking?.traveler || 'Traveler'} className="w-full h-full object-cover" />
+                    ) : (
+                      <InitialAvatar name={booking?.traveler} />
+                    )}
                  </div>
                  <div className="absolute -right-1 -bottom-1 w-4.5 h-4.5 bg-green-500 rounded-full border-4 border-white shadow-sm"></div>
               </div>
@@ -180,7 +190,7 @@ const BuddyLiveExperience: React.FC = () => {
                  ></iframe>
               </div>
               
-              <p className="text-xs font-bold text-secondary/40 mt-4 italic tracking-tight">{booking?.location || "Hanoi Old Quarter"}</p>
+              <p className="text-xs font-bold text-secondary/40 mt-4 italic tracking-tight">{booking?.meetingPoint || "To be confirmed"}</p>
            </div>
 
            {/* Itinerary timeline details */}
@@ -210,7 +220,7 @@ const BuddyLiveExperience: React.FC = () => {
                     <div className="space-y-1">
                        <div className="flex items-center gap-1.5 text-primary/40">
                           <Clock size={10} />
-                          <span className="text-[7px] font-black uppercase tracking-widest">Highlight Activity</span>
+                          <span className="text-[7px] font-black uppercase tracking-widest">Current Highlight</span>
                        </div>
                        <h4 className="font-black text-secondary text-sm leading-snug">Exploring Hidden Train Street Cafe</h4>
                        <p className="text-[11px] font-bold text-secondary/40 italic leading-normal">We'll secure a safe spot for photos and enjoy the signature egg coffee.</p>
@@ -223,7 +233,7 @@ const BuddyLiveExperience: React.FC = () => {
                     <div className="space-y-1">
                        <div className="flex items-center gap-1.5 text-secondary/35">
                           <MapPin size={10} />
-                          <span className="text-[7px] font-black uppercase tracking-widest">Conclusion End</span>
+                          <span className="text-[7px] font-black uppercase tracking-widest">Session Wrap-up</span>
                        </div>
                        <h4 className="font-black text-secondary/50 text-sm leading-snug">Long Bien Bridge Sunset</h4>
                        <p className="text-[11px] font-bold text-secondary/20 italic leading-normal">Session concludes with a sunset view over the Red River.</p>

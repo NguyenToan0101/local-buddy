@@ -130,10 +130,8 @@ public class ChatService {
         }
 
         BookingRequest bookingRequest = new BookingRequest();
-        bookingRequest.setTitle(firstText(request.getActivity(), request.getText(), "Custom Offer"));
-        bookingRequest.setActivity(request.getActivity());
+        bookingRequest.setTitle(firstText(request.getText(), "Custom Offer"));
         bookingRequest.setDescription(firstText(request.getItineraryNotes(), request.getDescription()));
-        bookingRequest.setLocation(firstText(request.getLocation(), request.getMeetingPoint(), firstRouteStop(request.getRouteStops()), "To be confirmed"));
         bookingRequest.setBookingType(firstText(request.getBookingType(), "CONSULTATION"));
         bookingRequest.setMeetingPoint(request.getMeetingPoint());
         bookingRequest.setRouteStops(request.getRouteStops());
@@ -214,13 +212,11 @@ public class ChatService {
                 .isOffer(Boolean.TRUE.equals(message.getIsOffer()))
                 .bookingId(booking != null ? booking.getId() : null)
                 .bookingStatus(booking != null && booking.getStatus() != null ? booking.getStatus().name() : null)
-                .activity(booking != null ? booking.getTitle() : null)
                 .description(booking != null ? booking.getDescription() : null)
                 .date(bookingStart != null ? bookingStart.toLocalDate().toString() : null)
                 .offerTime(bookingStart != null ? bookingStart.toLocalTime().format(TIME_FORMATTER) : null)
                 .duration(hours != null ? hours + " hours" : null)
                 .guests(booking != null ? booking.getGuestCount() : null)
-                .location(booking != null ? booking.getLocation() : null)
                 .bookingType(booking != null ? booking.getBookingType() : null)
                 .meetingPoint(booking != null ? booking.getMeetingPoint() : null)
                 .routeStops(booking != null ? bookingService.mapToDto(booking).getRouteStops() : null)

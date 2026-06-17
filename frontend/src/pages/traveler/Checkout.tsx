@@ -15,7 +15,6 @@ type Booking = {
   buddyAvatar?: string;
   title?: string;
   description?: string;
-  location?: string;
   bookingType?: string;
   meetingPoint?: string;
   routeStops?: string[];
@@ -216,7 +215,7 @@ const Checkout: React.FC = () => {
                 <div className="flex-1 space-y-5 text-center md:text-left min-w-0">
                   <div className="space-y-2">
                     <h3 className="text-2xl font-black text-secondary tracking-tight">{booking.title}</h3>
-                    <p className="text-secondary/40 font-bold">{booking.description || booking.location}</p>
+                    <p className="text-secondary/40 font-bold">{booking.description || booking.meetingPoint || 'To be confirmed'}</p>
                   </div>
                   <div className="flex flex-wrap justify-center md:justify-start gap-6">
                     <div className="space-y-1">
