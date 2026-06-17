@@ -97,6 +97,9 @@ public class Booking {
     @Column(name = "meetup_qr_expires_at")
     private OffsetDateTime meetupQrExpiresAt;
 
+    @Column(name = "live_started_at")
+    private OffsetDateTime liveStartedAt;
+
     @OneToOne(mappedBy = "booking")
     private Cancellation cancellation;
 

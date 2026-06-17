@@ -2,9 +2,11 @@ package localbuddy.backend.service;
 
 import jakarta.persistence.criteria.Expression;
 import localbuddy.backend.dto.ExperienceDto;
+import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.Experience;
 import localbuddy.backend.model.entity.ExperienceImage;
 import localbuddy.backend.model.entity.User;
+import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.ExperienceImageRepository;
 import localbuddy.backend.repository.ExperienceRepository;
 import localbuddy.backend.repository.UserRepository;
@@ -37,6 +39,7 @@ public class ExperienceService {
     private final ExperienceRepository experienceRepository;
     private final ExperienceImageRepository experienceImageRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
     private final CloudinaryService cloudinaryService;
 
     @Transactional(readOnly = true)
@@ -70,10 +73,25 @@ public class ExperienceService {
     public ExperienceDto createExperience(UUID currentUserId, ExperienceDto dto) {
         User traveler = getUser(currentUserId);
         User buddy = getUser(dto.getBuddyId());
+        Booking booking = null;
+        if (dto.getBookingId() != null) {
+            if (experienceRepository.existsByBookingId(dto.getBookingId())) {
+                throw new IllegalArgumentException("This booking already has a shared experience.");
+            }
+            booking = bookingRepository.findById(dto.getBookingId())
+                    .orElseThrow(() -> new IllegalArgumentException("Booking not found."));
+            if (!booking.getTraveler().getId().equals(currentUserId)) {
+                throw new IllegalArgumentException("You are not allowed to share this booking.");
+            }
+            if (!booking.getBuddy().getId().equals(dto.getBuddyId())) {
+                throw new IllegalArgumentException("Shared experience buddy must match the booking buddy.");
+            }
+        }
 
         Experience experience = new Experience();
         experience.setTraveler(traveler);
         experience.setBuddy(buddy);
+        experience.setBooking(booking);
         applyDto(experience, dto);
         experience.setCreatedAt(nowInExperienceZone());
         experience.setIsPinned(Boolean.TRUE.equals(dto.getPinned()));
@@ -104,14 +122,13 @@ public class ExperienceService {
     }
 
     @Transactional
-    public ExperienceDto updateExperienceImage(UUID currentUserId, UUID experienceId, MultipartFile file) {
+    public ExperienceDto updateExperienceImage(UUID currentUserId, UUID experienceId, MultipartFile file, Integer displayOrder) {
         Experience experience = getExperienceEntity(experienceId);
         if (!experience.getTraveler().getId().equals(currentUserId)) {
             throw new IllegalArgumentException("You are not allowed to update this experience.");
         }
         String imageUrl = cloudinaryService.uploadImage(file, "local-buddy/experiences/" + experienceId);
-        experienceImageRepository.deleteByExperienceId(experience.getId());
-        saveImage(experience, imageUrl);
+        saveImage(experience, imageUrl, displayOrder);
         return mapToDto(experience);
     }
 
@@ -210,6 +227,10 @@ public class ExperienceService {
     }
 
     private void saveImage(Experience experience, String imageUrl) {
+        saveImage(experience, imageUrl, null);
+    }
+
+    private void saveImage(Experience experience, String imageUrl, Integer requestedDisplayOrder) {
         if (!StringUtils.hasText(imageUrl)) {
             return;
         }
@@ -220,15 +241,20 @@ public class ExperienceService {
                 imageUrl.trim(),
                 "local-buddy/experiences/" + experience.getId()
         ));
-        image.setDisplayOrder(0);
+        int displayOrder = requestedDisplayOrder != null && requestedDisplayOrder >= 0
+                ? requestedDisplayOrder
+                : experienceImageRepository.findByExperienceIdOrderByDisplayOrderAscCreatedAtAsc(experience.getId()).size();
+        image.setDisplayOrder(displayOrder);
         image.setCreatedAt(nowInExperienceZone());
         experienceImageRepository.save(image);
     }
 
     private ExperienceDto mapToDto(Experience experience) {
-        String image = experienceImageRepository.findFirstByExperienceIdOrderByDisplayOrderAscCreatedAtAsc(experience.getId())
+        List<String> images = experienceImageRepository.findByExperienceIdOrderByDisplayOrderAscCreatedAtAsc(experience.getId())
+                .stream()
                 .map(ExperienceImage::getImageUrl)
-                .orElse(DEFAULT_IMAGE);
+                .toList();
+        String image = images.isEmpty() ? DEFAULT_IMAGE : images.get(0);
         OffsetDateTime createdAt = experience.getCreatedAt() != null
                 ? experience.getCreatedAt().atZoneSameInstant(EXPERIENCE_ZONE).toOffsetDateTime()
                 : null;
@@ -240,6 +266,7 @@ public class ExperienceService {
                 .travelerAvatar(AvatarService.getDisplayAvatarUrl(experience.getTraveler()))
                 .buddyId(experience.getBuddy().getId())
                 .buddyName(experience.getBuddy().getFullName())
+                .bookingId(experience.getBooking() != null ? experience.getBooking().getId() : null)
                 .title(experience.getTitle())
                 .storyContent(experience.getStoryContent())
                 .location(experience.getLocation())
@@ -247,6 +274,7 @@ public class ExperienceService {
                 .tags(experience.getTags() != null ? experience.getTags() : List.of())
                 .pinned(Boolean.TRUE.equals(experience.getIsPinned()))
                 .image(image)
+                .images(images)
                 .date(createdAt != null ? createdAt.format(DATE_FORMATTER) : "")
                 .build();
     }

@@ -43,6 +43,15 @@ interface VerificationRecord {
 
 type FilterStatus = 'All' | 'Pending' | 'Processing' | 'Manual Review' | 'Verified' | 'Rejected';
 
+const AdminAvatar = ({ src, name, className }: { src?: string | null; name?: string; className: string }) =>
+  src ? (
+    <img src={src} className={`${className} object-cover shadow-lg`} alt={name || 'User'} referrerPolicy="no-referrer" />
+  ) : (
+    <div className={`${className} flex items-center justify-center bg-indigo-600/10 text-xs font-black uppercase text-indigo-600 shadow-lg`}>
+      {(name || 'US').slice(0, 2)}
+    </div>
+  );
+
 const AdminVerification: React.FC = () => {
   const [filter, setFilter] = useState<FilterStatus>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -285,15 +294,7 @@ const AdminVerification: React.FC = () => {
                     <tr key={record.id} className="group hover:bg-admin-surface/50 transition-all">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                          <img
-                            src={record.avatar || `https://i.pravatar.cc/150?u=${record.email}`}
-                            className="w-12 h-12 rounded-2xl object-cover shadow-lg group-hover:scale-110 transition-transform"
-                            alt={record.name}
-                            referrerPolicy="no-referrer"
-                            onError={(event) => {
-                              event.currentTarget.src = `https://i.pravatar.cc/150?u=${record.email}`;
-                            }}
-                          />
+                          <AdminAvatar src={record.avatar} name={record.name} className="w-12 h-12 rounded-2xl group-hover:scale-110 transition-transform" />
                           <div className="space-y-1">
                             <p className="text-sm font-black text-admin-main flex items-center gap-2">
                               {record.name}
@@ -430,15 +431,18 @@ const AdminVerification: React.FC = () => {
                     <div className="aspect-[2/1] relative rounded-[32px] overflow-hidden border border-admin">
                       <div className="absolute inset-0 flex">
                         <div className="flex-1 bg-admin-surface border-r border-admin overflow-hidden">
-                          <img
-                            src={selectedUser.avatar}
-                            className="w-full h-full object-cover"
-                            alt="Profile avatar"
-                            referrerPolicy="no-referrer"
-                            onError={(event) => {
-                              event.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.email}`;
-                            }}
-                          />
+                          {selectedUser.avatar ? (
+                            <img
+                              src={selectedUser.avatar}
+                              className="w-full h-full object-cover"
+                              alt="Profile avatar"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-indigo-600/10 text-2xl font-black uppercase text-indigo-600">
+                              {(selectedUser.name || 'US').slice(0, 2)}
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 bg-admin-surface overflow-hidden">
                           {isVideoUrl(selectedUser.docs.selfie) ? (
@@ -479,15 +483,7 @@ const AdminVerification: React.FC = () => {
               <div className="space-y-8">
                 <h3 className="text-2xl font-black text-admin-main">Identity Metadata</h3>
                 <div className="flex items-center gap-6 p-6 bg-admin-surface rounded-[32px] border border-admin shadow-inner">
-                  <img
-                    src={selectedUser.avatar || `https://i.pravatar.cc/150?u=${selectedUser.email}`}
-                    className="w-20 h-20 rounded-3xl object-cover shadow-2xl"
-                    alt={selectedUser.name}
-                    referrerPolicy="no-referrer"
-                    onError={(event) => {
-                      event.currentTarget.src = `https://i.pravatar.cc/150?u=${selectedUser.email}`;
-                    }}
-                  />
+                  <AdminAvatar src={selectedUser.avatar} name={selectedUser.name} className="w-20 h-20 rounded-3xl" />
                   <div>
                     <h4 className="text-xl font-black text-admin-main">{selectedUser.name}</h4>
                     <span className="inline-block px-3 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-black tracking-widest mt-2">

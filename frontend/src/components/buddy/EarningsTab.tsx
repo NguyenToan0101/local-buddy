@@ -25,6 +25,7 @@ const EarningsTab: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const walletSuffix = user?.id ? user.id.slice(-4).toUpperCase() : '----';
 
   // Load Transactions
   const fetchTransactions = async () => {
@@ -54,23 +55,41 @@ const EarningsTab: React.FC = () => {
   }, [transactions]);
 
   const monthlyEarnings = useMemo(() => {
-    // Basic mock calculation or actual from this month
+    const now = new Date();
     return transactions
-      .filter(t => t.type === 'income' && t.date.includes('Jun') || t.date.includes('2026'))
-      .reduce((acc, t) => acc + t.amount, 0) || (lifetimeEarnings * 0.4);
-  }, [transactions, lifetimeEarnings]);
+      .filter(t => {
+        if (t.type !== 'income') return false;
+        const date = new Date(t.createdAt || t.date);
+        return !Number.isNaN(date.getTime()) && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      })
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+  }, [transactions]);
 
   // Chart Data
   const chartData = useMemo(() => {
-    return [
-      { name: 'Jan', amount: 150 },
-      { name: 'Feb', amount: 320 },
-      { name: 'Mar', amount: 280 },
-      { name: 'Apr', amount: 480 },
-      { name: 'May', amount: 650 },
-      { name: 'Jun', amount: lifetimeEarnings > 0 ? lifetimeEarnings : 890 },
-    ];
-  }, [lifetimeEarnings]);
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'short' });
+    const now = new Date();
+    const months = Array.from({ length: 6 }).map((_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        name: formatter.format(date),
+        amount: 0,
+      };
+    });
+
+    transactions
+      .filter(t => t.type === 'income')
+      .forEach(t => {
+        const date = new Date(t.createdAt || t.date);
+        if (Number.isNaN(date.getTime())) return;
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        const bucket = months.find(month => month.key === key);
+        if (bucket) bucket.amount += Number(t.amount || 0);
+      });
+
+    return months;
+  }, [transactions]);
 
   // Filtered transactions
   const filteredTransactions = useMemo(() => {
@@ -186,11 +205,11 @@ const EarningsTab: React.FC = () => {
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest leading-none">Wallet ID</p>
-                  <p className="text-[10px] font-bold text-white/70 tracking-widest mt-1">BUDDY-ESCROW-••••4892</p>
+                  <p className="text-[10px] font-bold text-white/70 tracking-widest mt-1">BUDDY-ESCROW-••••{walletSuffix}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest leading-none">Holder</p>
-                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider mt-1">{user?.name || 'Buddy Host'}</p>
+                  <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider mt-1">{user?.name || 'Account'}</p>
                 </div>
               </div>
             </div>

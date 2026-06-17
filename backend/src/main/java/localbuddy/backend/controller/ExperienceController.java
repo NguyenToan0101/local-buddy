@@ -51,9 +51,10 @@ public class ExperienceController {
     @PostMapping(value = "/{experienceId}/image", consumes = "multipart/form-data")
     public ResponseEntity<ExperienceDto> uploadExperienceImage(
             @PathVariable UUID experienceId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) Integer displayOrder
     ) {
-        return ResponseEntity.ok(experienceService.updateExperienceImage(getCurrentUserId(), experienceId, file));
+        return ResponseEntity.ok(experienceService.updateExperienceImage(getCurrentUserId(), experienceId, file, displayOrder));
     }
 
     @PutMapping("/{experienceId}")

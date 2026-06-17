@@ -24,7 +24,7 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -41,6 +41,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     logout();
     navigate('/admin/login', { replace: true });
   };
+
+  const adminName = user?.name || user?.email || 'Admin';
+  const adminRole = user?.role || 'ADMIN';
 
   return (
     <div className="h-screen flex overflow-hidden animate-fade-in admin-layout-bg">
@@ -149,14 +152,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
             <button className="flex items-center gap-3 pl-3 py-1 pr-1 bg-admin-surface rounded-2xl border border-admin hover:border-indigo-500/30 transition-all cursor-pointer group">
               <div className="text-right hidden sm:block px-1">
-                <p className="text-xs font-black text-admin-main leading-tight">Admin Alex</p>
-                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter">Super Admin</p>
+                <p className="text-xs font-black text-admin-main leading-tight">{adminName}</p>
+                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter">{adminRole}</p>
               </div>
-              <img
-                src="https://i.pravatar.cc/150?u=admin-alex"
-                className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/10 group-hover:ring-indigo-500/50 transition-all shadow-sm"
-                alt="Admin"
-              />
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/10 group-hover:ring-indigo-500/50 transition-all shadow-sm"
+                  alt={adminName}
+                />
+              ) : (
+                <div className="flex w-10 h-10 items-center justify-center rounded-xl bg-indigo-600/10 text-indigo-600 text-xs font-black uppercase ring-2 ring-indigo-500/10 group-hover:ring-indigo-500/50 transition-all shadow-sm">
+                  {adminName.slice(0, 2)}
+                </div>
+              )}
             </button>
           </div>
         </header>

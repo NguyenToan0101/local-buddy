@@ -38,6 +38,11 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBooking(getCurrentUserId(), bookingId));
     }
 
+    @GetMapping("/{bookingId}/live")
+    public ResponseEntity<BookingDto> getLiveBooking(@PathVariable UUID bookingId) {
+        return ResponseEntity.ok(bookingService.getLiveBooking(getCurrentUserId(), bookingId));
+    }
+
     @PostMapping
     public ResponseEntity<BookingDto> createBooking(@Valid @RequestBody BookingRequest request) {
         return ResponseEntity.ok(bookingService.createBooking(getCurrentUserId(), request));

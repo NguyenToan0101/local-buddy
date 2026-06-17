@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Star } from 'lucide-react';
+import { Images, MapPin, Star } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { Experience } from '../../services/api';
 
@@ -9,6 +9,8 @@ interface ExperienceCardProps {
 
 const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
   const { user } = useAuth();
+  const travelerInitials = (exp.travelerName || 'Traveler').slice(0, 2).toUpperCase();
+  const imageCount = Array.isArray(exp.images) ? exp.images.length : exp.image ? 1 : 0;
   const detailPath = user?.role === 'TRAVELER'
     ? `/traveller/experience/${exp.id}`
     : user?.role === 'BUDDY'
@@ -20,18 +22,26 @@ const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
   return (
     <Link
       to={detailPath}
-      className="w-full bg-white rounded-[40px] overflow-hidden isolate shadow-premium hover:shadow-premium-hover transition-all duration-700 group border border-gray-50 flex flex-col hover:-translate-y-2 h-full block"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-xl"
       style={{ maskImage: 'radial-gradient(white, black)', WebkitMaskImage: '-webkit-radial-gradient(white, black)', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
     >
-      <div className="relative h-[300px] w-full shrink-0 overflow-hidden bg-gray-100 isolate">
+      <div className="relative h-[260px] w-full shrink-0 isolate overflow-hidden bg-slate-100">
         <img
           src={exp.image}
           alt={exp.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
         />
-        <div className="absolute top-5 right-5 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm border border-white/20 z-10">
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          {imageCount > 1 && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/95 px-3 py-1.5 text-xs font-black text-secondary shadow-sm backdrop-blur-md">
+              <Images size={13} />
+              {imageCount}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur-md">
           <Star size={14} className="fill-primary text-primary" />
           <span className="text-xs font-black text-secondary">{exp.rating || '5.0'}</span>
+          </div>
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
@@ -44,8 +54,14 @@ const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
 
         <div className="absolute bottom-5 left-5 right-5 z-10">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-full border-2 border-white overflow-hidden shadow-lg">
-              <img src={exp.travelerAvatar || `https://i.pravatar.cc/100?u=${exp.travelerName}`} alt={exp.travelerName} className="w-full h-full object-cover" />
+            <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-white shadow-lg">
+              {exp.travelerAvatar ? (
+                <img src={exp.travelerAvatar} alt={exp.travelerName} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary/10 text-[10px] font-black text-primary">
+                  {travelerInitials}
+                </div>
+              )}
             </div>
             <span className="text-white text-xs font-black drop-shadow-md">{exp.travelerName}</span>
           </div>
@@ -54,8 +70,8 @@ const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
           </h3>
         </div>
       </div>
-      <div className="p-6 space-y-4 flex-1 flex flex-col">
-        <div className="pt-4 mt-auto border-t border-gray-50 flex justify-between items-center">
+      <div className="flex flex-1 flex-col space-y-4 p-5">
+        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
               <MapPin size={12} />
