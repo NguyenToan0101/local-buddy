@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, ChevronLeft, Users, Shield, Star,
-  MapPin, MessageSquare, Eye, SlidersHorizontal, X, ArrowRight
+  MapPin, MessageSquare, Eye, SlidersHorizontal, X, ArrowRight, Heart
 } from 'lucide-react';
 import { buddyService } from '../../services/api';
 import type { Buddy } from '../../services/api';
+import { trackingService } from '../../services/tracking';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -14,9 +15,22 @@ const INTEREST_TAGS = [
   'Nature', 'Culture', 'History', 'Photography', 'Beach'
 ];
 
+const FAVORITE_BUDDIES_KEY = 'favorite_buddies';
+
+function getFavoriteBuddyIds() {
+  try {
+    const raw = localStorage.getItem(FAVORITE_BUDDIES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
 // ─── Individual Buddy Card ────────────────────────────────────────────────────
 const BuddyListCard: React.FC<{ buddy: Buddy; index: number }> = ({ buddy, index }) => {
   const navigate = useNavigate();
+  const [isFavorite, setIsFavorite] = useState(() => getFavoriteBuddyIds().includes(String(buddy.id)));
   const isVerified =
     buddy.verificationStatus === 'verified' ||
     buddy.verificationStatus === 'auto_approved' ||
@@ -24,6 +38,21 @@ const BuddyListCard: React.FC<{ buddy: Buddy; index: number }> = ({ buddy, index
   const trustScore = isVerified
     ? Math.min(100, 94 + Math.round(buddy.rating * 1.2))
     : Math.min(88, 65 + Math.round(buddy.rating * 3.5));
+
+  const addFavorite = () => {
+    try {
+      const current = getFavoriteBuddyIds();
+      if (!current.includes(String(buddy.id))) {
+        const next = [...current, String(buddy.id)];
+        localStorage.setItem(FAVORITE_BUDDIES_KEY, JSON.stringify(next));
+        setIsFavorite(true);
+        void trackingService.track('ADD_FAVORITE', { buddyId: buddy.id });
+      }
+    } catch {
+      setIsFavorite(true);
+      void trackingService.track('ADD_FAVORITE', { buddyId: buddy.id });
+    }
+  };
 
   return (
     <div
@@ -47,6 +76,20 @@ const BuddyListCard: React.FC<{ buddy: Buddy; index: number }> = ({ buddy, index
             Verified
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={addFavorite}
+          className={`absolute top-3 right-3 w-9 h-9 rounded-xl flex items-center justify-center border shadow-md transition-all cursor-pointer ${
+            isFavorite
+              ? 'bg-rose-500 text-white border-rose-400'
+              : 'bg-white/95 text-secondary/50 border-white/40 hover:text-rose-500'
+          }`}
+          aria-label="Add favorite"
+          title="Add favorite"
+        >
+          <Heart size={15} className={isFavorite ? 'fill-current' : ''} />
+        </button>
 
         {/* Rating + price overlaid on bottom of photo */}
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">

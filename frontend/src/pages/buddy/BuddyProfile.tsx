@@ -4,6 +4,7 @@ import { Star, MapPin, Globe, CheckCircle2, ChevronLeft, Shield, Award, Calendar
 import { availabilityService, buddyService } from '../../services/api';
 import type { AvailabilitySlot, Buddy } from '../../services/api';
 import DirectBookingModal from '../../components/features/DirectBookingModal';
+import { trackingService } from '../../services/tracking';
 
 const BuddyProfile: React.FC = () => {
   const { id } = useParams();
@@ -21,6 +22,10 @@ const BuddyProfile: React.FC = () => {
       try {
         const buddyData = await buddyService.getById(id);
         setBuddy(buddyData);
+        void trackingService.track('VIEW_BUDDY_PROFILE', {
+          buddyId: buddyData.id,
+          location: buddyData.location,
+        });
 
         try {
           const slotsData = await availabilityService.fetchAvailabilities(id);

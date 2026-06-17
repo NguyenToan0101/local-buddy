@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import type { User } from '../services/auth';
 import { authService } from '../services/auth';
+import { trackingService } from '../services/tracking';
 
 interface AuthContextType {
   user: User | null;
@@ -70,27 +71,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const { user, token } = await authService.login(email, password);
     storeAuth(user, token);
+    void trackingService.track('LOGIN', { userId: user.id, role: user.role });
     return user;
   };
 
   const loginWithToken = useCallback(async (token: string) => {
     const user = await authService.fetchMe(token);
     storeAuth(user, token);
+    void trackingService.track('LOGIN', { userId: user.id, role: user.role, method: 'token' });
     return user;
   }, [storeAuth]);
 
   const register = async (userData: any) => {
     const { user, token } = await authService.register(userData);
     if (token === 'OTP_SENT') {
+      void trackingService.track('REGISTER', { role: user.role, otpRequired: true });
       return { otpRequired: true, email: user.email, name: user.name, role: user.role };
     }
     storeAuth(user, token);
+    void trackingService.track('REGISTER', { userId: user.id, role: user.role, otpRequired: false });
     return user;
   };
 
   const verifyOtp = async (email: string, otp: string) => {
     const { user, token } = await authService.verifyOtp(email, otp);
     storeAuth(user, token);
+    void trackingService.track('REGISTER', { userId: user.id, role: user.role, otpVerified: true });
     return user;
   };
 

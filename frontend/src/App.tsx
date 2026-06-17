@@ -26,6 +26,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminVerification from './pages/admin/AdminVerification';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminPayoutsTaxes from './pages/admin/AdminPayoutsTaxes';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminLogin from './pages/admin/AdminLogin';
 import LiveExperience from './pages/shared/LiveExperience';
 import BuddyPreview from './pages/buddy/BuddyPreview';
@@ -37,6 +38,7 @@ import { useAuth } from './context/AuthContext';
 import type { UserRole } from './services/auth';
 import { DEFAULT_ROUTE_BY_ROLE } from './utils/authRoutes';
 import AppLayout from './components/AppLayout';
+import TrackingRouteListener from './components/TrackingRouteListener';
 
 function RequireRole({ roles, children }: { roles: UserRole[]; children: React.ReactElement }) {
   const { user } = useAuth();
@@ -68,6 +70,7 @@ function AdminOnly({ children }: { children: React.ReactElement }) {
 function App() {
   return (
     <AppLayout>
+      <TrackingRouteListener />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -102,6 +105,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
         <Route path="/admin/verification" element={<AdminOnly><AdminVerification /></AdminOnly>} />
         <Route path="/admin/bookings" element={<AdminOnly><AdminBookings /></AdminOnly>} />
+        <Route path="/admin/analytics" element={<AdminOnly><AdminAnalytics /></AdminOnly>} />
         <Route path="/admin/payouts" element={<AdminOnly><AdminPayoutsTaxes /></AdminOnly>} />
       </Routes>
     </AppLayout>
