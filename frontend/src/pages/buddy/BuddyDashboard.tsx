@@ -1,30 +1,22 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  MessageSquare, 
-  Star, 
-  Wallet, 
-  Settings, 
-  Bell, 
-  ChevronRight, 
-  LogOut,
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Bell,
+  Calendar,
   ChevronLeft,
+  ChevronRight,
   Clock,
   Compass,
-  ArrowRight,
+  LayoutDashboard,
+  LogOut,
   Menu,
+  MessageSquare,
+  Settings,
+  Star,
+  Wallet,
   X,
-  ShieldAlert,
-  Sparkles,
-  ToggleLeft,
-  ToggleRight
 } from 'lucide-react';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import Button from '../../components/ui/Button';
-
-// Refactored Sub-components
 import DashboardOverview from '../../components/buddy/DashboardOverview';
 import TripsTab from '../../components/buddy/TripsTab';
 import MessagesTab from '../../components/buddy/MessagesTab';
@@ -33,25 +25,31 @@ import ScheduleTab from '../../components/buddy/ScheduleTab';
 import SettingsTab from '../../components/buddy/SettingsTab';
 import BookingDetail from './BookingDetail';
 import NotificationPopover from '../../components/features/NotificationPopover';
+import { bookingService, buddyService, messageService, transactionService, type Buddy } from '../../services/api';
 
-import { experienceService, bookingService, messageService, transactionService, type Experience } from '../../services/api';
+const money = (value: number) => `$${value.toFixed(2)}`;
+
+const InitialAvatar = ({ name }: { name?: string }) => (
+  <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-black uppercase text-primary">
+    {(name || 'LB').slice(0, 2)}
+  </div>
+);
 
 const BuddyDashboard: React.FC = () => {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isOnline, setIsOnline] = useState(true);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const notifRef = React.useRef<HTMLDivElement>(null);
-
-  // Real Data State
-  const [travelerStories, setTravelerStories] = useState<Experience[]>([]);
-  const [upcomingTrips, setUpcomingTrips] = useState<any[]>([]);
+  const [profile, setProfile] = useState<Buddy | null>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [chats, setChats] = useState<any[]>([]);
-  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/buddy/dashboard' },
@@ -62,39 +60,31 @@ const BuddyDashboard: React.FC = () => {
     { id: 'settings', icon: Settings, label: 'Settings', path: '/buddy/dashboard/settings' },
   ];
 
-  const currentTab = useMemo(() => {
+  const currentItem = useMemo(() => {
     const path = location.pathname;
-    const item = menuItems.find(item => item.path === path);
-    return item ? item.label : 'Dashboard';
+    return menuItems.find((item) => path === item.path || (item.id === 'trips' && path.startsWith('/buddy/dashboard/trips/'))) || menuItems[0];
   }, [location.pathname]);
 
   useEffect(() => {
     const fetchData = async () => {
-      let buddyId = user?.id || "1"; 
-      if (buddyId === "buddy-1") buddyId = "1";
-      
+      if (!user?.id) return;
       try {
-        if (user) {
-          await updateUser({});
-        }
-
-        const [storiesData, bookingsData, messagesData, transactionsData] = await Promise.all([
-          experienceService.getByBuddyId(buddyId),
-          bookingService.getAll(),
+        setLoading(true);
+        setError('');
+        const [profileData, bookingsData, messagesData, transactionsData] = await Promise.all([
+          buddyService.getById(user.id),
+          bookingService.getAll(0, 100),
           messageService.getConversations(),
-          transactionService.getByBuddyId(buddyId)
+          transactionService.getByBuddyId(user.id),
         ]);
 
-        setTravelerStories(storiesData);
-        setUpcomingTrips(bookingsData.filter((b: any) => String(b.buddyId) === String(buddyId)));
-        setChats(messagesData.filter((c: any) => String(c.buddyId) === String(buddyId)));
-        
-        const balance = transactionsData.reduce((acc: number, t: any) => {
-          return t.type === 'income' ? acc + t.amount : acc - t.amount;
-        }, 0);
-        setTotalEarnings(balance);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        setProfile(profileData);
+        setBookings(bookingsData.filter((booking: any) => String(booking.buddyId) === String(user.id)));
+        setChats(messagesData.filter((conversation: any) => String(conversation.buddyId) === String(user.id)));
+        setTransactions(transactionsData);
+      } catch (err) {
+        console.error('Error fetching buddy dashboard data:', err);
+        setError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
       } finally {
         setLoading(false);
       }
@@ -105,211 +95,214 @@ const BuddyDashboard: React.FC = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
-        setIsNotifOpen(false);
-      }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setIsNotifOpen(false);
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const stats = useMemo(() => [
-    { label: "Wallet Balance", value: `$${totalEarnings.toFixed(2)}`, icon: Wallet, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Avg Rating", value: user?.rating?.toString() || "4.9", icon: Star, color: "text-amber-500", bg: "bg-amber-500/10" },
-  ], [totalEarnings, user?.rating]);
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const totalEarnings = useMemo(() => {
+    return transactions.reduce((acc, item) => {
+      const amount = Number(item.amount || 0);
+      return item.type === 'payout' ? acc - amount : acc + amount;
+    }, 0);
+  }, [transactions]);
+
+  const confirmedTrips = useMemo(() => {
+    return bookings.filter((booking) => ['CONFIRMED', 'COMPLETED'].includes(booking.status)).length;
+  }, [bookings]);
+
+  const pendingTrips = useMemo(() => bookings.filter((booking) => booking.status === 'PENDING').length, [bookings]);
+
+  const stats = useMemo(
+    () => [
+      { label: 'Wallet balance', value: money(totalEarnings), icon: Wallet, color: 'text-primary', bg: 'bg-primary/10' },
+      { label: 'Bookings', value: String(bookings.length), icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+      { label: 'Pending', value: String(pendingTrips), icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+      {
+        label: 'Rating',
+        value: profile?.rating ? `${Number(profile.rating).toFixed(1)} (${profile.reviewCount || 0})` : 'No reviews',
+        icon: Star,
+        color: 'text-amber-500',
+        bg: 'bg-amber-50',
+      },
+    ],
+    [bookings.length, pendingTrips, profile?.rating, profile?.reviewCount, totalEarnings]
+  );
+
+  const displayName = profile?.name || user?.name || 'Buddy';
+  const displayAvatar = profile?.image || user?.avatar || user?.googleAvatar;
+  const verificationLabel = profile?.verificationStatus ? profile.verificationStatus.replace(/_/g, ' ') : 'unverified';
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FBFBFC]">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black text-secondary/30 uppercase tracking-[0.3em]">Syncing Dashboard...</p>
+  const sidebar = (
+    <aside
+      className={`flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ${
+        sidebarCollapsed ? 'md:w-24' : 'md:w-72'
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-slate-200 p-4">
+        <Link to="/buddy/dashboard" className={`flex items-center gap-3 ${sidebarCollapsed ? 'md:mx-auto' : ''}`}>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-primary-glow">
+            <Compass size={22} strokeWidth={3} />
+          </div>
+          {!sidebarCollapsed && <span className="text-sm font-black uppercase tracking-widest text-secondary">Local Buddy</span>}
+        </Link>
+        {!sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(true)}
+            className="hidden h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-secondary/45 transition hover:text-primary md:flex"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft size={17} strokeWidth={3} />
+          </button>
+        )}
       </div>
-    </div>
+
+      {sidebarCollapsed && (
+        <button
+          onClick={() => setSidebarCollapsed(false)}
+          className="mx-auto mt-4 hidden h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-secondary/45 transition hover:text-primary md:flex"
+          aria-label="Expand sidebar"
+        >
+          <ChevronRight size={17} strokeWidth={3} />
+        </button>
+      )}
+
+      <nav className="flex-1 space-y-1.5 p-4">
+        {menuItems.map((item) => {
+          const active = currentItem.id === item.id;
+          return (
+            <Link
+              key={item.id}
+              to={item.path}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-[11px] font-black uppercase tracking-widest transition ${
+                active ? 'bg-primary/10 text-primary' : 'text-secondary/45 hover:bg-slate-50 hover:text-secondary'
+              }`}
+            >
+              <item.icon size={18} strokeWidth={active ? 3 : 2.5} className={sidebarCollapsed ? 'md:mx-auto' : ''} />
+              {!sidebarCollapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-slate-200 p-4">
+        <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'md:justify-center' : ''}`}>
+          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+            {displayAvatar ? <img src={displayAvatar} alt={displayName} className="h-full w-full object-cover" /> : <InitialAvatar name={displayName} />}
+          </div>
+          {!sidebarCollapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-black text-secondary">{displayName}</p>
+                <p className="mt-0.5 truncate text-[9px] font-black uppercase tracking-widest text-primary">{verificationLabel}</p>
+              </div>
+              <button onClick={handleLogout} className="rounded-xl p-2 text-secondary/35 transition hover:bg-rose-50 hover:text-rose-600" aria-label="Logout">
+                <LogOut size={17} strokeWidth={3} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </aside>
   );
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-11 w-11 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-secondary/35">Loading dashboard</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#FBFBFC] flex flex-col md:flex-row relative">
-      {/* Desktop/Tablet Sidebar Navigation */}
-      <aside 
-        className={`hidden md:flex flex-col border-r border-gray-100/80 bg-white fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-out ${
-          sidebarCollapsed ? 'w-24' : 'w-72'
-        }`}
-      >
-        {/* Sidebar Header */}
-        <div className={`p-6 flex items-center justify-between border-b border-gray-50 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-          {!sidebarCollapsed ? (
-            <Link to="/buddy/dashboard" className="flex items-center gap-3 transition-transform hover:-translate-y-0.5">
-              <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-primary-glow">
-                <Compass size={22} strokeWidth={2.5} />
-              </div>
-              <span className="text-lg font-black text-secondary tracking-tighter uppercase whitespace-nowrap">Local Buddy</span>
-            </Link>
-          ) : (
-            <Link to="/buddy/dashboard" className="transition-transform hover:scale-105">
-              <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-primary-glow">
-                <Compass size={22} strokeWidth={2.5} />
-              </div>
-            </Link>
-          )}
+    <div className="min-h-screen bg-slate-50">
+      <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-40 md:block">{sidebar}</div>
 
-          {!sidebarCollapsed && (
-            <button 
-              onClick={() => setSidebarCollapsed(true)}
-              className="w-8 h-8 rounded-xl bg-surface hover:bg-gray-50 flex items-center justify-center text-secondary/40 hover:text-primary transition-colors border-none cursor-pointer"
-            >
-              <ChevronLeft size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* Expand Trigger for Collapsed State */}
-        {sidebarCollapsed && (
-          <div className="p-4 flex justify-center border-b border-gray-50">
-             <button 
-                onClick={() => setSidebarCollapsed(false)}
-                className="w-8 h-8 rounded-xl bg-surface hover:bg-gray-50 flex items-center justify-center text-secondary/40 hover:text-primary transition-colors border-none cursor-pointer"
-              >
-                <ChevronRight size={16} />
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-secondary/40 md:hidden">
+          <div className="h-full w-80 max-w-[85vw] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4">
+              <span className="text-sm font-black uppercase tracking-widest text-secondary">Menu</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="rounded-xl bg-slate-50 p-2 text-secondary/50">
+                <X size={18} strokeWidth={3} />
               </button>
-          </div>
-        )}
-
-        {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.id === 'trips' && location.pathname.includes('/buddy/dashboard/trips/'));
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative ${
-                  isActive 
-                  ? "bg-primary/5 text-primary font-black shadow-sm" 
-                  : "text-secondary/40 hover:text-secondary hover:bg-gray-50"
-                }`}
-              >
-                <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} className={sidebarCollapsed ? "mx-auto" : ""} />
-                {!sidebarCollapsed && <span className="text-[11px] font-bold uppercase tracking-[0.15em]">{item.label}</span>}
-                {isActive && !sidebarCollapsed && (
-                  <div className="absolute right-4 w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Footer User Details */}
-        <div className="p-4 border-t border-gray-50 space-y-4 bg-gray-50/30">
-          <div className={`flex items-center ${sidebarCollapsed ? "flex-col justify-center" : "gap-3"} px-2`}>
-            <div className="w-10 h-10 rounded-xl bg-surface-dark overflow-hidden ring-2 ring-primary/5 shrink-0">
-              <img src={user?.avatar || `https://i.pravatar.cc/100?u=${user?.name}`} alt={user?.name} className="w-full h-full object-cover" />
             </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-secondary uppercase tracking-wider truncate">{user?.name || 'Linh Nguyen'}</p>
-                <p className="text-[9px] font-bold text-primary uppercase tracking-widest mt-0.5">Buddy Host</p>
-              </div>
-            )}
-            {!sidebarCollapsed && (
-              <button 
-                onClick={handleLogout}
-                className="text-secondary/20 hover:text-red-500 transition-colors border-none bg-transparent p-1 cursor-pointer"
-                title="Logout"
-              >
-                <LogOut size={16} />
-              </button>
-            )}
+            {sidebar}
           </div>
-          {sidebarCollapsed && (
-            <button 
-              onClick={handleLogout}
-              className="w-10 h-10 mx-auto rounded-xl hover:bg-red-50 flex items-center justify-center text-secondary/25 hover:text-red-500 transition-colors border-none bg-transparent cursor-pointer"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
-          )}
         </div>
-      </aside>
+      )}
 
-      {/* Main Content Pane */}
-      <main 
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-out pb-24 md:pb-8 ${
-          sidebarCollapsed ? 'md:ml-24' : 'md:ml-72'
-        }`}
-      >
-        {/* Header bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100/60 px-6 py-5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-primary/5 rounded-xl flex items-center justify-center text-primary">
-                {menuItems.find(i => i.label === currentTab)?.icon && React.createElement(menuItems.find(i => i.label === currentTab)!.icon, { size: 18 })}
-             </div>
-             <div>
-                <h1 className="text-lg font-black text-secondary tracking-tight">{currentTab}</h1>
-                <p className="text-[8px] font-black text-secondary/35 uppercase tracking-widest leading-none mt-0.5">Control Center</p>
-             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-             {/* Online Status Toggle Switch */}
-             <button 
-               onClick={() => setIsOnline(!isOnline)}
-               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-100 bg-white transition-all shadow-sm ${
-                 isOnline ? 'hover:border-green-200' : 'hover:border-gray-200'
-               }`}
-             >
-               <span className="relative flex h-2 w-2">
-                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isOnline ? 'bg-green-400' : 'bg-gray-300'}`}></span>
-                 <span className={`relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-               </span>
-               <span className="text-[9px] font-black uppercase tracking-widest text-secondary/60">
-                 {isOnline ? 'Online' : 'Offline'}
-               </span>
-             </button>
+      <main className={`min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <button onClick={() => setMobileMenuOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-secondary md:hidden">
+                <Menu size={19} strokeWidth={3} />
+              </button>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <currentItem.icon size={20} strokeWidth={3} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-black tracking-tight text-secondary">{currentItem.label}</h1>
+                <p className="truncate text-[10px] font-black uppercase tracking-widest text-secondary/35">
+                  {confirmedTrips} confirmed trips · {chats.length} conversations
+                </p>
+              </div>
+            </div>
 
-             {/* Notifications */}
-             <div ref={notifRef} className="relative">
-               <button
-                 onClick={() => setIsNotifOpen((open) => !open)}
-                 className={`relative w-10 h-10 bg-white rounded-xl border border-gray-100 flex items-center justify-center transition-all hover:shadow-premium group ${
-                   isNotifOpen ? 'text-primary' : 'text-secondary/40 hover:text-primary'
-                 }`}
-               >
-                  <Bell size={16} />
-                  <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-primary rounded-full border border-white group-hover:animate-pulse"></span>
-               </button>
-               <NotificationPopover
-                 isOpen={isNotifOpen}
-                 onClose={() => setIsNotifOpen(false)}
-                 onScanStart={(booking) => {
-                   setIsNotifOpen(false);
-                   if (booking?.id) navigate(`/buddy/dashboard/trips/${booking.id}`);
-                 }}
-               />
-             </div>
-
-
-
-             {/* Profile Preview CTA */}
-             <Link to="/buddy/preview" className="hidden sm:block">
-                <Button className="bg-secondary text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-premium hover:bg-primary transition-all border-none">
-                  Preview Profile
-                </Button>
-             </Link>
+            <div className="flex items-center gap-2">
+              <div ref={notifRef} className="relative">
+                <button
+                  onClick={() => setIsNotifOpen((open) => !open)}
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:text-primary ${
+                    isNotifOpen ? 'text-primary' : 'text-secondary/45'
+                  }`}
+                  aria-label="Notifications"
+                >
+                  <Bell size={18} strokeWidth={3} />
+                </button>
+                <NotificationPopover
+                  isOpen={isNotifOpen}
+                  onClose={() => setIsNotifOpen(false)}
+                  onScanStart={(booking) => {
+                    setIsNotifOpen(false);
+                    if (booking?.id) navigate(`/buddy/dashboard/trips/${booking.id}`);
+                  }}
+                />
+              </div>
+              <Link
+                to="/buddy/preview"
+                className="hidden rounded-xl bg-secondary px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-primary sm:inline-flex"
+              >
+                Preview profile
+              </Link>
+            </div>
           </div>
         </header>
 
-        {/* Dashboard Tab Content Router */}
-        <div className="p-4 sm:p-6 md:p-8 flex-1 min-w-0 w-full overflow-hidden md:overflow-visible animate-in fade-in duration-300">
+        {error && (
+          <div className="px-4 pt-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm font-bold text-rose-600">{error}</div>
+          </div>
+        )}
+
+        <div className="p-4 sm:p-6 lg:p-8">
           <Routes>
-            <Route index element={<DashboardOverview stats={stats} upcomingTrips={upcomingTrips} chats={chats} />} />
-            <Route path="trips" element={<TripsTab upcomingTrips={upcomingTrips} />} />
+            <Route index element={<DashboardOverview stats={stats} upcomingTrips={bookings} chats={chats} />} />
+            <Route path="trips" element={<TripsTab upcomingTrips={bookings} />} />
             <Route path="trips/:id" element={<BookingDetail />} />
             <Route path="schedule" element={<ScheduleTab />} />
             <Route path="messages" element={<MessagesTab chats={chats} />} />

@@ -35,6 +35,11 @@ public class Experience {
     @JoinColumn(name = "buddy_id", nullable = false)
     private User buddy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
     @Column(name = "title", nullable = false)
     private String title;
 

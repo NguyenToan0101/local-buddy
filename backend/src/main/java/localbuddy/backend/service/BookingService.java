@@ -21,6 +21,7 @@ import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
 import localbuddy.backend.repository.CancellationRepository;
+import localbuddy.backend.repository.ExperienceRepository;
 import localbuddy.backend.repository.ReviewRepository;
 import localbuddy.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,7 @@ public class BookingService {
     private final BuddyProfileRepository buddyProfileRepository;
     private final NotificationService notificationService;
     private final ReviewRepository reviewRepository;
+    private final ExperienceRepository experienceRepository;
     private final CancellationRepository cancellationRepository;
 
     @Transactional(readOnly = true)
@@ -71,6 +73,15 @@ public class BookingService {
     @Transactional(readOnly = true)
     public BookingDto getBooking(UUID currentUserId, UUID bookingId) {
         return mapToDto(getBookingForParticipant(currentUserId, bookingId));
+    }
+
+    @Transactional(readOnly = true)
+    public BookingDto getLiveBooking(UUID currentUserId, UUID bookingId) {
+        Booking booking = getBookingForParticipant(currentUserId, bookingId);
+        if (booking.getMeetupStatus() != MeetupStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException("Live experience is available only after the trip has started.");
+        }
+        return mapToDto(booking);
     }
 
     @Transactional
@@ -238,10 +249,12 @@ public class BookingService {
             throw new IllegalArgumentException("QR token is invalid or expired.");
         }
 
+        OffsetDateTime liveStartedAt = nowInBookingZone();
         booking.setMeetupStatus(MeetupStatus.IN_PROGRESS);
+        booking.setLiveStartedAt(liveStartedAt);
         booking.setMeetupQrToken(null);
         booking.setMeetupQrExpiresAt(null);
-        booking.setUpdatedAt(nowInBookingZone());
+        booking.setUpdatedAt(liveStartedAt);
         Booking saved = bookingRepository.save(booking);
         notificationService.createBookingNotification(
                 booking.getTraveler(),
@@ -376,7 +389,22 @@ public class BookingService {
                 .totalPrice(booking.getTotalPrice())
                 .status(booking.getStatus() != null ? booking.getStatus().name() : "PENDING")
                 .meetupStatus(booking.getMeetupStatus() != null ? booking.getMeetupStatus().name() : "NOT_STARTED")
+                .liveStartedAt(resolveLiveStartedAt(booking))
+                .hasReview(booking.getId() != null
+                        && booking.getTraveler() != null
+                        && reviewRepository.existsByBookingIdAndReviewerId(booking.getId(), booking.getTraveler().getId()))
+                .hasExperienceShare(booking.getId() != null && experienceRepository.existsByBookingId(booking.getId()))
                 .build();
+    }
+
+    private String resolveLiveStartedAt(Booking booking) {
+        if (booking.getLiveStartedAt() != null) {
+            return booking.getLiveStartedAt().atZoneSameInstant(BOOKING_ZONE).toOffsetDateTime().toString();
+        }
+        if (booking.getMeetupStatus() == MeetupStatus.IN_PROGRESS && booking.getUpdatedAt() != null) {
+            return booking.getUpdatedAt().atZoneSameInstant(BOOKING_ZONE).toOffsetDateTime().toString();
+        }
+        return null;
     }
 
     private Booking getBookingForParticipant(UUID currentUserId, UUID bookingId) {

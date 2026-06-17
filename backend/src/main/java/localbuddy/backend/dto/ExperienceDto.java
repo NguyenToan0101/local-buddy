@@ -21,6 +21,7 @@ public class ExperienceDto {
     private String travelerAvatar;
     private UUID buddyId;
     private String buddyName;
+    private UUID bookingId;
     private String title;
     private String storyContent;
     private String location;
@@ -28,5 +29,6 @@ public class ExperienceDto {
     private List<String> tags;
     private Boolean pinned;
     private String image;
+    private List<String> images;
     private String date;
 }

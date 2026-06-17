@@ -33,4 +33,7 @@ public class BookingDto {
     private BigDecimal totalPrice;
     private String status;
     private String meetupStatus;
+    private String liveStartedAt;
+    private Boolean hasReview;
+    private Boolean hasExperienceShare;
 }

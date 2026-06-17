@@ -385,12 +385,38 @@ const BookingDetails: React.FC = () => {
                   </>
                 )}
                 {booking.status === 'COMPLETED' && (
-                  <Link
-                    to={`/traveller/review/${booking.id}`}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
-                  >
-                    <CheckCircle2 size={15} /> Review buddy
-                  </Link>
+                  booking.hasReview ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled
+                        className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-widest text-emerald-700"
+                      >
+                        <Star size={15} className="fill-emerald-600 text-emerald-600" /> Reviewed
+                      </button>
+                      <Link
+                        to={`/traveller/experience/share/${booking.id}`}
+                        aria-disabled={booking.hasExperienceShare}
+                        onClick={(event) => {
+                          if (booking.hasExperienceShare) event.preventDefault();
+                        }}
+                        className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest transition ${
+                          booking.hasExperienceShare
+                            ? 'cursor-not-allowed bg-slate-200 text-secondary/40'
+                            : 'bg-primary text-white hover:bg-primary-dark'
+                        }`}
+                      >
+                        <CheckCircle2 size={15} /> {booking.hasExperienceShare ? 'Experience shared' : 'Share experience'}
+                      </Link>
+                    </>
+                  ) : (
+                    <Link
+                      to={`/traveller/review/${booking.id}`}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-xs font-black uppercase tracking-widest text-white"
+                    >
+                      <CheckCircle2 size={15} /> Review buddy
+                    </Link>
+                  )
                 )}
               </div>
             </section>

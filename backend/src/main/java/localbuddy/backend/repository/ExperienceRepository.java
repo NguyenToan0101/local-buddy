@@ -18,6 +18,8 @@ public interface ExperienceRepository extends JpaRepository<Experience, UUID>, J
 
     List<Experience> findByBuddyIdOrderByCreatedAtDesc(UUID buddyId);
 
+    boolean existsByBookingId(UUID bookingId);
+
     @Override
     @EntityGraph(attributePaths = {"traveler", "buddy"})
     Page<Experience> findAll(Specification<Experience> specification, Pageable pageable);

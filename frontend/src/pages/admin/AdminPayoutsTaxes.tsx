@@ -61,6 +61,15 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain'
   URL.revokeObjectURL(url);
 }
 
+const AdminAvatar = ({ src, name, className }: { src?: string; name?: string; className: string }) =>
+  src ? (
+    <img src={src} className={`${className} object-cover shadow-lg`} alt={name || 'Buddy'} />
+  ) : (
+    <div className={`${className} flex items-center justify-center bg-indigo-600/10 text-xs font-black uppercase text-indigo-600 shadow-lg`}>
+      {(name || 'BD').slice(0, 2)}
+    </div>
+  );
+
 const AdminPayoutsTaxes: React.FC = () => {
   const [tab, setTab] = useState<'wallet' | 'payouts' | 'tax'>('wallet');
   const [loading, setLoading] = useState(false);
@@ -256,11 +265,7 @@ const AdminPayoutsTaxes: React.FC = () => {
                     <tr key={buddy.id} className="hover:bg-admin-surface/50 transition-all">
                       <td className="px-10 py-6">
                         <div className="flex items-center gap-4">
-                          <img
-                            src={buddy.image || `https://i.pravatar.cc/150?u=buddy-${buddy.id}`}
-                            className="w-12 h-12 rounded-2xl object-cover shadow-lg"
-                            alt=""
-                          />
+                          <AdminAvatar src={buddy.image} name={buddy.name} className="w-12 h-12 rounded-2xl" />
                           <div>
                             <p className="text-sm font-black text-admin-main">{buddy.name}</p>
                             <p className="text-[10px] font-black text-admin-muted uppercase tracking-widest">ID: {buddy.id}</p>
@@ -376,11 +381,7 @@ const AdminPayoutsTaxes: React.FC = () => {
                     <div key={w.id} className="admin-card !p-0 overflow-hidden border-none shadow-2xl">
                       <div className="p-8 border-b border-admin flex items-start justify-between">
                         <div className="flex items-start gap-4 flex-1">
-                          <img
-                            src={w.buddyImage || buddy?.image || `https://i.pravatar.cc/150?u=buddy-${w.buddyId}`}
-                            className="w-16 h-16 rounded-2xl object-cover shadow-lg"
-                            alt=""
-                          />
+                          <AdminAvatar src={w.buddyImage || buddy?.image} name={w.buddyName || buddy?.name} className="w-16 h-16 rounded-2xl" />
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h3 className="text-lg font-black text-admin-main">
@@ -503,11 +504,7 @@ const AdminPayoutsTaxes: React.FC = () => {
                           <tr key={p.id} className="hover:bg-admin-surface/50 transition-all">
                             <td className="px-10 py-6">
                               <div className="flex items-center gap-4">
-                                <img
-                                  src={p.buddyImage || buddy?.image || `https://i.pravatar.cc/150?u=buddy-${p.buddyId}`}
-                                  className="w-12 h-12 rounded-2xl object-cover shadow-lg"
-                                  alt=""
-                                />
+                                <AdminAvatar src={p.buddyImage || buddy?.image} name={p.buddyName || buddy?.name} className="w-12 h-12 rounded-2xl" />
                                 <div>
                                   <p className="text-sm font-black text-admin-main">
                                     {p.buddyName || buddy?.name || `Buddy ${p.buddyId}`}

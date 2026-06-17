@@ -303,6 +303,13 @@ export const bookingService = {
     if (!response.ok) throw new Error('Booking not found');
     return response.json();
   },
+  getLive: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${id}/live`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(await response.text() || 'Live experience not available');
+    return response.json();
+  },
   create: async (bookingData: any) => {
     const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: 'POST',
@@ -846,12 +853,14 @@ export interface Experience {
   travelerName: string;
   travelerAvatar?: string;
   image: string;
+  images?: string[];
   location: string;
   date: string;
   tags: string[];
   storyContent: string;
   buddyId: string;
   buddyName: string;
+  bookingId?: string;
   rating?: number;
   pinned?: boolean;
 }
@@ -918,10 +927,11 @@ export const experienceService = {
     });
     if (!response.ok) throw new Error('Failed to delete experience');
   },
-  uploadImage: async (id: string, file: File) => {
+  uploadImage: async (id: string, file: File, displayOrder?: number) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/experiences/${id}/image`, {
+    const query = displayOrder === undefined ? '' : `?displayOrder=${encodeURIComponent(displayOrder)}`;
+    const response = await fetch(`${API_BASE_URL}/experiences/${id}/image${query}`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: formData,

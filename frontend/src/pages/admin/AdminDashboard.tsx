@@ -1,228 +1,358 @@
-import React, { useMemo } from 'react';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Wallet, 
-  UserCheck, MapPin, ArrowUpRight, ArrowDownRight,
-  Plus, Eye
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Calendar,
+  DollarSign,
+  Eye,
+  Loader2,
+  MapPin,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, AreaChart, Area 
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
+import { adminService } from '../../services/api';
+
+type DashboardStats = {
+  users?: number;
+  travelers?: number;
+  buddies?: number;
+  pendingVerifications?: number;
+  verifiedBuddies?: number;
+  rejectedBuddies?: number;
+};
+
+type BookingRecord = {
+  id: string;
+  title?: string;
+  status?: string;
+  meetupStatus?: string;
+  totalPrice?: number;
+  price?: number;
+  date?: string;
+  createdAt?: string;
+};
+
+type VerificationRecord = {
+  id: string;
+  name: string;
+  type?: string;
+  regDate?: string;
+  status?: string;
+  avatar?: string;
+  email?: string;
+};
+
+type EarningsResponse = {
+  transactions?: Array<{ amount?: number; type?: string }>;
+};
+
+const money = (value: number) =>
+  value.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+const InitialAvatar = ({ name }: { name?: string }) => (
+  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600/10 text-xs font-black uppercase text-indigo-600 shadow-sm">
+    {(name || 'AD').slice(0, 2)}
+  </div>
+);
+
+function lastSevenDays() {
+  const days: Array<{ key: string; name: string; bookings: number; revenue: number }> = [];
+  for (let index = 6; index >= 0; index -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - index);
+    const key = date.toISOString().slice(0, 10);
+    days.push({
+      key,
+      name: date.toLocaleDateString(undefined, { weekday: 'short' }),
+      bookings: 0,
+      revenue: 0,
+    });
+  }
+  return days;
+}
 
 const AdminDashboard: React.FC = () => {
   const { theme } = useTheme();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
+  const [earnings, setEarnings] = useState<EarningsResponse>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const data = useMemo(() => [
-    { name: 'Mon', bookings: 45, revenue: 2400 },
-    { name: 'Tue', bookings: 52, revenue: 3200 },
-    { name: 'Wed', bookings: 48, revenue: 2800 },
-    { name: 'Thu', bookings: 61, revenue: 4100 },
-    { name: 'Fri', bookings: 55, revenue: 3900 },
-    { name: 'Sat', bookings: 67, revenue: 4800 },
-    { name: 'Sun', bookings: 72, revenue: 5200 },
-  ], []);
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const [statsData, bookingData, verificationData, earningData] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getAllBookings(),
+          adminService.getVerifications(),
+          adminService.getAllEarningsTransactions(),
+        ]);
+
+        setStats(statsData || {});
+        setBookings(Array.isArray(bookingData) ? bookingData : []);
+        setVerifications(Array.isArray(verificationData) ? verificationData : []);
+        setEarnings(earningData || {});
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load admin dashboard.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  const chartData = useMemo(() => {
+    const days = lastSevenDays();
+    const byKey = new Map(days.map((day) => [day.key, day]));
+
+    bookings.forEach((booking) => {
+      const key = (booking.date || booking.createdAt || '').slice(0, 10);
+      const day = byKey.get(key);
+      if (!day) return;
+      day.bookings += 1;
+      day.revenue += Number(booking.totalPrice ?? booking.price ?? 0);
+    });
+
+    return days;
+  }, [bookings]);
+
+  const revenue = useMemo(
+    () =>
+      bookings
+        .filter((booking) => ['CONFIRMED', 'COMPLETED'].includes(booking.status || ''))
+        .reduce((sum, booking) => sum + Number(booking.totalPrice ?? booking.price ?? 0), 0),
+    [bookings]
+  );
+
+  const commission = useMemo(() => Math.round(revenue * 0.1), [revenue]);
+  const walletBalance = useMemo(
+    () => (earnings.transactions || []).reduce((sum, tx) => sum + Number(tx.amount || 0), 0),
+    [earnings.transactions]
+  );
+  const ongoingTrips = bookings.filter((booking) => booking.meetupStatus === 'IN_PROGRESS').length;
+  const priorityQueue = verifications
+    .filter((item) => ['Pending', 'Processing', 'Manual Review'].includes(item.status || ''))
+    .slice(0, 5);
 
   const metrics = [
-    { 
-      label: "Total Revenue", 
-      value: "$24,580.00", 
-      change: "+12.5%", 
-      trend: "up", 
-      icon: DollarSign, 
-      color: "bg-emerald-500",
-      gradient: "from-emerald-500/20 to-emerald-500/0",
-      chartData: [{ v: 10 }, { v: 25 }, { v: 15 }, { v: 35 }, { v: 20 }, { v: 45 }, { v: 38 }]
+    {
+      label: 'Total revenue',
+      value: money(revenue),
+      helper: `${bookings.length} bookings`,
+      icon: DollarSign,
+      color: 'bg-emerald-600',
     },
-    { 
-      label: "Commission Earned", 
-      value: "$3,687.00", 
-      change: "+8.2%", 
-      trend: "up", 
-      icon: Wallet, 
-      color: "bg-indigo-600",
-      gradient: "from-indigo-600/20 to-indigo-600/0"
+    {
+      label: 'Platform commission',
+      value: money(commission),
+      helper: 'Estimated 10%',
+      icon: Wallet,
+      color: 'bg-indigo-600',
     },
-    { 
-      label: "Pending Verifications", 
-      value: "12", 
-      change: "Priority", 
-      trend: "alert", 
-      icon: UserCheck, 
-      color: "bg-rose-500",
-      gradient: "from-rose-500/20 to-rose-500/0",
-      alert: true
+    {
+      label: 'Users',
+      value: stats?.users ?? 0,
+      helper: `${stats?.travelers ?? 0} travelers / ${stats?.buddies ?? 0} buddies`,
+      icon: Users,
+      color: 'bg-sky-600',
     },
-    { 
-      label: "Ongoing Trips", 
-      value: "28", 
-      change: "Real-time", 
-      trend: "stable", 
-      icon: MapPin, 
-      color: "bg-amber-500",
-      gradient: "from-amber-500/20 to-amber-500/0"
-    }
+    {
+      label: 'Pending reviews',
+      value: stats?.pendingVerifications ?? priorityQueue.length,
+      helper: 'Identity verification',
+      icon: UserCheck,
+      color: 'bg-amber-500',
+    },
   ];
 
-  const recentVerifications = [
-    { name: "Nguyen Van A", type: "Buddy", date: "2024-03-16", status: "Pending", avatar: "https://i.pravatar.cc/150?u=1" },
-    { name: "Le Thi B", type: "Traveller", date: "2024-03-15", status: "Pending", avatar: "https://i.pravatar.cc/150?u=2" },
-    { name: "Tran C", type: "Buddy", date: "2024-03-15", status: "Verified", avatar: "https://i.pravatar.cc/150?u=3" },
-  ];
-
-  // Map CSS variables to Recharts colors
-  const chartColors = theme === 'dark' ? {
-    grid: "rgba(255, 255, 255, 0.05)",
-    text: "#94a3b8",
-    line: "#818cf8",
-    tooltipBg: "#111827",
-    tooltipBorder: "rgba(255, 255, 255, 0.1)"
-  } : {
-    grid: "#e2e8f0",
-    text: "#64748b",
-    line: "#6366f1",
-    tooltipBg: "#ffffff",
-    tooltipBorder: "#e2e8f0"
-  };
+  const chartColors =
+    theme === 'dark'
+      ? {
+          grid: 'rgba(255,255,255,0.06)',
+          text: '#94a3b8',
+          line: '#818cf8',
+          tooltipBg: '#111827',
+          tooltipBorder: 'rgba(255,255,255,0.12)',
+        }
+      : {
+          grid: '#e2e8f0',
+          text: '#64748b',
+          line: '#4f46e5',
+          tooltipBg: '#ffffff',
+          tooltipBorder: '#e2e8f0',
+        };
 
   return (
     <AdminLayout>
-      <div className="space-y-10 animate-slide-up">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-black tracking-tight text-admin-main">The Command Center</h1>
-            <p className="text-lg font-bold text-admin-muted">Monitor system health and performance snapshots.</p>
+      <div className="space-y-8 animate-slide-up">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-indigo-600">Admin console</p>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-admin-main">Command Center</h1>
+            <p className="mt-2 text-base font-bold text-admin-muted">
+              Live operational view powered by database records.
+            </p>
           </div>
-          <button className="flex items-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm shadow-primary-glow hover:scale-105 active:scale-95 transition-all">
-            <Plus size={18} />
-            Generate Report
-          </button>
+          <div className="rounded-2xl border border-admin bg-admin-surface px-5 py-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-admin-muted">Wallet ledger</p>
+            <p className="mt-1 text-xl font-black text-admin-main">{money(walletBalance)}</p>
+          </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {metrics.map((metric, i) => (
-            <div key={i} className="admin-card relative overflow-hidden group border-none">
-              <div className={`absolute inset-0 bg-gradient-to-br ${metric.gradient} opacity-40 group-hover:opacity-100 transition-opacity`}></div>
-              
-              <div className="relative z-10 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className={`w-14 h-14 rounded-2xl ${metric.color} flex items-center justify-center text-white shadow-xl shadow-${metric.color.split('-')[1]}-500/20`}>
-                    <metric.icon size={28} />
-                  </div>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
-                    metric.trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : 
-                    metric.trend === 'alert' ? 'bg-rose-500/10 text-rose-500' :
-                    'bg-admin-surface text-admin-muted'
-                  }`}>
-                    {metric.trend === 'up' ? <ArrowUpRight size={14} /> : 
-                     metric.trend === 'down' ? <ArrowDownRight size={14} /> : null}
-                    {metric.change}
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black text-admin-muted uppercase tracking-[0.2em]">{metric.label}</p>
-                  <h3 className={`text-3xl font-black text-admin-main ${metric.alert ? 'animate-pulse' : ''}`}>{metric.value}</h3>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {error && (
+          <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-600">
+            <AlertTriangle size={18} />
+            {error}
+          </div>
+        )}
 
-        {/* Charts & Lists */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-          {/* Main Growth Chart */}
-          <div className="xl:col-span-2 admin-card">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h3 className="text-2xl font-black text-admin-main tracking-tight">Booking Growth</h3>
-                <p className="text-sm font-bold text-admin-muted">Daily volume snapshots</p>
-              </div>
-              <div className="flex gap-2 p-1 bg-admin-surface rounded-xl border border-admin">
-                {['D', 'W', 'M'].map((label) => (
-                  <button key={label} className={`w-10 h-10 rounded-lg text-xs font-black transition-all ${
-                    label === 'D' ? 'bg-indigo-600 text-white shadow-lg' : 'text-admin-muted hover:text-indigo-500'
-                  }`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="h-[400px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: chartColors.text, fontSize: 12, fontWeight: 800 }}
-                    dy={12}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: chartColors.text, fontSize: 12, fontWeight: 800 }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: chartColors.tooltipBg, 
-                      borderColor: chartColors.tooltipBorder,
-                      borderRadius: '24px',
-                      boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.2)',
-                      padding: '16px',
-                      border: '1px solid ' + chartColors.tooltipBorder
-                    }}
-                    itemStyle={{ fontWeight: 800, fontSize: '14px', color: theme === 'dark' ? '#fff' : '#000' }}
-                    labelStyle={{ marginBottom: '8px', color: chartColors.text, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '10px' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="bookings" 
-                    stroke={chartColors.line} 
-                    strokeWidth={5} 
-                    dot={{ r: 6, strokeWidth: 3, fill: chartColors.tooltipBg, stroke: chartColors.line }}
-                    activeDot={{ r: 10, strokeWidth: 0, fill: chartColors.line }}
-                    animationDuration={2500}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+        {loading ? (
+          <div className="flex min-h-80 items-center justify-center rounded-3xl border border-admin bg-admin-surface">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="animate-spin text-indigo-600" size={36} />
+              <p className="text-[10px] font-black uppercase tracking-widest text-admin-muted">Loading dashboard data</p>
             </div>
           </div>
-
-          {/* Quick Verification Access */}
-          <div className="admin-card flex flex-col">
-            <div className="mb-8">
-              <h3 className="text-2xl font-black text-admin-main tracking-tight mb-2">Priority Queue</h3>
-              <p className="text-sm font-bold text-admin-muted">Waiting for manual review.</p>
-            </div>
-            
-            <div className="flex-1 space-y-6">
-              {recentVerifications.map((user, i) => (
-                <div key={i} className="flex items-center justify-between group cursor-pointer hover:bg-admin-surface p-3 rounded-2xl transition-all border border-transparent hover:border-admin">
-                  <div className="flex items-center gap-4">
-                    <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover shadow-lg" alt={user.name} />
-                    <div>
-                      <h4 className="text-sm font-black text-admin-main">{user.name}</h4>
-                      <p className="text-[10px] font-black text-admin-muted uppercase tracking-widest">{user.type} • {user.date}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="admin-card !rounded-2xl !p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl text-white ${metric.color}`}>
+                      <metric.icon size={22} />
                     </div>
+                    <ArrowUpRight size={18} className="text-admin-muted" />
                   </div>
-                  <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-600 text-white rounded-lg shadow-lg">
-                    <Eye size={16} />
-                  </button>
+                  <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-admin-muted">{metric.label}</p>
+                  <p className="mt-1 text-3xl font-black text-admin-main">{metric.value}</p>
+                  <p className="mt-2 text-xs font-bold text-admin-muted">{metric.helper}</p>
                 </div>
               ))}
             </div>
 
-            <button className="admin-btn-muted !w-full !h-16 !mt-8 !text-sm border border-admin">
-              Access Full Queue
-            </button>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <section className="admin-card xl:col-span-2">
+                <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-black text-admin-main">Booking Activity</h2>
+                    <p className="text-sm font-bold text-admin-muted">Last 7 days from booking records</p>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-admin bg-admin-surface px-4 py-3">
+                    <Calendar size={18} className="text-indigo-600" />
+                    <span className="text-xs font-black uppercase tracking-widest text-admin-muted">7 days</span>
+                  </div>
+                </div>
+                <div className="h-[360px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartColors.grid} />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: chartColors.text, fontSize: 12, fontWeight: 800 }}
+                        dy={12}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: chartColors.text, fontSize: 12, fontWeight: 800 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: chartColors.tooltipBg,
+                          borderColor: chartColors.tooltipBorder,
+                          borderRadius: '16px',
+                          border: `1px solid ${chartColors.tooltipBorder}`,
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="bookings"
+                        stroke={chartColors.line}
+                        strokeWidth={4}
+                        dot={{ r: 5, strokeWidth: 2, fill: chartColors.tooltipBg, stroke: chartColors.line }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+
+              <section className="admin-card">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-admin-main">Priority Queue</h2>
+                    <p className="text-sm font-bold text-admin-muted">Database verification records</p>
+                  </div>
+                  <ShieldCheck size={24} className="text-indigo-600" />
+                </div>
+
+                <div className="space-y-3">
+                  {priorityQueue.length > 0 ? (
+                    priorityQueue.map((record) => (
+                      <Link
+                        key={record.id}
+                        to="/admin/verification"
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-admin bg-admin-surface p-3 transition hover:border-indigo-500/40"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          {record.avatar ? (
+                            <img src={record.avatar} className="h-12 w-12 rounded-2xl object-cover" alt={record.name} />
+                          ) : (
+                            <InitialAvatar name={record.name} />
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-admin-main">{record.name}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-admin-muted">
+                              {record.type || 'Buddy'} • {record.status || 'Pending'}
+                            </p>
+                          </div>
+                        </div>
+                        <Eye size={16} className="shrink-0 text-indigo-600" />
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-admin bg-admin-surface p-6 text-center">
+                      <UserCheck size={28} className="mx-auto text-admin-muted" />
+                      <p className="mt-3 text-sm font-bold text-admin-muted">No pending verification records.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-admin bg-admin-surface p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-widest text-admin-muted">Ongoing trips</span>
+                    <span className="text-xl font-black text-admin-main">{ongoingTrips}</span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-xs font-bold text-admin-muted">
+                    <MapPin size={15} className="text-indigo-600" />
+                    From live meetup status
+                  </div>
+                </div>
+              </section>
+            </div>
+          </>
+        )}
       </div>
     </AdminLayout>
   );
