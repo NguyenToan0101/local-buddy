@@ -2,11 +2,6 @@ package localbuddy.backend.controller;
 
 import jakarta.validation.Valid;
 import localbuddy.backend.dto.AdminDashboardStatsDto;
-import localbuddy.backend.dto.AnalyticsActivityDto;
-import localbuddy.backend.dto.AnalyticsEventDto;
-import localbuddy.backend.dto.AnalyticsOverviewDto;
-import localbuddy.backend.dto.AnalyticsPageDto;
-import localbuddy.backend.dto.AnalyticsTrafficSourceDto;
 import localbuddy.backend.dto.AdminVerificationDto;
 import localbuddy.backend.dto.AdminVerificationUpdateRequest;
 import localbuddy.backend.dto.BookingDto;
@@ -23,7 +18,6 @@ import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.BookingService;
 import localbuddy.backend.service.BuddyProfileService;
 import localbuddy.backend.service.EarningsService;
-import localbuddy.backend.service.TrackingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,7 +49,6 @@ public class AdminController {
     private final BookingService bookingService;
     private final BuddyProfileService buddyProfileService;
     private final EarningsService earningsService;
-    private final TrackingService trackingService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
@@ -112,31 +105,6 @@ public class AdminController {
                 .sorted(Comparator.comparing(Booking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(bookingService::mapToDto)
                 .toList();
-    }
-
-    @GetMapping("/analytics/overview")
-    public AnalyticsOverviewDto getAnalyticsOverview() {
-        return trackingService.getOverview();
-    }
-
-    @GetMapping("/analytics/popular-pages")
-    public List<AnalyticsPageDto> getPopularPages(@RequestParam(defaultValue = "10") int limit) {
-        return trackingService.getPopularPages(limit);
-    }
-
-    @GetMapping("/analytics/top-events")
-    public List<AnalyticsEventDto> getTopEvents(@RequestParam(defaultValue = "10") int limit) {
-        return trackingService.getTopEvents(limit);
-    }
-
-    @GetMapping("/analytics/traffic-sources")
-    public List<AnalyticsTrafficSourceDto> getTrafficSources(@RequestParam(defaultValue = "10") int limit) {
-        return trackingService.getTrafficSources(limit);
-    }
-
-    @GetMapping("/analytics/recent-activity")
-    public List<AnalyticsActivityDto> getRecentActivity(@RequestParam(defaultValue = "25") int limit) {
-        return trackingService.getRecentActivity(limit);
     }
 
     @PatchMapping("/buddies/{userId}/verification")

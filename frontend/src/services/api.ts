@@ -564,41 +564,6 @@ export const adminService = {
     if (!response.ok) throw new Error('Failed to fetch earnings transactions');
     return response.json();
   },
-  getAnalyticsOverview: async () => {
-    const response = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch analytics overview');
-    return response.json();
-  },
-  getPopularPages: async (limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/admin/analytics/popular-pages?limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch popular pages');
-    return response.json();
-  },
-  getTopEvents: async (limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/admin/analytics/top-events?limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch top events');
-    return response.json();
-  },
-  getTrafficSources: async (limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/admin/analytics/traffic-sources?limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch traffic sources');
-    return response.json();
-  },
-  getRecentActivity: async (limit = 25) => {
-    const response = await fetch(`${API_BASE_URL}/admin/analytics/recent-activity?limit=${limit}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) throw new Error('Failed to fetch recent activity');
-    return response.json();
-  },
 };
 
 export const matchService = {

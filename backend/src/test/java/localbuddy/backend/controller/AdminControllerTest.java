@@ -11,7 +11,6 @@ import localbuddy.backend.service.BookingService;
 import localbuddy.backend.service.BuddyProfileService;
 import localbuddy.backend.service.EarningsService;
 import localbuddy.backend.service.JwtService;
-import localbuddy.backend.service.TrackingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -60,9 +59,6 @@ class AdminControllerTest {
 
     @MockitoBean
     private EarningsService earningsService;
-
-    @MockitoBean
-    private TrackingService trackingService;
 
     @MockitoBean
     private JwtService jwtService;

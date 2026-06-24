@@ -12,7 +12,6 @@ import {
   X,
   Wallet,
   Calendar,
-  BarChart3,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -33,7 +32,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
     { icon: UserCheck, label: "Verification", path: "/admin/verification" },
     { icon: Calendar, label: "Bookings", path: "/admin/bookings" },
-    { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
     { icon: Wallet, label: "Payouts & Taxes", path: "/admin/payouts" },
   ];
 
