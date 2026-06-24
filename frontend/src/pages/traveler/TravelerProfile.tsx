@@ -104,7 +104,12 @@ const TravelerProfile: React.FC = () => {
             </main>
          </div>
       );
-   }   return (
+   }
+
+   const verificationStatus = profileData?.verificationStatus || user.verificationStatus || 'pending';
+   const isVerified = verificationStatus === 'verified';
+
+   return (
       <div className="min-h-screen bg-[#FBFBFC] pb-16 font-sans">
          <main className="pt-6 pb-20 px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
             {/* Back Navigation Bar */}
@@ -159,11 +164,18 @@ const TravelerProfile: React.FC = () => {
                      <div className="space-y-2 relative z-10">
                         <div className="flex items-center justify-center gap-1.5">
                            <h1 className="text-2xl font-black text-secondary tracking-tight">{profileData?.fullName || user.name}</h1>
-                           <CheckCircle2 size={18} className="text-emerald-500 fill-emerald-50" strokeWidth={2.5} />
+                           {isVerified && <CheckCircle2 size={18} className="text-emerald-500 fill-emerald-50" strokeWidth={2.5} />}
                         </div>
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/5 rounded-lg text-primary text-[9px] font-black uppercase tracking-wider border border-primary/10">
                            <MapPin size={10} className="text-primary animate-pulse" />
                            <span>{profileData?.nationality || 'Global Explorer'}</span>
+                        </div>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
+                           isVerified
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              : 'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                           {isVerified ? 'Verified Traveler' : 'Verification Pending'}
                         </div>
                      </div>
 

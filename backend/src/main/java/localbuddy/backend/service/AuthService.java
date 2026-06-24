@@ -4,7 +4,6 @@ import localbuddy.backend.dto.AuthResponse;
 import localbuddy.backend.dto.RegisterRequest;
 import localbuddy.backend.model.entity.BuddyProfile;
 import localbuddy.backend.model.entity.PendingRegistration;
-import localbuddy.backend.model.entity.TouristProfile;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
@@ -183,6 +182,10 @@ public class AuthService {
                 verificationStatus = "unverified";
                 location = "Not Specified";
             }
+        } else if (savedUser.getRole() == UserRole.TRAVELER) {
+            verificationStatus = touristProfileRepository.findByUserId(savedUser.getId())
+                    .map(profile -> profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "pending")
+                    .orElse("unverified");
         }
 
         return AuthResponse.builder()
@@ -222,17 +225,6 @@ public class AuthService {
     private void ensureProfileForRole(User user, UserRole userRole) {
         if (userRole == UserRole.TRAVELER) {
             buddyProfileRepository.findByUserId(user.getId()).ifPresent(buddyProfileRepository::delete);
-            if (touristProfileRepository.existsByUserId(user.getId())) {
-                return;
-            }
-
-            TouristProfile touristProfile = new TouristProfile();
-            touristProfile.setUser(user);
-            touristProfile.setLanguages(new ArrayList<>());
-            touristProfile.setInterests(new ArrayList<>());
-            touristProfile.setCreatedAt(OffsetDateTime.now());
-            touristProfile.setUpdatedAt(OffsetDateTime.now());
-            touristProfileRepository.save(touristProfile);
             return;
         }
 

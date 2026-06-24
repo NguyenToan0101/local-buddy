@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Globe, Heart, Save, Loader2, Plus, X, ShieldCheck, Upload, FileText } from 'lucide-react';
+import { Camera, User, Globe, Heart, Save, Loader2, Plus, X, ShieldCheck, Upload, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/auth';
 import {
     COUNTRIES,
     COMMON_LANGUAGES,
@@ -24,7 +25,7 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
     isLoading = false,
     submitButtonText = 'Save Profile'
 }) => {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const [formData, setFormData] = useState<TouristProfileRequest>({
         nationality: '',
         bio: '',
@@ -40,7 +41,10 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
     const [customInterest, setCustomInterest] = useState('');
     const [showCustomLanguageInput, setShowCustomLanguageInput] = useState(false);
     const [showCustomInterestInput, setShowCustomInterestInput] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '');
+    const [avatarUploading, setAvatarUploading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const avatarInputRef = useRef<HTMLInputElement>(null);
     const evidenceInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -57,6 +61,10 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
             });
         }
     }, [initialData]);
+
+    useEffect(() => {
+        setAvatarPreview(user?.avatar || '');
+    }, [user?.avatar]);
 
     const handleInputChange = (field: keyof TouristProfileRequest, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -107,6 +115,43 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
         const currentArray = formData[field] || [];
         const newArray = currentArray.filter(item => item !== value);
         handleInputChange(field, newArray);
+    };
+
+    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setErrors(prev => ({ ...prev, avatar: 'Profile picture must be an image file' }));
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setErrors(prev => ({ ...prev, avatar: 'Profile picture must be smaller than 5MB' }));
+            return;
+        }
+
+        const previousPreview = avatarPreview;
+        const localPreview = URL.createObjectURL(file);
+        setAvatarPreview(localPreview);
+        setAvatarUploading(true);
+        setErrors(prev => ({ ...prev, avatar: '' }));
+
+        try {
+            const uploadedUser = await authService.uploadAvatar(file);
+            if (uploadedUser.avatar) {
+                setAvatarPreview(uploadedUser.avatar);
+                await updateUser({ avatar: uploadedUser.avatar });
+            }
+        } catch (error) {
+            setAvatarPreview(previousPreview);
+            const message = error instanceof Error ? error.message : 'Failed to upload profile picture';
+            setErrors(prev => ({ ...prev, avatar: message }));
+        } finally {
+            URL.revokeObjectURL(localPreview);
+            setAvatarUploading(false);
+        }
     };
 
     const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,18 +231,23 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Profile Picture Display (Read-only) */}
+            {/* Profile Picture */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-4 mb-4">
                     <User className="text-primary" size={24} />
                     <h3 className="text-lg font-semibold text-secondary">Profile Picture</h3>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                        {user?.avatar ? (
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+                    <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={avatarUploading}
+                        className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-3xl bg-gray-100 shadow-sm ring-1 ring-gray-100 disabled:cursor-wait"
+                    >
+                        {avatarPreview ? (
                             <img
-                                src={user.avatar}
+                                src={avatarPreview}
                                 alt="Avatar"
                                 className="w-full h-full object-cover"
                                 referrerPolicy="no-referrer"
@@ -206,17 +256,42 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                                 }}
                             />
                         ) : (
-                            <User size={32} className="text-gray-400" />
+                            <span className="flex h-full w-full items-center justify-center">
+                                <User size={34} className="text-gray-400" />
+                            </span>
                         )}
-                    </div>
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/35 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            {avatarUploading ? <Loader2 size={24} className="animate-spin" /> : <Camera size={24} />}
+                        </span>
+                    </button>
+
+                    <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                    />
 
                     <div className="flex-1">
                         <p className="text-sm text-gray-600 font-medium">
-                            {user?.avatar ? 'Your profile picture from Google account' : 'No profile picture available'}
+                            {avatarUploading ? 'Uploading profile picture...' : 'Upload a traveler profile picture'}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                            Profile pictures are managed through your Google account
+                            JPG, PNG, or WebP. Maximum 5MB.
                         </p>
+                        <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            disabled={avatarUploading}
+                            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-xs font-black uppercase tracking-wider text-secondary transition-all hover:border-primary hover:text-primary disabled:opacity-60"
+                        >
+                            {avatarUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                            {avatarPreview ? 'Change Photo' : 'Add Photo'}
+                        </button>
+                        {errors.avatar && (
+                            <p className="text-red-500 text-sm mt-2">{errors.avatar}</p>
+                        )}
                     </div>
                 </div>
             </div>

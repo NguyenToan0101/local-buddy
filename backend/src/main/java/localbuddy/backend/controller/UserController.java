@@ -2,10 +2,12 @@ package localbuddy.backend.controller;
 
 import localbuddy.backend.dto.UserDto;
 import localbuddy.backend.model.entity.BuddyProfile;
+import localbuddy.backend.model.entity.TouristProfile;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.TouristProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.CloudinaryService;
@@ -28,6 +30,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final TouristProfileRepository touristProfileRepository;
     private final CloudinaryService cloudinaryService;
 
     @GetMapping("/me")
@@ -208,6 +211,13 @@ public class UserController {
     }
 
     private String resolveVerificationStatus(User user, BuddyProfile profile) {
+        if (user.getRole() == UserRole.TRAVELER) {
+            TouristProfile touristProfile = touristProfileRepository.findByUserId(user.getId()).orElse(null);
+            if (touristProfile == null || touristProfile.getVerificationStatus() == null) {
+                return "unverified";
+            }
+            return touristProfile.getVerificationStatus().name().toLowerCase();
+        }
         if (user.getRole() != UserRole.BUDDY) {
             return Boolean.TRUE.equals(user.getIsActive()) ? "verified" : "pending";
         }

@@ -24,6 +24,7 @@ public class TouristProfileResponse {
     private String eVisaCountry;
     private String eVisaExpiryDate;
     private String eVisaEvidence;
+    private String verificationStatus;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     

@@ -24,6 +24,7 @@ export interface TouristProfileResponse {
     eVisaCountry?: string;
     eVisaExpiryDate?: string;
     eVisaEvidence?: string;
+    verificationStatus?: 'verified' | 'pending' | 'unverified' | 'rejected';
     createdAt: string;
     updatedAt: string;
 

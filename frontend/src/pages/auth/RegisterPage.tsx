@@ -60,7 +60,7 @@ const RegisterPage: React.FC = () => {
         if (role === 'BUDDY') {
           navigate('/buddy/welcome');
         } else {
-          navigate('/traveller/home');
+          navigate('/traveller/create-profile');
         }
       }
     } catch (err: any) {
@@ -87,7 +87,7 @@ const RegisterPage: React.FC = () => {
       if (role === 'BUDDY') {
         navigate('/buddy/welcome');
       } else {
-        navigate('/traveller/home');
+        navigate('/traveller/create-profile');
       }
     } catch (err: any) {
       setOtpError(err.message || 'Verification failed. Please check the code.');

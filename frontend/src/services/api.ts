@@ -550,6 +550,15 @@ export const adminService = {
     if (!response.ok) throw new Error('Failed to update buddy verification');
     return response.json();
   },
+  updateTravelerVerification: async (travelerId: string, status: 'pending' | 'verified' | 'rejected' | 'manual_approved' | 'manual_rejected', reason?: string) => {
+    const response = await fetch(`${API_BASE_URL}/admin/travelers/${travelerId}/verification`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status, reason }),
+    });
+    if (!response.ok) throw new Error('Failed to update traveler verification');
+    return response.json();
+  },
   getDashboardStats: async () => {
     const response = await fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
       headers: getAuthHeaders(),

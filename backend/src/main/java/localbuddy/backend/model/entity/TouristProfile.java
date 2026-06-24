@@ -1,9 +1,11 @@
 package localbuddy.backend.model.entity;
 
 import jakarta.persistence.*;
+import localbuddy.backend.model.enums.VerificationStatus;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -51,6 +53,12 @@ public class TouristProfile {
 
     @Column(name = "e_visa_evidence_url", columnDefinition = "TEXT")
     private String eVisaEvidenceUrl;
+
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.NAMED_ENUM)
+    @ColumnDefault("'PENDING'")
+    @Column(name = "verification_status", columnDefinition = "verification_status not null")
+    @Enumerated(EnumType.STRING)
+    private VerificationStatus verificationStatus;
 
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)

@@ -19,6 +19,9 @@ public class AdminVerificationDto {
     private Documents docs;
     private String email;
     private String phone;
+    private String eVisaNumber;
+    private String eVisaCountry;
+    private String eVisaExpiryDate;
     private String extractedFullName;
     private String extractedIdNumber;
     private String extractedDateOfBirth;
