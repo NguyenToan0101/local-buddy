@@ -78,19 +78,8 @@ function getCurrentPageUrl() {
   return `${window.location.pathname}${window.location.search}`;
 }
 
-function isAdminUser() {
-  try {
-    const rawUser = localStorage.getItem('user');
-    if (!rawUser) return false;
-    const user = JSON.parse(rawUser);
-    return user?.role === 'ADMIN';
-  } catch {
-    return false;
-  }
-}
-
 function shouldSkipTracking(pageUrl: string) {
-  return pageUrl.startsWith('/admin') || isAdminUser();
+  return pageUrl.startsWith('/admin');
 }
 
 function buildCommonParams(pageUrl: string) {
