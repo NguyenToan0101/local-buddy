@@ -3,6 +3,10 @@ export interface TouristProfileRequest {
     bio?: string;
     languages?: string[];
     interests?: string[];
+    eVisaNumber?: string;
+    eVisaCountry?: string;
+    eVisaExpiryDate?: string;
+    eVisaEvidence?: string;
 }
 
 export interface TouristProfileExistsResponse {
@@ -16,6 +20,10 @@ export interface TouristProfileResponse {
     bio?: string;
     languages?: string[];
     interests?: string[];
+    eVisaNumber?: string;
+    eVisaCountry?: string;
+    eVisaExpiryDate?: string;
+    eVisaEvidence?: string;
     createdAt: string;
     updatedAt: string;
 

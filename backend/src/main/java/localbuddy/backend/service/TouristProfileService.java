@@ -19,6 +19,7 @@ public class TouristProfileService {
 
     private final TouristProfileRepository touristProfileRepository;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     public TouristProfileResponse createProfile(UUID userId, TouristProfileRequest request) {
         User user = userRepository.findById(userId)
@@ -35,6 +36,15 @@ public class TouristProfileService {
         profile.setBio(request.getBio());
         profile.setLanguages(request.getLanguages());
         profile.setInterests(request.getInterests());
+        profile.setEVisaNumber(request.getEVisaNumber());
+        profile.setEVisaCountry(request.getEVisaCountry());
+        profile.setEVisaExpiryDate(request.getEVisaExpiryDate());
+        if (request.getEVisaEvidence() != null) {
+            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    request.getEVisaEvidence(),
+                    "local-buddy/users/" + userId + "/traveler-evisa"
+            ));
+        }
 
         TouristProfile savedProfile = touristProfileRepository.save(profile);
         
@@ -60,6 +70,21 @@ public class TouristProfileService {
         }
         if (request.getInterests() != null) {
             profile.setInterests(request.getInterests());
+        }
+        if (request.getEVisaNumber() != null) {
+            profile.setEVisaNumber(request.getEVisaNumber());
+        }
+        if (request.getEVisaCountry() != null) {
+            profile.setEVisaCountry(request.getEVisaCountry());
+        }
+        if (request.getEVisaExpiryDate() != null) {
+            profile.setEVisaExpiryDate(request.getEVisaExpiryDate());
+        }
+        if (request.getEVisaEvidence() != null) {
+            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+                    request.getEVisaEvidence(),
+                    "local-buddy/users/" + userId + "/traveler-evisa"
+            ));
         }
 
         TouristProfile savedProfile = touristProfileRepository.save(profile);
@@ -93,6 +118,10 @@ public class TouristProfileService {
                 .bio(profile.getBio())
                 .languages(profile.getLanguages())
                 .interests(profile.getInterests())
+                .eVisaNumber(profile.getEVisaNumber())
+                .eVisaCountry(profile.getEVisaCountry())
+                .eVisaExpiryDate(profile.getEVisaExpiryDate())
+                .eVisaEvidence(profile.getEVisaEvidenceUrl())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .fullName(user.getFullName())

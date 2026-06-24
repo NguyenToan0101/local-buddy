@@ -40,6 +40,18 @@ public class TouristProfile {
     @Column(name = "interests")
     private List<String> interests;
 
+    @Column(name = "e_visa_number", length = 120)
+    private String eVisaNumber;
+
+    @Column(name = "e_visa_country", length = 120)
+    private String eVisaCountry;
+
+    @Column(name = "e_visa_expiry_date", length = 40)
+    private String eVisaExpiryDate;
+
+    @Column(name = "e_visa_evidence_url", columnDefinition = "TEXT")
+    private String eVisaEvidenceUrl;
+
     @ColumnDefault("now()")
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;

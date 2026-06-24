@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { User, Globe, Heart, Save, Loader2, Plus, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Globe, Heart, Save, Loader2, Plus, X, ShieldCheck, Upload, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
     COUNTRIES,
@@ -29,7 +29,11 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
         nationality: '',
         bio: '',
         languages: [],
-        interests: []
+        interests: [],
+        eVisaNumber: '',
+        eVisaCountry: '',
+        eVisaExpiryDate: '',
+        eVisaEvidence: ''
     });
 
     const [customLanguage, setCustomLanguage] = useState('');
@@ -37,6 +41,7 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
     const [showCustomLanguageInput, setShowCustomLanguageInput] = useState(false);
     const [showCustomInterestInput, setShowCustomInterestInput] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const evidenceInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (initialData) {
@@ -44,7 +49,11 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                 nationality: initialData.nationality || '',
                 bio: initialData.bio || '',
                 languages: initialData.languages || [],
-                interests: initialData.interests || []
+                interests: initialData.interests || [],
+                eVisaNumber: initialData.eVisaNumber || '',
+                eVisaCountry: initialData.eVisaCountry || '',
+                eVisaExpiryDate: initialData.eVisaExpiryDate || '',
+                eVisaEvidence: initialData.eVisaEvidence || ''
             });
         }
     }, [initialData]);
@@ -100,6 +109,22 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
         handleInputChange(field, newArray);
     };
 
+    const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setErrors(prev => ({ ...prev, eVisaEvidence: 'Evidence must be an image file' }));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            handleInputChange('eVisaEvidence', String(reader.result || ''));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
@@ -119,6 +144,21 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
 
         if (!formData.interests?.length) {
             newErrors.interests = 'Please select at least one interest';
+        }
+
+        const hasAnyEVisaDetail = Boolean(
+            formData.eVisaNumber?.trim() ||
+            formData.eVisaCountry?.trim() ||
+            formData.eVisaExpiryDate?.trim() ||
+            formData.eVisaEvidence?.trim()
+        );
+
+        if (hasAnyEVisaDetail && !formData.eVisaNumber?.trim()) {
+            newErrors.eVisaNumber = 'E-visa number is required when adding E-visa details';
+        }
+
+        if (hasAnyEVisaDetail && !formData.eVisaEvidence?.trim()) {
+            newErrors.eVisaEvidence = 'Evidence image is required when adding E-visa details';
         }
 
         setErrors(newErrors);
@@ -230,6 +270,112 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                             </p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* E-visa Evidence */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-4 mb-6">
+                    <ShieldCheck className="text-primary" size={24} />
+                    <div>
+                        <h3 className="text-lg font-semibold text-secondary">E-visa Evidence</h3>
+                        <p className="text-xs text-secondary/45 font-medium mt-1">Passport upload is not required for traveler onboarding.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                    <div>
+                        <label className="block text-sm font-medium text-secondary mb-2">
+                            E-visa Number
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="EV-2026-001234"
+                            value={formData.eVisaNumber || ''}
+                            onChange={(e) => handleInputChange('eVisaNumber', e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary ${errors.eVisaNumber ? 'border-red-300' : 'border-gray-200'}`}
+                        />
+                        {errors.eVisaNumber && (
+                            <p className="text-red-500 text-sm mt-1">{errors.eVisaNumber}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-secondary mb-2">
+                            Issuing Country
+                        </label>
+                        <select
+                            value={formData.eVisaCountry || ''}
+                            onChange={(e) => handleInputChange('eVisaCountry', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                            <option value="">Select country</option>
+                            {COUNTRIES.map(country => (
+                                <option key={country} value={country}>{country}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-secondary mb-2">
+                            Expiry Date
+                        </label>
+                        <input
+                            type="date"
+                            value={formData.eVisaExpiryDate || ''}
+                            onChange={(e) => handleInputChange('eVisaExpiryDate', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-secondary mb-2">
+                        Evidence Image
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => evidenceInputRef.current?.click()}
+                        className={`w-full min-h-[220px] rounded-2xl border border-dashed transition-all overflow-hidden bg-surface hover:bg-gray-50 ${errors.eVisaEvidence ? 'border-red-300' : 'border-gray-200'}`}
+                    >
+                        {formData.eVisaEvidence ? (
+                            <img
+                                src={formData.eVisaEvidence}
+                                alt="E-visa evidence"
+                                className="h-full max-h-[280px] w-full object-cover"
+                            />
+                        ) : (
+                            <span className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-secondary/35">
+                                <Upload size={26} />
+                                <span className="text-xs font-black uppercase tracking-widest">Add evidence image</span>
+                            </span>
+                        )}
+                    </button>
+                    <input
+                        ref={evidenceInputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleEvidenceUpload}
+                    />
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium text-secondary/45 flex items-center gap-1.5">
+                            <FileText size={13} />
+                            Screenshot or photo of the E-visa approval page.
+                        </p>
+                        {formData.eVisaEvidence && (
+                            <button
+                                type="button"
+                                onClick={() => handleInputChange('eVisaEvidence', '')}
+                                className="text-xs font-black uppercase tracking-wider text-primary hover:underline"
+                            >
+                                Remove
+                            </button>
+                        )}
+                    </div>
+                    {errors.eVisaEvidence && (
+                        <p className="text-red-500 text-sm mt-1">{errors.eVisaEvidence}</p>
+                    )}
                 </div>
             </div>
 
