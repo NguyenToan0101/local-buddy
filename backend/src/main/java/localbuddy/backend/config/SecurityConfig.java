@@ -58,7 +58,6 @@ public class SecurityConfig {
                                 "/api/auth/resend-otp",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
-                                "/api/tracking/event",
                                 "/ws/**",
                                 "/api/ws/**",
                                 "/login/**",

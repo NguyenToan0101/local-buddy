@@ -11,8 +11,6 @@ const TrackingRouteListener = () => {
 
   useEffect(() => {
     const pageUrl = `${location.pathname}${location.search}`;
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return;
     if (pageUrl.startsWith('/admin')) return;
     if (lastTrackedPathRef.current === pageUrl) return;
 

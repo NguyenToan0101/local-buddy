@@ -145,7 +145,7 @@ const BuddyDashboard: React.FC = () => {
 
   const sidebar = (
     <aside
-      className={`flex h-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ${
+      className={`flex h-full w-full flex-col border-r border-slate-200 bg-white transition-all duration-300 ${
         sidebarCollapsed ? 'md:w-24' : 'md:w-72'
       }`}
     >
@@ -246,17 +246,17 @@ const BuddyDashboard: React.FC = () => {
       )}
 
       <main className={`min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'md:ml-24' : 'md:ml-72'}`}>
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <button onClick={() => setMobileMenuOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-secondary md:hidden">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur-xl sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <button onClick={() => setMobileMenuOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-secondary md:hidden">
                 <Menu size={19} strokeWidth={3} />
               </button>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:flex">
                 <currentItem.icon size={20} strokeWidth={3} />
               </div>
               <div className="min-w-0">
-                <h1 className="truncate text-lg font-black tracking-tight text-secondary">{currentItem.label}</h1>
+                <h1 className="truncate text-base font-black tracking-tight text-secondary sm:text-lg">{currentItem.label}</h1>
                 <p className="truncate text-[10px] font-black uppercase tracking-widest text-secondary/35">
                   {confirmedTrips} confirmed trips · {chats.length} conversations
                 </p>
@@ -267,7 +267,7 @@ const BuddyDashboard: React.FC = () => {
               <div ref={notifRef} className="relative">
                 <button
                   onClick={() => setIsNotifOpen((open) => !open)}
-                  className={`relative flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:text-primary ${
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white transition hover:text-primary sm:h-11 sm:w-11 ${
                     isNotifOpen ? 'text-primary' : 'text-secondary/45'
                   }`}
                   aria-label="Notifications"
@@ -299,7 +299,7 @@ const BuddyDashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-3 pb-5 sm:p-6 lg:p-8">
           <Routes>
             <Route index element={<DashboardOverview stats={stats} upcomingTrips={bookings} chats={chats} />} />
             <Route path="trips" element={<TripsTab upcomingTrips={bookings} />} />
