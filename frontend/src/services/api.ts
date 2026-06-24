@@ -190,14 +190,21 @@ export const buddyService = {
       throw new Error('Failed to search buddies');
     }
     const data = await response.json() as PageResponse<Buddy>;
-    void trackingService.track('SEARCH_BUDDY', {
-      searchQuery: params.searchQuery,
-      tags: params.tags,
-      rating: params.rating,
-      page: params.page ?? 0,
-      size: params.size ?? 10,
-      resultCount: Array.isArray(data.content) ? data.content.length : 0,
-    });
+    const hasSearchIntent =
+      Boolean(params.searchQuery?.trim()) ||
+      Boolean(params.tags?.length) ||
+      (typeof params.rating === 'number' && params.rating > 0);
+
+    if (hasSearchIntent) {
+      void trackingService.track('SEARCH_BUDDY', {
+        searchQuery: params.searchQuery,
+        tags: params.tags,
+        rating: params.rating,
+        page: params.page ?? 0,
+        size: params.size ?? 10,
+        resultCount: Array.isArray(data.content) ? data.content.length : 0,
+      });
+    }
     return data;
   },
   getById: async (id: string) => {
