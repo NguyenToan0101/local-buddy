@@ -1,4 +1,4 @@
-const SENSITIVE_KEY_PARTS = ['password', 'token', 'secret', 'authorization', 'cookie', 'credential', 'apikey', 'api_key', 'session'];
+const SENSITIVE_KEY_PARTS = ['password', 'token', 'secret', 'authorization', 'cookie', 'credential', 'apikey', 'api_key', 'session', 'user_id'];
 const MAX_METADATA_KEYS = 25;
 const GA4_MEASUREMENT_ID = 'G-9L0TFC23QJ';
 

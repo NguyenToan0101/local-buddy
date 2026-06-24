@@ -33,3 +33,6 @@ dist/
 
 # Env
 .env
+
+# Local analytics seeding scripts may contain Measurement Protocol secrets
+scripts/*.local.mjs

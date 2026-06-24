@@ -25,8 +25,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.TouristProfileRepository;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.entity.BuddyProfile;
+import localbuddy.backend.model.entity.TouristProfile;
 
 import java.security.Principal;
 import java.util.HashMap;
@@ -43,6 +45,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthService authService;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final TouristProfileRepository touristProfileRepository;
     private final PasswordResetService passwordResetService;
     private final CloudinaryService cloudinaryService;
 
@@ -89,6 +92,8 @@ public class AuthController {
                 verificationStatus = "unverified";
                 location = "Not Specified";
             }
+        } else if (user.getRole() == UserRole.TRAVELER) {
+            verificationStatus = resolveTravelerVerificationStatus(user);
         }
 
         AuthResponse authResponse = AuthResponse.builder()
@@ -153,6 +158,8 @@ public class AuthController {
                 response.put("verificationStatus", "unverified");
                 response.put("location", "Not Specified");
             }
+        } else if (user.getRole() == UserRole.TRAVELER) {
+            response.put("verificationStatus", resolveTravelerVerificationStatus(user));
         }
 
         return ResponseEntity.ok(response);
@@ -203,9 +210,19 @@ public class AuthController {
                 response.put("verificationStatus", "unverified");
                 response.put("location", "Not Specified");
             }
+        } else if (savedUser.getRole() == UserRole.TRAVELER) {
+            response.put("verificationStatus", resolveTravelerVerificationStatus(savedUser));
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    private String resolveTravelerVerificationStatus(User user) {
+        TouristProfile profile = touristProfileRepository.findByUserId(user.getId()).orElse(null);
+        if (profile == null || profile.getVerificationStatus() == null) {
+            return "unverified";
+        }
+        return profile.getVerificationStatus().name().toLowerCase();
     }
 
     @PostMapping(value = "/avatar", consumes = "multipart/form-data")

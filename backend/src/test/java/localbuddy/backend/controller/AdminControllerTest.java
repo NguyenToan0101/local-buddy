@@ -6,11 +6,13 @@ import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.TouristProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.service.BookingService;
 import localbuddy.backend.service.BuddyProfileService;
 import localbuddy.backend.service.EarningsService;
 import localbuddy.backend.service.JwtService;
+import localbuddy.backend.service.TouristProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,6 +52,9 @@ class AdminControllerTest {
     private BuddyProfileRepository buddyProfileRepository;
 
     @MockitoBean
+    private TouristProfileRepository touristProfileRepository;
+
+    @MockitoBean
     private BookingRepository bookingRepository;
 
     @MockitoBean
@@ -59,6 +65,9 @@ class AdminControllerTest {
 
     @MockitoBean
     private EarningsService earningsService;
+
+    @MockitoBean
+    private TouristProfileService touristProfileService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -103,6 +112,7 @@ class AdminControllerTest {
         User admin = user(UUID.randomUUID(), "admin@example.com", UserRole.ADMIN);
 
         when(userRepository.findAll()).thenReturn(List.of(admin, traveler));
+        when(touristProfileRepository.findByUserId(traveler.getId())).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/admin/users"))
                 .andExpect(status().isOk())

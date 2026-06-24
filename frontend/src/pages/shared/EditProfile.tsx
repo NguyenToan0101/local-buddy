@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, User, Sparkles, Loader2 } from 'lucide-react';
+import { Camera, User, Sparkles, Loader2, ShieldCheck, Upload, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import SmartSelect from '../../components/ui/SmartSelect';
@@ -31,6 +31,7 @@ const EditProfile: React.FC = () => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -39,7 +40,11 @@ const EditProfile: React.FC = () => {
     description: '',
     languages: [] as string[],
     interests: [] as string[],
-    avatar: user?.avatar || ''
+    avatar: user?.avatar || '',
+    eVisaNumber: '',
+    eVisaCountry: '',
+    eVisaExpiryDate: '',
+    eVisaEvidence: ''
   });
 
   const [touristProfile, setTouristProfile] = useState<TouristProfileResponse | null>(null);
@@ -66,6 +71,10 @@ const EditProfile: React.FC = () => {
             description: profile.bio || '',
             languages: profile.languages || [],
             interests: profile.interests || [],
+            eVisaNumber: profile.eVisaNumber || '',
+            eVisaCountry: profile.eVisaCountry || '',
+            eVisaExpiryDate: profile.eVisaExpiryDate || '',
+            eVisaEvidence: profile.eVisaEvidence || '',
             phone: profile.phone || prev.phone
           }));
         }
@@ -111,6 +120,22 @@ const EditProfile: React.FC = () => {
     }
   };
 
+  const handleEvidenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('E-visa evidence must be an image file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData(prev => ({ ...prev, eVisaEvidence: String(reader.result || '') }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
     if (!user) return;
     try {
@@ -132,7 +157,11 @@ const EditProfile: React.FC = () => {
         nationality: formData.nationality,
         bio: formData.description,
         languages: formData.languages,
-        interests: formData.interests
+        interests: formData.interests,
+        eVisaNumber: formData.eVisaNumber,
+        eVisaCountry: formData.eVisaCountry,
+        eVisaExpiryDate: formData.eVisaExpiryDate,
+        eVisaEvidence: formData.eVisaEvidence
       };
 
       // Update user data (basic fields only)
@@ -297,6 +326,94 @@ const EditProfile: React.FC = () => {
                     onChange={(val) => handleSelectChange('interests', val)}
                     placeholder="Add passions..."
                   />
+                </div>
+              </div>
+
+              {/* E-visa evidence */}
+              <div className="space-y-6 pt-6 border-t border-gray-50">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-secondary tracking-tight">E-visa Evidence</h3>
+                    <p className="mt-1 text-[10px] font-bold text-secondary/35 uppercase tracking-widest">
+                      Passport upload is not required for traveler onboarding
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] ml-4">E-visa Number</label>
+                    <input
+                      name="eVisaNumber"
+                      value={formData.eVisaNumber}
+                      onChange={handleChange}
+                      className="w-full bg-surface-dark border-2 border-transparent focus:border-primary/10 transition-all rounded-[24px] py-4 px-5 font-bold text-sm text-secondary outline-none focus:bg-white focus:shadow-premium"
+                      placeholder="EV-2026-001234"
+                    />
+                  </div>
+                  <div>
+                    <SmartSelect
+                      label="Issuing Country"
+                      options={nationalities}
+                      value={formData.eVisaCountry}
+                      onChange={(val) => handleSelectChange('eVisaCountry', val)}
+                      placeholder="Visa country"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] ml-4">Expiry Date</label>
+                    <input
+                      name="eVisaExpiryDate"
+                      type="date"
+                      value={formData.eVisaExpiryDate}
+                      onChange={handleChange}
+                      className="w-full bg-surface-dark border-2 border-transparent focus:border-primary/10 transition-all rounded-[24px] py-4 px-5 font-bold text-sm text-secondary outline-none focus:bg-white focus:shadow-premium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] ml-4 flex items-center gap-2">
+                    <FileText size={12} className="text-primary" /> Evidence Image
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => evidenceInputRef.current?.click()}
+                    className="relative flex min-h-[220px] w-full overflow-hidden rounded-[32px] border-2 border-dashed border-slate-100 bg-surface-dark transition-all hover:border-primary/20 hover:bg-white"
+                  >
+                    {formData.eVisaEvidence ? (
+                      <img src={formData.eVisaEvidence} alt="E-visa evidence" className="h-full max-h-[320px] w-full object-cover" />
+                    ) : (
+                      <span className="flex min-h-[220px] w-full flex-col items-center justify-center gap-3 text-secondary/25">
+                        <Upload size={28} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Add E-visa evidence</span>
+                      </span>
+                    )}
+                  </button>
+                  <input
+                    type="file"
+                    ref={evidenceInputRef}
+                    onChange={handleEvidenceFileChange}
+                    className="hidden"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-bold text-secondary/35">
+                      Upload a screenshot or photo of the E-visa approval page.
+                    </p>
+                    {formData.eVisaEvidence && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, eVisaEvidence: '' }))}
+                        className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

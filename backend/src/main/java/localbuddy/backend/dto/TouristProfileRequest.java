@@ -16,4 +16,8 @@ public class TouristProfileRequest {
     private String bio;
     private List<String> languages;
     private List<String> interests;
+    private String eVisaNumber;
+    private String eVisaCountry;
+    private String eVisaExpiryDate;
+    private String eVisaEvidence;
 }

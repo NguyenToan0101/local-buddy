@@ -7,17 +7,20 @@ import localbuddy.backend.dto.AdminVerificationUpdateRequest;
 import localbuddy.backend.dto.BookingDto;
 import localbuddy.backend.model.entity.Booking;
 import localbuddy.backend.model.entity.BuddyProfile;
+import localbuddy.backend.model.entity.TouristProfile;
 import localbuddy.backend.model.entity.User;
 import localbuddy.backend.model.enums.UserRole;
 import localbuddy.backend.model.enums.VerificationStatus;
 import localbuddy.backend.repository.BookingRepository;
 import localbuddy.backend.repository.BuddyProfileRepository;
+import localbuddy.backend.repository.TouristProfileRepository;
 import localbuddy.backend.repository.UserRepository;
 import localbuddy.backend.dto.EarningsTransactionDto;
 import localbuddy.backend.service.AvatarService;
 import localbuddy.backend.service.BookingService;
 import localbuddy.backend.service.BuddyProfileService;
 import localbuddy.backend.service.EarningsService;
+import localbuddy.backend.service.TouristProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,10 +48,12 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final BuddyProfileRepository buddyProfileRepository;
+    private final TouristProfileRepository touristProfileRepository;
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
     private final BuddyProfileService buddyProfileService;
     private final EarningsService earningsService;
+    private final TouristProfileService touristProfileService;
 
     @GetMapping("/users")
     public List<AdminVerificationDto> getUsers() {
@@ -72,9 +77,18 @@ public class AdminController {
         VerificationStatus filterStatus = status != null && !status.isBlank()
                 ? VerificationStatus.valueOf(status.trim().toUpperCase())
                 : null;
-        return buddyProfileRepository.findAll().stream()
+
+        List<AdminVerificationDto> buddyVerifications = buddyProfileRepository.findAll().stream()
                 .filter(profile -> filterStatus == null || profile.getVerificationStatus() == filterStatus)
                 .map(profile -> mapVerification(profile.getUser(), profile))
+                .toList();
+        List<AdminVerificationDto> travelerVerifications = touristProfileRepository.findAll().stream()
+                .filter(profile -> filterStatus == null || profile.getVerificationStatus() == filterStatus)
+                .map(profile -> mapVerification(profile.getUser(), null, profile))
+                .toList();
+
+        return java.util.stream.Stream.concat(buddyVerifications.stream(), travelerVerifications.stream())
+                .sorted(Comparator.comparing(AdminVerificationDto::getRegDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 
@@ -117,19 +131,37 @@ public class AdminController {
         return mapVerification(saved.getUser(), saved);
     }
 
+    @PatchMapping("/travelers/{userId}/verification")
+    public Map<String, String> updateTravelerVerification(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AdminVerificationUpdateRequest request
+    ) {
+        touristProfileService.updateVerificationStatus(userId, request.getStatus());
+        return Map.of("status", request.getStatus().toLowerCase());
+    }
+
     private AdminVerificationDto mapVerification(User user) {
         BuddyProfile profile = user.getRole() == UserRole.BUDDY
                 ? buddyProfileRepository.findByUserId(user.getId()).orElse(null)
                 : null;
-        return mapVerification(user, profile);
+        TouristProfile touristProfile = user.getRole() == UserRole.TRAVELER
+                ? touristProfileRepository.findByUserId(user.getId()).orElse(null)
+                : null;
+        return mapVerification(user, profile, touristProfile);
     }
 
     private AdminVerificationDto mapVerification(User user, BuddyProfile profile) {
+        return mapVerification(user, profile, null);
+    }
+
+    private AdminVerificationDto mapVerification(User user, BuddyProfile profile, TouristProfile touristProfile) {
         String userType = mapUserRoleToType(user.getRole());
         boolean buddy = user.getRole() == UserRole.BUDDY;
+        boolean traveler = user.getRole() == UserRole.TRAVELER;
         String avatar = AvatarService.getDisplayAvatarUrl(user);
         String front = profile != null ? profile.getIdCardFrontUrl() : null;
         String back = profile != null ? profile.getIdCardBackUrl() : null;
+        String travelerEvidence = touristProfile != null ? touristProfile.getEVisaEvidenceUrl() : null;
 
         return AdminVerificationDto.builder()
                 .id(user.getId())
@@ -137,16 +169,19 @@ public class AdminController {
                 .age(profile != null && profile.getAge() != null ? profile.getAge().intValue() : null)
                 .type(userType)
                 .regDate(formatDate(user.getCreatedAt()))
-                .docType(buddy ? "CCCD" : "Passport")
-                .status(resolveStatus(user, profile))
+                .docType(buddy ? "CCCD" : traveler ? "E-Visa" : "Passport")
+                .status(resolveStatus(user, profile, touristProfile))
                 .avatar(avatar)
                 .docs(AdminVerificationDto.Documents.builder()
-                        .front(front)
+                        .front(buddy ? front : travelerEvidence)
                         .back(back)
                         .selfie(firstText(profile != null ? profile.getSelfieUrl() : null, avatar))
                         .build())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .eVisaNumber(touristProfile != null ? touristProfile.getEVisaNumber() : null)
+                .eVisaCountry(touristProfile != null ? touristProfile.getEVisaCountry() : null)
+                .eVisaExpiryDate(touristProfile != null ? touristProfile.getEVisaExpiryDate() : null)
                 .extractedFullName(profile != null ? profile.getExtractedFullName() : null)
                 .extractedIdNumber(profile != null ? profile.getExtractedIdNumber() : null)
                 .extractedDateOfBirth(profile != null ? profile.getExtractedDateOfBirth() : null)
@@ -175,7 +210,22 @@ public class AdminController {
         };
     }
 
-    private String resolveStatus(User user, BuddyProfile profile) {
+    private String resolveStatus(User user, BuddyProfile profile, TouristProfile touristProfile) {
+        if (user.getRole() == UserRole.TRAVELER) {
+            VerificationStatus status = touristProfile != null && touristProfile.getVerificationStatus() != null
+                    ? touristProfile.getVerificationStatus()
+                    : null;
+            if (status == null) {
+                return "Unverified";
+            }
+            return switch (status) {
+                case VERIFIED, AUTO_APPROVED, MANUAL_APPROVED -> "Verified";
+                case REJECTED, AUTO_REJECTED, MANUAL_REJECTED -> "Rejected";
+                case PROCESSING -> "Processing";
+                case MANUAL_REVIEW -> "Manual Review";
+                case PENDING -> "Pending";
+            };
+        }
         if (user.getRole() != UserRole.BUDDY) {
             return Boolean.TRUE.equals(user.getIsActive()) ? "Verified" : "Pending";
         }

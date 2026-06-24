@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import LandingPage from './pages/shared/LandingPage';
 import HomePage from './pages/shared/HomePage';
@@ -24,6 +25,7 @@ import BuddyDashboard from './pages/buddy/BuddyDashboard';
 import ReportUser from './pages/shared/ReportUser';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminVerification from './pages/admin/AdminVerification';
+import AdminVerificationDetail from './pages/admin/AdminVerificationDetail';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminPayoutsTaxes from './pages/admin/AdminPayoutsTaxes';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -38,6 +40,7 @@ import type { UserRole } from './services/auth';
 import { DEFAULT_ROUTE_BY_ROLE } from './utils/authRoutes';
 import AppLayout from './components/AppLayout';
 import TrackingRouteListener from './components/TrackingRouteListener';
+import { touristProfileService } from './services/tourist-profile';
 
 function RequireRole({ roles, children }: { roles: UserRole[]; children: React.ReactElement }) {
   const { user } = useAuth();
@@ -55,6 +58,51 @@ function RequireRole({ roles, children }: { roles: UserRole[]; children: React.R
 }
 
 function TravelerOnly({ children }: { children: React.ReactElement }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkProfile = async () => {
+      if (!user || user.role !== 'TRAVELER' || location.pathname === '/traveller/create-profile') {
+        setHasProfile(true);
+        return;
+      }
+
+      const exists = await touristProfileService.checkProfileExists();
+      if (!cancelled) {
+        setHasProfile(exists);
+      }
+    };
+
+    setHasProfile(null);
+    checkProfile().catch(() => {
+      if (!cancelled) setHasProfile(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, location.pathname]);
+
+  if (!user) {
+    return <RequireRole roles={['TRAVELER']}>{children}</RequireRole>;
+  }
+
+  if (user.role !== 'TRAVELER') {
+    return <RequireRole roles={['TRAVELER']}>{children}</RequireRole>;
+  }
+
+  if (hasProfile === null) {
+    return null;
+  }
+
+  if (!hasProfile) {
+    return <Navigate to="/traveller/create-profile" replace state={{ from: location }} />;
+  }
+
   return <RequireRole roles={['TRAVELER']}>{children}</RequireRole>;
 }
 
@@ -64,6 +112,20 @@ function BuddyOnly({ children }: { children: React.ReactElement }) {
 
 function AdminOnly({ children }: { children: React.ReactElement }) {
   return <RequireRole roles={['ADMIN']}>{children}</RequireRole>;
+}
+
+function FallbackRoute() {
+  const location = useLocation();
+  const pathAsQuery = `${location.pathname.replace(/^\/+/, '')}${location.search ? `&${location.search.slice(1)}` : ''}`;
+  const normalizedPath = pathAsQuery.toLowerCase();
+  const malformedMarketingQuery = /^(utm_|tm_|gclid=|fbclid=|ttclid=)/i.test(pathAsQuery);
+
+  if (malformedMarketingQuery) {
+    const query = normalizedPath.startsWith('tm_') ? `u${pathAsQuery}` : pathAsQuery;
+    return <Navigate to={`/?${query}`} replace />;
+  }
+
+  return <Navigate to="/" replace />;
 }
 
 function App() {
@@ -103,8 +165,10 @@ function App() {
         <Route path="/buddy/live/:id" element={<BuddyOnly><BuddyLiveExperience /></BuddyOnly>} />
         <Route path="/admin/dashboard" element={<AdminOnly><AdminDashboard /></AdminOnly>} />
         <Route path="/admin/verification" element={<AdminOnly><AdminVerification /></AdminOnly>} />
+        <Route path="/admin/verification/detail" element={<AdminOnly><AdminVerificationDetail /></AdminOnly>} />
         <Route path="/admin/bookings" element={<AdminOnly><AdminBookings /></AdminOnly>} />
         <Route path="/admin/payouts" element={<AdminOnly><AdminPayoutsTaxes /></AdminOnly>} />
+        <Route path="*" element={<FallbackRoute />} />
       </Routes>
     </AppLayout>
   );
