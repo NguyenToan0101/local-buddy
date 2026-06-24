@@ -1,5 +1,6 @@
 const SENSITIVE_KEY_PARTS = ['password', 'token', 'secret', 'authorization', 'cookie', 'credential', 'apikey', 'api_key', 'session'];
 const MAX_METADATA_KEYS = 25;
+const GA4_MEASUREMENT_ID = 'G-9L0TFC23QJ';
 
 export type TrackingEventType =
   | 'PAGE_VIEW'
@@ -13,7 +14,6 @@ export type TrackingEventType =
   | 'ADD_FAVORITE';
 
 type TrackingMetadata = Record<string, unknown>;
-type DataLayerEvent = TrackingMetadata & { event: string };
 
 const EVENT_NAME_BY_TYPE: Record<TrackingEventType, string> = {
   PAGE_VIEW: 'page_view',
@@ -26,6 +26,8 @@ const EVENT_NAME_BY_TYPE: Record<TrackingEventType, string> = {
   SEND_MESSAGE: 'send_message',
   ADD_FAVORITE: 'add_to_wishlist',
 };
+
+let gaInitialized = false;
 
 function isSensitiveKey(key: string) {
   const normalized = key.toLowerCase();
@@ -82,6 +84,30 @@ function shouldSkipTracking(pageUrl: string) {
   return pageUrl.startsWith('/admin');
 }
 
+function ensureGa4Loaded() {
+  if (gaInitialized || typeof window === 'undefined') return;
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function gtag() {
+    window.dataLayer?.push(arguments);
+  };
+
+  const scriptId = 'ga4-gtag';
+  if (!document.getElementById(scriptId)) {
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA4_MEASUREMENT_ID)}`;
+    document.head.appendChild(script);
+  }
+
+  window.gtag('js', new Date());
+  window.gtag('config', GA4_MEASUREMENT_ID, {
+    send_page_view: false,
+  });
+  gaInitialized = true;
+}
+
 function buildCommonParams(pageUrl: string) {
   return {
     page_path: pageUrl,
@@ -123,11 +149,8 @@ export const trackingService = {
       const resolvedPageUrl = pageUrl || getCurrentPageUrl();
       if (shouldSkipTracking(resolvedPageUrl)) return;
 
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({
-        event: EVENT_NAME_BY_TYPE[eventType],
-        ...buildEventParams(eventType, metadata, resolvedPageUrl),
-      } satisfies DataLayerEvent);
+      ensureGa4Loaded();
+      window.gtag?.('event', EVENT_NAME_BY_TYPE[eventType], buildEventParams(eventType, metadata, resolvedPageUrl));
     } catch {
       // Analytics must never break the product flow.
     }
