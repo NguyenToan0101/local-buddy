@@ -66,6 +66,20 @@ function AdminOnly({ children }: { children: React.ReactElement }) {
   return <RequireRole roles={['ADMIN']}>{children}</RequireRole>;
 }
 
+function FallbackRoute() {
+  const location = useLocation();
+  const pathAsQuery = `${location.pathname.replace(/^\/+/, '')}${location.search ? `&${location.search.slice(1)}` : ''}`;
+  const normalizedPath = pathAsQuery.toLowerCase();
+  const malformedMarketingQuery = /^(utm_|tm_|gclid=|fbclid=|ttclid=)/i.test(pathAsQuery);
+
+  if (malformedMarketingQuery) {
+    const query = normalizedPath.startsWith('tm_') ? `u${pathAsQuery}` : pathAsQuery;
+    return <Navigate to={`/?${query}`} replace />;
+  }
+
+  return <Navigate to="/" replace />;
+}
+
 function App() {
   return (
     <AppLayout>
@@ -105,6 +119,7 @@ function App() {
         <Route path="/admin/verification" element={<AdminOnly><AdminVerification /></AdminOnly>} />
         <Route path="/admin/bookings" element={<AdminOnly><AdminBookings /></AdminOnly>} />
         <Route path="/admin/payouts" element={<AdminOnly><AdminPayoutsTaxes /></AdminOnly>} />
+        <Route path="*" element={<FallbackRoute />} />
       </Routes>
     </AppLayout>
   );
