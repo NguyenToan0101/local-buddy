@@ -9,6 +9,5 @@ interface ImportMeta {
 }
 
 interface Window {
-  dataLayer?: IArguments[];
-  gtag?: (...args: unknown[]) => void;
+  dataLayer?: Array<Record<string, unknown>>;
 }
