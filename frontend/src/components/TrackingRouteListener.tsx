@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { trackingService } from '../services/tracking';
+import { getPageTrackingMeta } from '../utils/pageTracking';
 
 const PAGE_VIEW_DEBOUNCE_MS = 500;
 
@@ -21,7 +22,7 @@ const TrackingRouteListener = () => {
     timerRef.current = window.setTimeout(() => {
       if (lastTrackedPathRef.current === pageUrl) return;
       lastTrackedPathRef.current = pageUrl;
-      void trackingService.track('PAGE_VIEW', {}, pageUrl);
+      void trackingService.track('PAGE_VIEW', getPageTrackingMeta(location.pathname), pageUrl);
     }, PAGE_VIEW_DEBOUNCE_MS);
 
     return () => {

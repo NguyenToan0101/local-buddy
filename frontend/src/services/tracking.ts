@@ -118,29 +118,29 @@ function buildCommonParams(pageUrl: string) {
 
 function buildEventParams(eventType: TrackingEventType, metadata: TrackingMetadata, pageUrl: string) {
   const safeMetadata = sanitizeMetadata(metadata);
+  const commonParams = {
+    ...buildCommonParams(pageUrl),
+    ...safeMetadata,
+    page_title: typeof safeMetadata.page_title === 'string' ? safeMetadata.page_title : document.title,
+  };
 
   if (eventType === 'SEARCH_BUDDY') {
     return {
-      ...buildCommonParams(pageUrl),
+      ...commonParams,
       search_term: typeof safeMetadata.search_query === 'string' ? safeMetadata.search_query : undefined,
-      ...safeMetadata,
     };
   }
 
   if (eventType === 'COMPLETE_PAYMENT') {
     return {
-      ...buildCommonParams(pageUrl),
+      ...commonParams,
       transaction_id: typeof safeMetadata.payment_id === 'string' ? safeMetadata.payment_id : safeMetadata.booking_id,
       value: typeof safeMetadata.amount === 'number' ? safeMetadata.amount : undefined,
       currency: 'USD',
-      ...safeMetadata,
     };
   }
 
-  return {
-    ...buildCommonParams(pageUrl),
-    ...safeMetadata,
-  };
+  return commonParams;
 }
 
 export const trackingService = {
