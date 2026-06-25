@@ -43,7 +43,7 @@ public class TouristProfileService {
         profile.setEVisaCountry(request.getEVisaCountry());
         profile.setEVisaExpiryDate(request.getEVisaExpiryDate());
         if (request.getEVisaEvidence() != null) {
-            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64EvidenceIfNeeded(
                     request.getEVisaEvidence(),
                     "local-buddy/users/" + userId + "/traveler-evisa"
             ));
@@ -85,7 +85,7 @@ public class TouristProfileService {
             profile.setEVisaExpiryDate(request.getEVisaExpiryDate());
         }
         if (request.getEVisaEvidence() != null) {
-            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+            profile.setEVisaEvidenceUrl(cloudinaryService.uploadBase64EvidenceIfNeeded(
                     request.getEVisaEvidence(),
                     "local-buddy/users/" + userId + "/traveler-evisa"
             ));

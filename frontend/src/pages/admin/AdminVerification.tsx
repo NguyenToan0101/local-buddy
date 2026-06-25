@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminService } from '../../services/api';
+import { isPdfEvidence } from '../../utils/evisaEvidence';
 
 interface VerificationRecord {
   id: string;
@@ -90,11 +91,27 @@ const StatusPill = ({ status }: { status: VerificationRecord['status'] }) => {
   );
 };
 
-const EvidenceImage = ({ src, alt, ratio = 'aspect-[4/3]' }: { src: string; alt: string; ratio?: string }) => (
-  <div className={`${ratio} overflow-hidden rounded-3xl border border-admin bg-admin-surface group`}>
-    <img src={src} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt={alt} />
-  </div>
-);
+const EvidenceImage = ({ src, alt, ratio = 'aspect-[4/3]' }: { src: string; alt: string; ratio?: string }) => {
+  if (isPdfEvidence(src)) {
+    return (
+      <a
+        href={src}
+        target="_blank"
+        rel="noreferrer"
+        className={`${ratio} flex flex-col items-center justify-center gap-3 rounded-3xl border border-admin bg-admin-surface text-admin-muted transition-colors hover:text-indigo-500`}
+      >
+        <FileText size={38} />
+        <span className="text-[10px] font-black uppercase tracking-widest">Open PDF evidence</span>
+      </a>
+    );
+  }
+
+  return (
+    <div className={`${ratio} overflow-hidden rounded-3xl border border-admin bg-admin-surface group`}>
+      <img src={src} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt={alt} />
+    </div>
+  );
+};
 
 const AdminVerification: React.FC = () => {
   const navigate = useNavigate();
@@ -153,7 +170,7 @@ const AdminVerification: React.FC = () => {
   const checklistFor = (record: VerificationRecord) =>
     record.type === 'Traveller'
       ? [
-          { label: 'E-visa evidence image', passed: Boolean(record.docs.front) },
+          { label: 'E-visa evidence file', passed: Boolean(record.docs.front) },
           { label: 'E-visa number', passed: Boolean(record.eVisaNumber) },
           { label: 'Issuing country', passed: Boolean(record.eVisaCountry) },
           { label: 'Expiry date', passed: Boolean(record.eVisaExpiryDate) },

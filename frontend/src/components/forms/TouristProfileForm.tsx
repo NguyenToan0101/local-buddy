@@ -11,6 +11,12 @@ import type {
     TouristProfileRequest,
     TouristProfileResponse
 } from '../../types/tourist-profile';
+import {
+    EVISA_EVIDENCE_ACCEPT,
+    EVISA_EVIDENCE_MAX_BYTES,
+    isAllowedEVisaEvidenceFile,
+    isPdfEvidence
+} from '../../utils/evisaEvidence';
 
 interface TouristProfileFormProps {
     initialData?: TouristProfileResponse;
@@ -156,10 +162,16 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
 
     const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
+        event.target.value = '';
         if (!file) return;
 
-        if (!file.type.startsWith('image/')) {
-            setErrors(prev => ({ ...prev, eVisaEvidence: 'Evidence must be an image file' }));
+        if (!isAllowedEVisaEvidenceFile(file)) {
+            setErrors(prev => ({ ...prev, eVisaEvidence: 'Evidence must be a PDF, JPG, PNG, or WebP file' }));
+            return;
+        }
+
+        if (file.size > EVISA_EVIDENCE_MAX_BYTES) {
+            setErrors(prev => ({ ...prev, eVisaEvidence: 'Evidence file must be smaller than 10MB' }));
             return;
         }
 
@@ -203,7 +215,7 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
         }
 
         if (hasAnyEVisaDetail && !formData.eVisaEvidence?.trim()) {
-            newErrors.eVisaEvidence = 'Evidence image is required when adding E-visa details';
+            newErrors.eVisaEvidence = 'Evidence file is required when adding E-visa details';
         }
 
         setErrors(newErrors);
@@ -406,14 +418,20 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
 
                 <div>
                     <label className="block text-sm font-medium text-secondary mb-2">
-                        Evidence Image
+                        Evidence File
                     </label>
                     <button
                         type="button"
                         onClick={() => evidenceInputRef.current?.click()}
                         className={`w-full min-h-[220px] rounded-2xl border border-dashed transition-all overflow-hidden bg-surface hover:bg-gray-50 ${errors.eVisaEvidence ? 'border-red-300' : 'border-gray-200'}`}
                     >
-                        {formData.eVisaEvidence ? (
+                        {formData.eVisaEvidence && isPdfEvidence(formData.eVisaEvidence) ? (
+                            <span className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-secondary/60">
+                                <FileText size={34} />
+                                <span className="text-xs font-black uppercase tracking-widest">PDF evidence selected</span>
+                                <span className="text-[10px] font-bold text-secondary/35">Click to replace</span>
+                            </span>
+                        ) : formData.eVisaEvidence ? (
                             <img
                                 src={formData.eVisaEvidence}
                                 alt="E-visa evidence"
@@ -422,21 +440,21 @@ const TouristProfileForm: React.FC<TouristProfileFormProps> = ({
                         ) : (
                             <span className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-secondary/35">
                                 <Upload size={26} />
-                                <span className="text-xs font-black uppercase tracking-widest">Add evidence image</span>
+                                <span className="text-xs font-black uppercase tracking-widest">Add evidence file</span>
                             </span>
                         )}
                     </button>
                     <input
                         ref={evidenceInputRef}
                         type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        accept={EVISA_EVIDENCE_ACCEPT}
                         className="hidden"
                         onChange={handleEvidenceUpload}
                     />
                     <div className="mt-3 flex items-center justify-between gap-3">
                         <p className="text-xs font-medium text-secondary/45 flex items-center gap-1.5">
                             <FileText size={13} />
-                            Screenshot or photo of the E-visa approval page.
+                            PDF, screenshot, or photo of the E-visa approval page. Maximum 10MB.
                         </p>
                         {formData.eVisaEvidence && (
                             <button
