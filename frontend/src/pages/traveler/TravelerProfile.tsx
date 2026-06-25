@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, MapPin, Globe, Heart, Edit3, ChevronLeft, Hash, Loader2, Plus, LogOut, Mail, Phone, Calendar, Award, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { User, MapPin, Globe, Heart, Edit3, ChevronLeft, Hash, Loader2, Plus, LogOut, Mail, Phone, Calendar, Award, CheckCircle2, ShieldCheck, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 import { touristProfileService } from '../../services/tourist-profile';
 import type { TouristProfileResponse } from '../../types/tourist-profile';
+import { isPdfEvidence } from '../../utils/evisaEvidence';
 
 const TravelerProfile: React.FC = () => {
    const { user, logout } = useAuth();
@@ -310,7 +311,19 @@ const TravelerProfile: React.FC = () => {
                            </div>
                            {profileData?.eVisaEvidence && (
                               <div className="h-32 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
-                                 <img src={profileData.eVisaEvidence} alt="E-visa evidence" className="h-full w-full object-cover" />
+                                 {isPdfEvidence(profileData.eVisaEvidence) ? (
+                                    <a
+                                       href={profileData.eVisaEvidence}
+                                       target="_blank"
+                                       rel="noreferrer"
+                                       className="flex h-full w-full flex-col items-center justify-center gap-2 text-secondary/50 transition-colors hover:text-primary"
+                                    >
+                                       <FileText size={26} />
+                                       <span className="text-[9px] font-black uppercase tracking-widest">Open PDF</span>
+                                    </a>
+                                 ) : (
+                                    <img src={profileData.eVisaEvidence} alt="E-visa evidence" className="h-full w-full object-cover" />
+                                 )}
                               </div>
                            )}
                         </div>

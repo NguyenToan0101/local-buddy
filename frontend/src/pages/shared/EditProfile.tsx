@@ -8,6 +8,12 @@ import { touristProfileService } from '../../services/tourist-profile';
 import { authService } from '../../services/auth';
 import { COUNTRIES, COMMON_LANGUAGES, COMMON_INTERESTS } from '../../types/tourist-profile';
 import type { TouristProfileRequest, TouristProfileResponse } from '../../types/tourist-profile';
+import {
+  EVISA_EVIDENCE_ACCEPT,
+  EVISA_EVIDENCE_MAX_BYTES,
+  isAllowedEVisaEvidenceFile,
+  isPdfEvidence
+} from '../../utils/evisaEvidence';
 
 // Convert countries array to SmartSelect format
 const nationalities = COUNTRIES.map(country => ({
@@ -122,10 +128,16 @@ const EditProfile: React.FC = () => {
 
   const handleEvidenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('E-visa evidence must be an image file.');
+    if (!isAllowedEVisaEvidenceFile(file)) {
+      alert('E-visa evidence must be a PDF, JPG, PNG, or WebP file.');
+      return;
+    }
+
+    if (file.size > EVISA_EVIDENCE_MAX_BYTES) {
+      alert('E-visa evidence must be smaller than 10MB.');
       return;
     }
 
@@ -377,14 +389,20 @@ const EditProfile: React.FC = () => {
 
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-secondary/40 uppercase tracking-[0.2em] ml-4 flex items-center gap-2">
-                    <FileText size={12} className="text-primary" /> Evidence Image
+                    <FileText size={12} className="text-primary" /> Evidence File
                   </label>
                   <button
                     type="button"
                     onClick={() => evidenceInputRef.current?.click()}
                     className="relative flex min-h-[220px] w-full overflow-hidden rounded-[32px] border-2 border-dashed border-slate-100 bg-surface-dark transition-all hover:border-primary/20 hover:bg-white"
                   >
-                    {formData.eVisaEvidence ? (
+                    {formData.eVisaEvidence && isPdfEvidence(formData.eVisaEvidence) ? (
+                      <span className="flex min-h-[220px] w-full flex-col items-center justify-center gap-3 text-secondary/40">
+                        <FileText size={34} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">PDF evidence selected</span>
+                        <span className="text-[10px] font-bold text-secondary/30">Click to replace</span>
+                      </span>
+                    ) : formData.eVisaEvidence ? (
                       <img src={formData.eVisaEvidence} alt="E-visa evidence" className="h-full max-h-[320px] w-full object-cover" />
                     ) : (
                       <span className="flex min-h-[220px] w-full flex-col items-center justify-center gap-3 text-secondary/25">
@@ -398,11 +416,11 @@ const EditProfile: React.FC = () => {
                     ref={evidenceInputRef}
                     onChange={handleEvidenceFileChange}
                     className="hidden"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    accept={EVISA_EVIDENCE_ACCEPT}
                   />
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-bold text-secondary/35">
-                      Upload a screenshot or photo of the E-visa approval page.
+                      Upload a PDF, screenshot, or photo of the E-visa approval page. Maximum 10MB.
                     </p>
                     {formData.eVisaEvidence && (
                       <button

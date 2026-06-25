@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { adminService } from '../../services/api';
+import { isPdfEvidence } from '../../utils/evisaEvidence';
 
 interface VerificationRecord {
   id: string;
@@ -125,13 +126,25 @@ const EvidenceFrame = ({
   <div className="space-y-3">
     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-admin-muted">{label}</p>
     <div className={`${ratio} ${compact ? 'max-h-[280px] max-w-xl' : ''} overflow-hidden rounded-xl border border-admin bg-admin-surface`}>
-      <button type="button" onClick={() => onPreview?.(src, label)} className="group relative h-full w-full cursor-zoom-in">
-        <img src={src} alt={label} className="h-full w-full object-contain" />
-        <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-white opacity-0 transition-opacity group-hover:opacity-100">
-          <ZoomIn size={13} />
-          View
-        </span>
-      </button>
+      {isPdfEvidence(src) ? (
+        <a
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          className="flex h-full w-full flex-col items-center justify-center gap-3 text-admin-muted transition-colors hover:text-indigo-500"
+        >
+          <FileText size={40} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Open PDF evidence</span>
+        </a>
+      ) : (
+        <button type="button" onClick={() => onPreview?.(src, label)} className="group relative h-full w-full cursor-zoom-in">
+          <img src={src} alt={label} className="h-full w-full object-contain" />
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <ZoomIn size={13} />
+            View
+          </span>
+        </button>
+      )}
     </div>
   </div>
 );
@@ -181,7 +194,7 @@ const AdminVerificationDetail: React.FC = () => {
     if (!record) return [];
     return record.type === 'Traveller'
       ? [
-          { label: 'E-visa evidence image', passed: Boolean(record.docs.front) },
+          { label: 'E-visa evidence file', passed: Boolean(record.docs.front) },
           { label: 'E-visa number', passed: Boolean(record.eVisaNumber) },
           { label: 'Issuing country', passed: Boolean(record.eVisaCountry) },
           { label: 'Expiry date', passed: Boolean(record.eVisaExpiryDate) },
@@ -345,7 +358,7 @@ const AdminVerificationDetail: React.FC = () => {
                   <div>
                     <h2 className="text-xl font-black text-admin-main">Traveller Visa Dossier</h2>
                     <p className="mt-1 text-sm font-bold text-admin-muted">
-                      One evidence image is enough here, so the review focuses on visa fields and expiry.
+                      One evidence file is enough here, so the review focuses on visa fields and expiry.
                     </p>
                   </div>
 
