@@ -113,7 +113,7 @@ const BuddyProfile: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Biometric Face Match: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
+                <span>Timed Evidence Review: {isVerified ? 'COMPLETED' : 'PENDING'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
@@ -238,7 +238,7 @@ const BuddyProfile: React.FC = () => {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-2xl font-black text-secondary tracking-tight">{buddy.name}</h1>
                 {isVerified ? (
-                  <span className="p-1 bg-emerald-500/10 text-emerald-600 rounded-lg border border-emerald-500/15" title="Biometrically Verified">
+                  <span className="p-1 bg-emerald-500/10 text-emerald-600 rounded-lg border border-emerald-500/15" title="Identity Verified">
                     <Shield size={12} className="fill-current" />
                   </span>
                 ) : (

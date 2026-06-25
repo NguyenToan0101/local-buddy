@@ -182,23 +182,13 @@ public class AdminController {
                 .eVisaNumber(touristProfile != null ? touristProfile.getEVisaNumber() : null)
                 .eVisaCountry(touristProfile != null ? touristProfile.getEVisaCountry() : null)
                 .eVisaExpiryDate(touristProfile != null ? touristProfile.getEVisaExpiryDate() : null)
-                .extractedFullName(profile != null ? profile.getExtractedFullName() : null)
-                .extractedIdNumber(profile != null ? profile.getExtractedIdNumber() : null)
-                .extractedDateOfBirth(profile != null ? profile.getExtractedDateOfBirth() : null)
-                .ocrScore(profile != null ? profile.getOcrScore() : null)
-                .faceMatchScore(profile != null ? profile.getFaceMatchScore() : null)
-                .livenessScore(profile != null ? profile.getLivenessScore() : null)
                 .verificationScore(profile != null ? profile.getVerificationScore() : null)
                 .rejectionReason(profile != null ? profile.getRejectionReason() : null)
                 .autoVerificationMessage(profile != null ? profile.getAutoVerificationMessage() : null)
-                .qualityScore(profile != null ? profile.getQualityScore() : null)
-                .antiSpoofScore(profile != null ? profile.getAntiSpoofScore() : null)
                 .riskScore(profile != null ? profile.getRiskScore() : null)
                 .riskReason(profile != null ? profile.getRiskReason() : null)
                 .duplicateDetected(profile != null ? profile.getDuplicateDetected() : null)
                 .duplicateUserId(profile != null ? profile.getDuplicateUserId() : null)
-                .livenessDetails(profile != null ? profile.getLivenessDetails() : null)
-                .antiSpoofDetails(profile != null ? profile.getAntiSpoofDetails() : null)
                 .build();
     }
 

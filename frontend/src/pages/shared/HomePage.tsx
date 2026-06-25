@@ -217,7 +217,7 @@ const HomePage: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <h4 className="text-xs font-black text-secondary tracking-tight uppercase leading-none">Safety Promise</h4>
-                <p className="text-[10px] text-secondary/50 font-bold leading-normal mt-1 truncate">OCR verify & face scans matching.</p>
+                <p className="text-[10px] text-secondary/50 font-bold leading-normal mt-1 truncate">Timed ID review with required evidence.</p>
               </div>
             </div>
             <button
@@ -365,7 +365,7 @@ const HomePage: React.FC = () => {
             </div>
             <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
               {[
-                { title: 'Biometric Verification', desc: 'Local Buddies submit biometric selfies matched against official government documents.' },
+                { title: 'Identity Review', desc: 'Local Buddies submit identity evidence and complete automatic verification before hosting.' },
                 { title: 'Meet Publicly', desc: 'Always make your first meetup in a crowded public place like cafes or hotel lobbies.' },
                 { title: 'Live Location Sharing', desc: 'Share location tracking links directly from booking screens to friends or family.' },
               ].map((item, i) => (

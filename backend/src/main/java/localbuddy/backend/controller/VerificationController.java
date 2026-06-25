@@ -2,7 +2,6 @@ package localbuddy.backend.controller;
 
 import localbuddy.backend.dto.BuddyProfileDto;
 import localbuddy.backend.service.BuddyProfileService;
-import localbuddy.backend.service.verification.AiVerificationClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +21,14 @@ import java.util.UUID;
 public class VerificationController {
 
     private final BuddyProfileService buddyProfileService;
-    private final AiVerificationClient aiVerificationClient;
 
     @GetMapping("/ai-health")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAiHealth() {
-        return ResponseEntity.ok(java.util.Map.of("healthy", aiVerificationClient.isHealthy()));
+        return ResponseEntity.ok(java.util.Map.of(
+                "healthy", true,
+                "mode", "timed_auto_approve"
+        ));
     }
 
     @GetMapping("/{userId}/result")

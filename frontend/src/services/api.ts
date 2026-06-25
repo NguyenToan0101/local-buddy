@@ -103,21 +103,12 @@ export interface Buddy {
   idCardBack?: string;
   selfieUrl?: string;
   verificationStatus?: 'verified' | 'pending' | 'unverified' | 'processing' | 'manual_review' | 'rejected' | 'auto_approved' | 'auto_rejected' | 'manual_approved' | 'manual_rejected';
-  extractedFullName?: string;
-  extractedIdNumber?: string;
-  extractedDateOfBirth?: string;
-  faceMatchScore?: number;
-  livenessScore?: number;
   verificationScore?: number;
   rejectionReason?: string;
   autoVerificationMessage?: string;
-  qualityScore?: number;
-  antiSpoofScore?: number;
   riskScore?: number;
   riskReason?: string;
   duplicateDetected?: boolean;
-  livenessDetails?: string;
-  antiSpoofDetails?: string;
 }
 
 export interface PageResponse<T> {
@@ -270,7 +261,7 @@ export const buddyService = {
       body: formData,
     });
     if (!response.ok) {
-      throw new Error('Failed to upload liveness video');
+      throw new Error('Failed to upload selfie video');
     }
     return await response.json() as Buddy;
   },

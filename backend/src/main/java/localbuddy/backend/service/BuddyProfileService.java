@@ -28,12 +28,17 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class BuddyProfileService {
+    private static final int MIN_BUDDY_AGE = 18;
+    private static final int MAX_BUDDY_AGE = 100;
+    private static final BigDecimal MIN_HOURLY_RATE = BigDecimal.valueOf(5);
+    private static final BigDecimal MAX_HOURLY_RATE = BigDecimal.valueOf(500);
 
     private final BuddyProfileRepository buddyProfileRepository;
     private final UserRepository userRepository;
@@ -74,24 +79,43 @@ public class BuddyProfileService {
         userRepository.save(user);
 
         // 2. Update Buddy specific details
-        if (dto.getAge() != null) buddyProfile.setAge(dto.getAge().shortValue());
+        if (dto.getAge() != null) {
+            validateAge(dto.getAge());
+            buddyProfile.setAge(dto.getAge().shortValue());
+        }
         if (dto.getLocation() != null) buddyProfile.setLocation(dto.getLocation());
-        if (dto.getPrice() != null) buddyProfile.setHourlyRate(dto.getPrice());
+        if (dto.getPrice() != null) {
+            validateHourlyRate(dto.getPrice());
+            buddyProfile.setHourlyRate(dto.getPrice());
+        }
         if (dto.getDescription() != null) buddyProfile.setBio(dto.getDescription());
         if (dto.getLanguages() != null) buddyProfile.setLanguages(dto.getLanguages());
         if (dto.getTags() != null) buddyProfile.setTags(dto.getTags());
         if (dto.getInterests() != null) buddyProfile.setInterests(dto.getInterests());
+        boolean verificationMediaChanged = false;
         if (dto.getIdCardFront() != null) {
-            buddyProfile.setIdCardFrontUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+            String idCardFrontUrl = cloudinaryService.uploadBase64ImageIfNeeded(
                     dto.getIdCardFront(),
                     "local-buddy/users/" + userId + "/verification"
-            ));
+            );
+            if (!Objects.equals(idCardFrontUrl, buddyProfile.getIdCardFrontUrl())) {
+                buddyProfile.setIdCardFrontUrl(idCardFrontUrl);
+                verificationMediaChanged = true;
+            }
         }
         if (dto.getIdCardBack() != null) {
-            buddyProfile.setIdCardBackUrl(cloudinaryService.uploadBase64ImageIfNeeded(
+            String idCardBackUrl = cloudinaryService.uploadBase64ImageIfNeeded(
                     dto.getIdCardBack(),
                     "local-buddy/users/" + userId + "/verification"
-            ));
+            );
+            if (!Objects.equals(idCardBackUrl, buddyProfile.getIdCardBackUrl())) {
+                buddyProfile.setIdCardBackUrl(idCardBackUrl);
+                verificationMediaChanged = true;
+            }
+        }
+
+        if (!currentUserAdmin && verificationMediaChanged) {
+            resetVerificationForUpdatedMedia(buddyProfile);
         }
 
         if (currentUserAdmin && dto.getVerificationStatus() != null) {
@@ -99,8 +123,18 @@ public class BuddyProfileService {
                 buddyProfile.setVerificationStatus(normalizeManualStatus(dto.getVerificationStatus()));
             } catch (Exception ignored) {}
         }
+
+        boolean shouldQueueVerification = !currentUserAdmin && shouldStartVerificationOnProfileUpdate(buddyProfile);
+        if (shouldQueueVerification) {
+            buddyProfile.setVerificationStatus(VerificationStatus.PROCESSING);
+            buddyProfile.setAutoVerificationMessage(verificationProcessingService.queuedMessage());
+        }
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+
+        if (shouldQueueVerification) {
+            scheduleAutoVerificationAfterCommit(userId);
+        }
 
         return mapToDto(savedProfile, user);
     }
@@ -136,15 +170,9 @@ public class BuddyProfileService {
         } else {
             throw new IllegalArgumentException("ID card side must be front or back.");
         }
-        buddyProfile.setVerificationStatus(hasRequiredVerificationMedia(buddyProfile)
-                ? VerificationStatus.PROCESSING
-                : VerificationStatus.PENDING);
-        buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
-                ? "Verification queued for automatic processing."
-                : "Checking uploaded document quality...");
+        resetVerificationForUpdatedMedia(buddyProfile);
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
-        scheduleAutoVerificationAfterCommit(userId);
         return mapToDto(savedProfile, savedProfile.getUser());
     }
 
@@ -162,15 +190,9 @@ public class BuddyProfileService {
                 ? cloudinaryService.uploadVideo(file, "local-buddy/users/" + userId + "/verification")
                 : cloudinaryService.uploadImage(file, "local-buddy/users/" + userId + "/verification");
         buddyProfile.setSelfieUrl(selfieUrl);
-        buddyProfile.setVerificationStatus(hasRequiredVerificationMedia(buddyProfile)
-                ? VerificationStatus.PROCESSING
-                : VerificationStatus.PENDING);
-        buddyProfile.setAutoVerificationMessage(hasRequiredVerificationMedia(buddyProfile)
-                ? "Verification queued for automatic processing."
-                : "Checking liveness video quality...");
+        resetVerificationForUpdatedMedia(buddyProfile);
         buddyProfile.setUpdatedAt(OffsetDateTime.now());
         BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
-        scheduleAutoVerificationAfterCommit(userId);
         return mapToDto(savedProfile, savedProfile.getUser());
     }
 
@@ -183,14 +205,17 @@ public class BuddyProfileService {
                 .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
         if (hasRequiredVerificationMedia(buddyProfile)) {
             buddyProfile.setVerificationStatus(VerificationStatus.PROCESSING);
-            buddyProfile.setAutoVerificationMessage("Verification queued for automatic processing.");
+            buddyProfile.setAutoVerificationMessage(verificationProcessingService.queuedMessage());
             buddyProfile.setUpdatedAt(OffsetDateTime.now());
             BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
             scheduleAutoVerificationAfterCommit(userId);
             return mapToDto(savedProfile, savedProfile.getUser());
         }
-        BuddyProfile processedProfile = verificationProcessingService.process(userId);
-        return mapToDto(processedProfile, processedProfile.getUser());
+        buddyProfile.setVerificationStatus(VerificationStatus.PENDING);
+        buddyProfile.setAutoVerificationMessage("Front ID, back ID, and selfie video are required before automatic verification.");
+        buddyProfile.setUpdatedAt(OffsetDateTime.now());
+        BuddyProfile savedProfile = buddyProfileRepository.save(buddyProfile);
+        return mapToDto(savedProfile, savedProfile.getUser());
     }
 
     @Transactional(readOnly = true)
@@ -202,21 +227,12 @@ public class BuddyProfileService {
                 .orElseThrow(() -> new IllegalArgumentException("Buddy profile not found for user: " + userId));
         return VerificationResultDto.builder()
                 .status(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "pending")
-                .extractedFullName(profile.getExtractedFullName())
-                .extractedIdNumber(profile.getExtractedIdNumber())
-                .extractedDateOfBirth(profile.getExtractedDateOfBirth())
-                .faceMatchScore(profile.getFaceMatchScore())
-                .livenessScore(profile.getLivenessScore())
                 .verificationScore(profile.getVerificationScore())
                 .rejectionReason(profile.getRejectionReason())
                 .autoVerificationMessage(profile.getAutoVerificationMessage())
-                .qualityScore(profile.getQualityScore())
-                .antiSpoofScore(profile.getAntiSpoofScore())
                 .riskScore(profile.getRiskScore())
                 .riskReason(profile.getRiskReason())
                 .duplicateDetected(profile.getDuplicateDetected())
-                .livenessDetails(profile.getLivenessDetails())
-                .antiSpoofDetails(profile.getAntiSpoofDetails())
                 .build();
     }
 
@@ -333,21 +349,12 @@ public class BuddyProfileService {
                 .idCardBack(profile.getIdCardBackUrl())
                 .selfieUrl(profile.getSelfieUrl())
                 .verificationStatus(profile.getVerificationStatus() != null ? profile.getVerificationStatus().name().toLowerCase() : "unverified")
-                .extractedFullName(profile.getExtractedFullName())
-                .extractedIdNumber(profile.getExtractedIdNumber())
-                .extractedDateOfBirth(profile.getExtractedDateOfBirth())
-                .faceMatchScore(profile.getFaceMatchScore())
-                .livenessScore(profile.getLivenessScore())
                 .verificationScore(profile.getVerificationScore())
                 .rejectionReason(profile.getRejectionReason())
                 .autoVerificationMessage(profile.getAutoVerificationMessage())
-                .qualityScore(profile.getQualityScore())
-                .antiSpoofScore(profile.getAntiSpoofScore())
                 .riskScore(profile.getRiskScore())
                 .riskReason(profile.getRiskReason())
                 .duplicateDetected(profile.getDuplicateDetected())
-                .livenessDetails(profile.getLivenessDetails())
-                .antiSpoofDetails(profile.getAntiSpoofDetails())
                 .build();
     }
 
@@ -362,6 +369,18 @@ public class BuddyProfileService {
         };
     }
 
+    private void validateAge(Integer age) {
+        if (age < MIN_BUDDY_AGE || age > MAX_BUDDY_AGE) {
+            throw new IllegalArgumentException("Buddy age must be between 18 and 100.");
+        }
+    }
+
+    private void validateHourlyRate(BigDecimal hourlyRate) {
+        if (hourlyRate.compareTo(MIN_HOURLY_RATE) < 0 || hourlyRate.compareTo(MAX_HOURLY_RATE) > 0) {
+            throw new IllegalArgumentException("Hourly rate must be between $5 and $500.");
+        }
+    }
+
     private boolean isApprovedStatus(VerificationStatus status) {
         return status == VerificationStatus.VERIFIED
                 || status == VerificationStatus.AUTO_APPROVED
@@ -372,6 +391,26 @@ public class BuddyProfileService {
         return StringUtils.hasText(profile.getIdCardFrontUrl())
                 && StringUtils.hasText(profile.getIdCardBackUrl())
                 && isVideoUrl(profile.getSelfieUrl());
+    }
+
+    private boolean shouldStartVerificationOnProfileUpdate(BuddyProfile profile) {
+        return hasRequiredVerificationMedia(profile)
+                && (profile.getVerificationStatus() == null || profile.getVerificationStatus() == VerificationStatus.PENDING);
+    }
+
+    private void resetVerificationForUpdatedMedia(BuddyProfile profile) {
+        profile.setVerificationStatus(VerificationStatus.PENDING);
+        profile.setAutoVerificationMessage(hasRequiredVerificationMedia(profile)
+                ? "Verification files uploaded. Save your profile to start the 10-minute automatic verification."
+                : "Front ID, back ID, and selfie video are required before automatic verification can start.");
+        profile.setRiskScore(null);
+        profile.setRiskReason(null);
+        profile.setVerificationScore(null);
+        profile.setRejectionReason(null);
+        profile.setDuplicateDetected(null);
+        profile.setDuplicateUserId(null);
+        profile.setVerifiedAt(null);
+        profile.setProcessedAt(null);
     }
 
     private void scheduleAutoVerificationAfterCommit(UUID userId) {
