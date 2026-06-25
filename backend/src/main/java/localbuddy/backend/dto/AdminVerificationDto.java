@@ -22,23 +22,13 @@ public class AdminVerificationDto {
     private String eVisaNumber;
     private String eVisaCountry;
     private String eVisaExpiryDate;
-    private String extractedFullName;
-    private String extractedIdNumber;
-    private String extractedDateOfBirth;
-    private Double ocrScore;
-    private Double faceMatchScore;
-    private Double livenessScore;
     private Double verificationScore;
     private String rejectionReason;
     private String autoVerificationMessage;
-    private Double qualityScore;
-    private Double antiSpoofScore;
     private Double riskScore;
     private String riskReason;
     private Boolean duplicateDetected;
     private UUID duplicateUserId;
-    private String livenessDetails;
-    private String antiSpoofDetails;
 
     @Getter
     @Builder

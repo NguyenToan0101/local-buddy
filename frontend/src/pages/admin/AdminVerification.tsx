@@ -37,21 +37,13 @@ interface VerificationRecord {
   eVisaNumber?: string | null;
   eVisaCountry?: string | null;
   eVisaExpiryDate?: string | null;
-  extractedFullName?: string | null;
-  extractedIdNumber?: string | null;
-  extractedDateOfBirth?: string | null;
-  faceMatchScore?: number | null;
-  livenessScore?: number | null;
   verificationScore?: number | null;
-  qualityScore?: number | null;
-  antiSpoofScore?: number | null;
   riskScore?: number | null;
   riskReason?: string | null;
   duplicateDetected?: boolean | null;
   duplicateUserId?: string | null;
   rejectionReason?: string | null;
   autoVerificationMessage?: string | null;
-  ocrScore?: number | null;
   age?: number;
 }
 
@@ -169,24 +161,8 @@ const AdminVerification: React.FC = () => {
       : [
           { label: 'ID front image', passed: Boolean(record.docs.front) },
           { label: 'ID back image', passed: Boolean(record.docs.back) },
-          { label: 'Selfie or liveness video', passed: Boolean(record.docs.selfie) },
+          { label: 'Selfie verification video', passed: Boolean(record.docs.selfie) },
         ];
-
-  const calculateAgeFromOcrDob = (dobStr?: string | null): number | null => {
-    if (!dobStr) return null;
-    const parts = dobStr.split(/[/-]/);
-    if (parts.length !== 3) return null;
-    const birthYear = parts[2].length === 4 ? parseInt(parts[2], 10) : parts[0].length === 4 ? parseInt(parts[0], 10) : 0;
-    return birthYear > 0 ? new Date().getFullYear() - birthYear : null;
-  };
-
-  const selectedOcrAge = selectedUser ? calculateAgeFromOcrDob(selectedUser.extractedDateOfBirth) : null;
-  const nameMismatch = Boolean(
-    selectedUser?.extractedFullName &&
-      selectedUser?.name &&
-      selectedUser.name.trim().toLowerCase() !== selectedUser.extractedFullName.trim().toLowerCase()
-  );
-  const ageMismatch = selectedOcrAge !== null && selectedUser?.age !== undefined ? Math.abs(selectedOcrAge - selectedUser.age) > 1 : false;
 
   const closeModal = () => {
     setSelectedUser(null);
@@ -510,8 +486,8 @@ const AdminVerification: React.FC = () => {
 
                 <div className="grid grid-cols-1 gap-6">
                   {[
-                    { icon: User, label: 'Official Name', value: selectedUser.name, warning: nameMismatch ? `OCR name mismatch: ${selectedUser.extractedFullName || 'None'}` : null },
-                    { icon: User, label: 'Registered Age', value: selectedUser.age ? `${selectedUser.age} years old` : 'Not provided', warning: ageMismatch ? `DOB suggests ${selectedOcrAge} years old` : null },
+                    { icon: User, label: 'Official Name', value: selectedUser.name },
+                    { icon: User, label: 'Registered Age', value: selectedUser.age ? `${selectedUser.age} years old` : 'Not provided' },
                     { icon: FileText, label: 'Email Address', value: selectedUser.email },
                     { icon: FileText, label: 'Phone Number', value: selectedUser.phone || 'Not provided' },
                     ...(selectedUser.type === 'Traveller'
@@ -524,18 +500,12 @@ const AdminVerification: React.FC = () => {
                     { icon: Calendar, label: 'Joined Platform', value: formatDate(selectedUser.regDate) },
                   ].map((info) => (
                     <div key={info.label} className="flex gap-4">
-                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border ${info.warning ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-admin bg-admin-surface text-admin-muted'}`}>
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-admin bg-admin-surface text-admin-muted">
                         <info.icon size={20} />
                       </div>
                       <div className="flex min-w-0 flex-col justify-center">
                         <p className="mb-1 text-[10px] font-black uppercase tracking-[0.2em] text-admin-muted">{info.label}</p>
-                        <p className={`truncate text-sm font-black ${info.warning ? 'text-rose-500' : 'text-admin-main'}`}>{info.value}</p>
-                        {info.warning && (
-                          <p className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-tight text-rose-500">
-                            <AlertTriangle size={12} />
-                            {info.warning}
-                          </p>
-                        )}
+                        <p className="truncate text-sm font-black text-admin-main">{info.value}</p>
                       </div>
                     </div>
                   ))}
@@ -556,14 +526,10 @@ const AdminVerification: React.FC = () => {
 
                 {selectedUser.type === 'Buddy' && (
                   <div className="space-y-4 rounded-[32px] border border-admin bg-admin-surface p-6">
-                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-admin-main">Auto Verification</h4>
-                    <div className="grid grid-cols-3 gap-3">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-admin-main">Automatic Verification</h4>
+                    <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: 'Face', value: selectedUser.faceMatchScore },
-                        { label: 'Liveness', value: selectedUser.livenessScore },
-                        { label: 'Quality', value: selectedUser.qualityScore },
-                        { label: 'Anti-spoof', value: selectedUser.antiSpoofScore == null ? null : 100 - selectedUser.antiSpoofScore },
-                        { label: 'OCR', value: selectedUser.ocrScore },
+                        { label: 'Score', value: selectedUser.verificationScore },
                         { label: 'Risk', value: selectedUser.riskScore },
                       ].map((metric) => (
                         <div key={metric.label} className="rounded-2xl border border-admin admin-sidebar-bg p-4">
@@ -573,9 +539,6 @@ const AdminVerification: React.FC = () => {
                       ))}
                     </div>
                     <div className="space-y-2 text-xs font-bold text-admin-muted">
-                      <p className={nameMismatch ? 'text-rose-500' : ''}>OCR name: <span className={nameMismatch ? 'font-black text-rose-600' : 'text-admin-main'}>{selectedUser.extractedFullName || '-'}</span></p>
-                      <p>ID number: <span className="text-admin-main">{selectedUser.extractedIdNumber || '-'}</span></p>
-                      <p className={ageMismatch ? 'text-rose-500' : ''}>DOB: <span className={ageMismatch ? 'font-black text-rose-600' : 'text-admin-main'}>{selectedUser.extractedDateOfBirth || '-'}</span></p>
                       {selectedUser.autoVerificationMessage && <p>{selectedUser.autoVerificationMessage}</p>}
                       {selectedUser.riskReason && <p>{selectedUser.riskReason}</p>}
                       {selectedUser.duplicateDetected && (

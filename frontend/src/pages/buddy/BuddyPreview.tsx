@@ -145,7 +145,7 @@ const BuddyPreview: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />
-                <span>Biometric Face Match: {isVerified ? `${buddy.faceMatchScore ? Math.round(buddy.faceMatchScore * 100) : 98}% match` : 'pending'}</span>
+                <span>Timed Evidence Review: {isVerified ? 'COMPLETED' : 'PENDING'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={12} className="text-emerald-600" />

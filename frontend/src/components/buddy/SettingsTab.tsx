@@ -12,9 +12,16 @@ import { buddyService, type Buddy } from '../../services/api';
 import SmartSelect from '../ui/SmartSelect';
 import TagSelector from '../registration/TagSelector';
 import { COMMON_LANGUAGES, COMMON_INTERESTS } from '../../types/tourist-profile';
+import VerificationCaptureModal, { type VerificationCaptureMode } from '../features/VerificationCaptureModal';
 
 const languageOptions = COMMON_LANGUAGES.map(lang => ({ label: lang, value: lang }));
 const interestOptions = COMMON_INTERESTS.map(interest => ({ label: interest, value: interest }));
+const MIN_BUDDY_AGE = 18;
+const MAX_BUDDY_AGE = 100;
+const MIN_HOURLY_RATE = 5;
+const MAX_HOURLY_RATE = 500;
+const VERIFICATION_POLL_INTERVAL_MS = 30000;
+const VERIFICATION_POLL_WINDOW_MS = 11 * 60 * 1000;
 
 const SettingsTab: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
@@ -31,6 +38,7 @@ const SettingsTab: React.FC = () => {
   const [buddyData, setBuddyData] = useState<Partial<Buddy>>({});
   const [selfiePreviewIsVideo, setSelfiePreviewIsVideo] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'rates' | 'verification'>('profile');
+  const [captureMode, setCaptureMode] = useState<VerificationCaptureMode | null>(null);
 
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +95,7 @@ const SettingsTab: React.FC = () => {
         } catch (error) {
           console.error("Error polling verification:", error);
         }
-      }, 2000);
+      }, VERIFICATION_POLL_INTERVAL_MS);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -98,14 +106,21 @@ const SettingsTab: React.FC = () => {
     setIsPolling(true);
     setTimeout(() => {
       setIsPolling(false);
-    }, 12000);
+    }, VERIFICATION_POLL_WINDOW_MS);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'age' || name === 'price') {
+      setBuddyData(prev => ({
+        ...prev,
+        [name]: value === '' ? undefined : (parseFloat(value) || 0)
+      }));
+      return;
+    }
     setBuddyData(prev => ({ 
       ...prev, 
-      [name]: name === 'age' || name === 'price' ? (parseFloat(value) || 0) : value 
+      [name]: value
     }));
   };
 
@@ -113,26 +128,34 @@ const SettingsTab: React.FC = () => {
     setBuddyData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
+  const uploadIdCardFile = async (side: 'front' | 'back', file: File) => {
     if (isVerifiedStatus(buddyData.verificationStatus)) return;
+    const field = side === 'front' ? 'idCardFront' : 'idCardBack';
+    const previousValue = buddyData[field];
+    if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
+      URL.revokeObjectURL(previousValue);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setBuddyData(prev => ({
+      ...prev,
+      [field]: previewUrl,
+      verificationStatus: 'pending',
+      autoVerificationMessage: 'Verification files uploaded. Save settings to start the 10-minute automatic verification.'
+    }));
+    try {
+      const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+    } catch (error) {
+      console.error("Error uploading ID card:", error);
+      setBuddyData(prev => ({ ...prev, [field]: previousValue }));
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
     const file = e.target.files?.[0];
     if (file) {
-      const field = side === 'front' ? 'idCardFront' : 'idCardBack';
-      const previousValue = buddyData[field];
-      if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
-        URL.revokeObjectURL(previousValue);
-      }
-      const previewUrl = URL.createObjectURL(file);
-      setBuddyData(prev => ({ ...prev, [field]: previewUrl, verificationStatus: 'processing' }));
-      triggerPolling();
-      try {
-        const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
-        setBuddyData(prev => ({ ...prev, ...updated }));
-        triggerPolling();
-      } catch (error) {
-        console.error("Error uploading ID card:", error);
-        setBuddyData(prev => ({ ...prev, [field]: previousValue }));
-      }
+      await uploadIdCardFile(side, file);
+      e.target.value = '';
     }
   };
 
@@ -155,37 +178,54 @@ const SettingsTab: React.FC = () => {
     }
   };
 
-  const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadSelfieFile = async (file: File) => {
     if (isVerifiedStatus(buddyData.verificationStatus)) return;
+    if (!file.type.startsWith('video/')) {
+      console.error("Verification requires a selfie video file.");
+      return;
+    }
+    const previousValue = buddyData.selfieUrl;
+    if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
+      URL.revokeObjectURL(previousValue);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setSelfiePreviewIsVideo(file.type.startsWith('video/'));
+    setBuddyData(prev => ({
+      ...prev,
+      selfieUrl: previewUrl,
+      verificationStatus: 'pending',
+      autoVerificationMessage: 'Verification files uploaded. Save settings to start the 10-minute automatic verification.'
+    }));
+    try {
+      const updated = await buddyService.uploadSelfie(getBuddyId(), file);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+      setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl) || file.type.startsWith('video/'));
+    } catch (error) {
+      console.error("Error uploading selfie:", error);
+      setBuddyData(prev => ({ ...prev, selfieUrl: previousValue }));
+      setSelfiePreviewIsVideo(isVideoUrl(previousValue));
+    }
+  };
+
+  const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('video/')) {
-        console.error("Liveness verification requires a video file.");
-        return;
-      }
-      const previousValue = buddyData.selfieUrl;
-      if (typeof previousValue === 'string' && previousValue.startsWith('blob:')) {
-        URL.revokeObjectURL(previousValue);
-      }
-      const previewUrl = URL.createObjectURL(file);
-      setSelfiePreviewIsVideo(file.type.startsWith('video/'));
-      setBuddyData(prev => ({ ...prev, selfieUrl: previewUrl, verificationStatus: 'processing' }));
-      triggerPolling();
-      try {
-        const updated = await buddyService.uploadSelfie(getBuddyId(), file);
-        setBuddyData(prev => ({ ...prev, ...updated }));
-        setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl) || file.type.startsWith('video/'));
-        triggerPolling();
-      } catch (error) {
-        console.error("Error uploading selfie:", error);
-        setBuddyData(prev => ({ ...prev, selfieUrl: previousValue }));
-        setSelfiePreviewIsVideo(isVideoUrl(previousValue));
-      }
+      await uploadSelfieFile(file);
+      e.target.value = '';
     }
   };
 
   const handleSave = async () => {
     if (!user) return;
+    if (buddyData.age != null && (buddyData.age < MIN_BUDDY_AGE || buddyData.age > MAX_BUDDY_AGE)) {
+      alert(`Buddy age must be between ${MIN_BUDDY_AGE} and ${MAX_BUDDY_AGE}.`);
+      return;
+    }
+    if (buddyData.price != null && (buddyData.price < MIN_HOURLY_RATE || buddyData.price > MAX_HOURLY_RATE)) {
+      alert(`Hourly rate must be between $${MIN_HOURLY_RATE} and $${MAX_HOURLY_RATE}.`);
+      return;
+    }
+
     setSaving(true);
     const buddyId = getBuddyId();
 
@@ -193,15 +233,21 @@ const SettingsTab: React.FC = () => {
       const { reviews, id, verificationStatus, ...rest } = buddyData;
       const cleanData = { ...rest };
       
-      await buddyService.updateProfile(buddyId, cleanData);
+      const updated = await buddyService.updateProfile(buddyId, cleanData);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+      setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl));
       
       await updateUser({
-        name: buddyData.name,
-        location: buddyData.location,
-        description: buddyData.description,
-        avatar: buddyData.image,
-        verificationStatus: buddyData.verificationStatus,
+        name: updated.name,
+        location: updated.location,
+        description: updated.description,
+        avatar: updated.image,
+        verificationStatus: updated.verificationStatus,
       });
+
+      if (updated.verificationStatus === 'processing') {
+        triggerPolling();
+      }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -227,20 +273,20 @@ const SettingsTab: React.FC = () => {
         };
       case 'processing':
         return {
-          label: 'Processing OCR Audit',
+          label: 'Verification Queued',
           color: 'text-blue-600 border-blue-200/50 bg-blue-500/[0.04]',
           badgeColor: 'bg-blue-500 text-white animate-pulse',
           icon: Clock,
-          desc: 'AI algorithms are checking document OCR values and selfie video liveness.'
+          desc: 'Your files are queued. Verification completes automatically after 10 minutes.'
         };
       case 'manual_review':
       case 'pending':
         return { 
-          label: 'Pending Support Review',
+          label: 'Verification Pending',
           color: 'text-amber-600 border-amber-200/50 bg-amber-500/[0.04]', 
           badgeColor: 'bg-amber-500 text-white animate-pulse',
           icon: Clock,
-          desc: 'OCR scores require manual support review. Verification completes within 24h.'
+          desc: buddyData.autoVerificationMessage || 'Save your profile after uploading ID front, ID back, and selfie video to start automatic verification.'
         };
       case 'rejected':
       case 'auto_rejected':
@@ -383,7 +429,7 @@ const SettingsTab: React.FC = () => {
             <div className="absolute top-[-30px] right-[-30px] opacity-5 pointer-events-none">
               <Shield size={120} />
             </div>
-            <h5 className="text-[9px] font-black uppercase tracking-widest text-primary">Biometric Security</h5>
+            <h5 className="text-[9px] font-black uppercase tracking-widest text-primary">Identity Security</h5>
             <p className="text-white/50 text-[9px] font-bold leading-normal tracking-wide">
               Identification records are processed securely under Platform Trust metrics. Personal ID details are encrypted and never exposed publicly.
             </p>
@@ -418,6 +464,8 @@ const SettingsTab: React.FC = () => {
                   <input 
                     name="age" 
                     type="number" 
+                    min={MIN_BUDDY_AGE}
+                    max={MAX_BUDDY_AGE}
                     value={buddyData.age || ''} 
                     onChange={handleChange} 
                     className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:bg-white" 
@@ -481,6 +529,9 @@ const SettingsTab: React.FC = () => {
                   <input 
                     name="price" 
                     type="number" 
+                    min={MIN_HOURLY_RATE}
+                    max={MAX_HOURLY_RATE}
+                    step="1"
                     value={buddyData.price || ''} 
                     onChange={handleChange} 
                     className="w-full bg-surface border border-gray-100 rounded-xl pl-8 pr-12 py-3.5 font-black text-base text-secondary outline-none focus:ring-2 focus:ring-primary/10 transition-all focus:bg-white" 
@@ -582,31 +633,27 @@ const SettingsTab: React.FC = () => {
                       accept="image/jpeg,image/jpg,image/png,image/webp" 
                     />
                   </div>
-
-                  {/* OCR extracted status */}
-                  {buddyData.idCardFront && buddyData.qualityScore !== undefined && (
-                    <div className="bg-emerald-500/[0.03] p-3 rounded-2xl border border-emerald-500/10 flex items-center justify-between text-[8px] font-black uppercase tracking-wider">
-                      <span className="text-secondary/45">OCR Quality Index</span>
-                      <span className={buddyData.qualityScore >= 70 ? 'text-emerald-600' : 'text-rose-500'}>
-                        {Math.round(buddyData.qualityScore)}%
-                      </span>
+                  {!isVerifiedStatus(buddyData.verificationStatus) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => frontInputRef.current?.click()}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                      >
+                        <Upload size={12} />
+                        Upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCaptureMode({ type: 'id-card', side: 'front' })}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                      >
+                        <Camera size={12} />
+                        Camera
+                      </button>
                     </div>
                   )}
 
-                  {buddyData.idCardFront && buddyData.extractedFullName && (
-                    <div className="bg-surface p-3.5 rounded-2xl border border-gray-50 text-[8px] font-black uppercase tracking-wider text-secondary/45 space-y-1">
-                      <div className="flex justify-between">
-                        <span className="opacity-60">Full Name:</span> 
-                        <span className="text-secondary">{buddyData.extractedFullName}</span>
-                      </div>
-                      {buddyData.extractedIdNumber && (
-                        <div className="flex justify-between">
-                          <span className="opacity-60">ID Number:</span> 
-                          <span className="text-secondary tracking-widest">{buddyData.extractedIdNumber}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* ID Back */}
@@ -645,14 +692,34 @@ const SettingsTab: React.FC = () => {
                       accept="image/jpeg,image/jpg,image/png,image/webp" 
                     />
                   </div>
+                  {!isVerifiedStatus(buddyData.verificationStatus) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => backInputRef.current?.click()}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                      >
+                        <Upload size={12} />
+                        Upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCaptureMode({ type: 'id-card', side: 'back' })}
+                        className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                      >
+                        <Camera size={12} />
+                        Camera
+                      </button>
+                    </div>
+                  )}
                 </div>
 
               </div>
 
-              {/* Selfie video liveness check */}
+              {/* Selfie video evidence */}
               <div className="space-y-2.5 pt-2.5 border-t border-gray-50">
                 <div className="flex justify-between items-baseline ml-1">
-                  <label className="text-[8px] font-black text-secondary/40 uppercase tracking-wider">Liveness Verification Selfie Video</label>
+                  <label className="text-[8px] font-black text-secondary/40 uppercase tracking-wider">Verification Selfie Video</label>
                   {!isVerifiedStatus(buddyData.verificationStatus) && (
                     <span className="text-[8px] text-primary font-bold uppercase tracking-wide">Requires 3s video clip</span>
                   )}
@@ -686,51 +753,27 @@ const SettingsTab: React.FC = () => {
                     accept="video/mp4,video/webm" 
                   />
                 </div>
-
-                {/* Score indicators */}
-                {buddyData.selfieUrl && buddyData.faceMatchScore !== undefined && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                    
-                    {/* Face Match Progress Ring */}
-                    <div className="bg-emerald-500/[0.03] border border-emerald-500/10 rounded-2xl p-4 flex items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <h5 className="text-[9px] font-black text-secondary uppercase tracking-widest">Face Match</h5>
-                        <p className="text-[8px] font-bold text-secondary/40 uppercase">Compared against ID OCR photo</p>
-                      </div>
-                      <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
-                        <svg className="w-11 h-11 transform -rotate-90">
-                          <circle cx="22" cy="22" r="18" stroke="#E5E7EB" strokeWidth="2.5" fill="transparent" />
-                          <circle cx="22" cy="22" r="18" stroke="#10B981" strokeWidth="2.5" fill="transparent" 
-                            strokeDasharray={`${2 * Math.PI * 18}`}
-                            strokeDashoffset={`${2 * Math.PI * 18 * (1 - buddyData.faceMatchScore / 100)}`}
-                          />
-                        </svg>
-                        <span className="absolute text-[9px] font-black text-emerald-600">{Math.round(buddyData.faceMatchScore)}%</span>
-                      </div>
-                    </div>
-
-                    {/* Liveness Spoof Check */}
-                    {buddyData.livenessScore !== undefined && (
-                      <div className="bg-emerald-500/[0.03] border border-emerald-500/10 rounded-2xl p-4 flex items-center justify-between gap-4">
-                        <div className="space-y-0.5">
-                          <h5 className="text-[9px] font-black text-secondary uppercase tracking-widest">Anti-Spoof Check</h5>
-                          <p className="text-[8px] font-bold text-secondary/40 uppercase font-sans">Liveness print matching</p>
-                        </div>
-                        <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
-                          <svg className="w-11 h-11 transform -rotate-90">
-                            <circle cx="22" cy="22" r="18" stroke="#E5E7EB" strokeWidth="2.5" fill="transparent" />
-                            <circle cx="22" cy="22" r="18" stroke="#10B981" strokeWidth="2.5" fill="transparent" 
-                              strokeDasharray={`${2 * Math.PI * 18}`}
-                              strokeDashoffset={`${2 * Math.PI * 18 * (1 - buddyData.livenessScore / 100)}`}
-                            />
-                          </svg>
-                          <span className="absolute text-[9px] font-black text-emerald-600">{Math.round(buddyData.livenessScore)}%</span>
-                        </div>
-                      </div>
-                    )}
-
+                {!isVerifiedStatus(buddyData.verificationStatus) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selfieInputRef.current?.click()}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                    >
+                      <Upload size={12} />
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptureMode({ type: 'selfie-video' })}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                    >
+                      <Camera size={12} />
+                      Record
+                    </button>
                   </div>
                 )}
+
               </div>
 
             </div>
@@ -772,6 +815,12 @@ const SettingsTab: React.FC = () => {
 
       </div>
 
+      <VerificationCaptureModal
+        mode={captureMode}
+        onClose={() => setCaptureMode(null)}
+        onIdCardCaptured={uploadIdCardFile}
+        onSelfieRecorded={uploadSelfieFile}
+      />
     </div>
   );
 };

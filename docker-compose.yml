@@ -9,24 +9,8 @@ services:
   backend:
     build:
       context: ./backend
-    environment:
-      AI_SERVICE_BASE_URL: http://ai-verification-service:8001
+    env_file:
+      - ${BACKEND_ENV_FILE:-/etc/local-buddy/backend.env}
     ports:
       - "8080:8080"
-    restart: unless-stopped
-    depends_on:
-      - ai-verification-service
-
-  ai-verification-service:
-    build:
-      context: ./ai-verification-service
-    environment:
-      ALLOWED_MEDIA_HOSTS: ${ALLOWED_MEDIA_HOSTS:-res.cloudinary.com}
-      MAX_DOWNLOAD_MB: ${MAX_DOWNLOAD_MB:-35}
-      DOWNLOAD_TIMEOUT_SECONDS: ${DOWNLOAD_TIMEOUT_SECONDS:-20}
-      ANTISPOOF_MODEL_PATH: ${ANTISPOOF_MODEL_PATH:-/models/minifasnet_v2.onnx}
-    volumes:
-      - ./ai-verification-service/models:/models:ro
-    expose:
-      - "8001"
     restart: unless-stopped

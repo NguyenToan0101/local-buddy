@@ -1,13 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  User, Camera, Phone, CreditCard, Shield, MapPin, 
-  Sparkles, Languages, Upload, Clock, ArrowRight, ArrowLeft, Check, Compass 
+import {
+  User, Camera, Phone, CreditCard, Shield, MapPin,
+  Sparkles, Languages, Upload, Clock, ArrowRight, ArrowLeft, Check, Compass, ChevronDown
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { useAuth } from '../../context/AuthContext';
 import { buddyService, type Buddy } from '../../services/api';
 import { COMMON_LANGUAGES, COMMON_INTERESTS } from '../../types/tourist-profile';
+import VerificationCaptureModal, { type VerificationCaptureMode } from '../../components/features/VerificationCaptureModal';
+
+const BASE_LOCATION_OPTIONS = [
+  'An Giang, Vietnam',
+  'Bac Ninh, Vietnam',
+  'Ca Mau, Vietnam',
+  'Can Tho, Vietnam',
+  'Cao Bang, Vietnam',
+  'Da Nang, Vietnam',
+  'Dak Lak, Vietnam',
+  'Dien Bien, Vietnam',
+  'Dong Nai, Vietnam',
+  'Dong Thap, Vietnam',
+  'Gia Lai, Vietnam',
+  'Ha Tinh, Vietnam',
+  'Hai Phong, Vietnam',
+  'Hanoi, Vietnam',
+  'Ho Chi Minh City, Vietnam',
+  'Hue, Vietnam',
+  'Hung Yen, Vietnam',
+  'Khanh Hoa, Vietnam',
+  'Lai Chau, Vietnam',
+  'Lam Dong, Vietnam',
+  'Lang Son, Vietnam',
+  'Lao Cai, Vietnam',
+  'Nghe An, Vietnam',
+  'Ninh Binh, Vietnam',
+  'Phu Tho, Vietnam',
+  'Quang Ngai, Vietnam',
+  'Quang Ninh, Vietnam',
+  'Quang Tri, Vietnam',
+  'Son La, Vietnam',
+  'Tay Ninh, Vietnam',
+  'Thai Nguyen, Vietnam',
+  'Thanh Hoa, Vietnam',
+  'Tuyen Quang, Vietnam',
+  'Vinh Long, Vietnam'
+];
+
+const MIN_BUDDY_AGE = 18;
+const MAX_BUDDY_AGE = 100;
+const MIN_HOURLY_RATE = 5;
+const MAX_HOURLY_RATE = 500;
+const VERIFICATION_POLL_INTERVAL_MS = 30000;
+const VERIFICATION_POLL_WINDOW_MS = 11 * 60 * 1000;
 
 const BuddyOnboarding: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -30,6 +75,7 @@ const BuddyOnboarding: React.FC = () => {
   });
 
   const [selfiePreviewIsVideo, setSelfiePreviewIsVideo] = useState(false);
+  const [captureMode, setCaptureMode] = useState<VerificationCaptureMode | null>(null);
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
   const selfieInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +125,7 @@ const BuddyOnboarding: React.FC = () => {
         } catch (error) {
           console.error("Error polling verification status:", error);
         }
-      }, 2000);
+      }, VERIFICATION_POLL_INTERVAL_MS);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -90,15 +136,26 @@ const BuddyOnboarding: React.FC = () => {
     setIsPolling(true);
     setTimeout(() => {
       setIsPolling(false);
-    }, 12000);
+    }, VERIFICATION_POLL_WINDOW_MS);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'age' || name === 'price') {
+      setBuddyData(prev => ({
+        ...prev,
+        [name]: value === '' ? undefined : (parseFloat(value) || 0)
+      }));
+      return;
+    }
     setBuddyData(prev => ({ 
       ...prev, 
-      [name]: name === 'age' || name === 'price' ? (parseFloat(value) || 0) : value 
+      [name]: value
     }));
+  };
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setBuddyData(prev => ({ ...prev, location: e.target.value }));
   };
 
   const handleToggleLanguage = (lang: string) => {
@@ -121,57 +178,87 @@ const BuddyOnboarding: React.FC = () => {
     });
   };
 
+  const uploadIdCardFile = async (side: 'front' | 'back', file: File) => {
+    const field = side === 'front' ? 'idCardFront' : 'idCardBack';
+    const previewUrl = URL.createObjectURL(file);
+    setBuddyData(prev => ({
+      ...prev,
+      [field]: previewUrl,
+      verificationStatus: 'pending',
+      autoVerificationMessage: 'Verification files uploaded. Save your profile to start the 10-minute automatic verification.'
+    }));
+    try {
+      const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+    } catch (error) {
+      console.error("Error uploading ID card side:", error);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
     const file = e.target.files?.[0];
     if (file) {
-      const field = side === 'front' ? 'idCardFront' : 'idCardBack';
-      const previewUrl = URL.createObjectURL(file);
-      setBuddyData(prev => ({ ...prev, [field]: previewUrl, verificationStatus: 'processing' }));
-      triggerPolling();
-      try {
-        const updated = await buddyService.uploadIdCard(getBuddyId(), side, file);
-        setBuddyData(prev => ({ ...prev, ...updated }));
-        triggerPolling();
-      } catch (error) {
-        console.error("Error uploading ID card side:", error);
-      }
+      await uploadIdCardFile(side, file);
+      e.target.value = '';
+    }
+  };
+
+  const uploadSelfieFile = async (file: File) => {
+    if (!file.type.startsWith('video/')) {
+      alert("Verification requires a selfie video file.");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setSelfiePreviewIsVideo(true);
+    setBuddyData(prev => ({
+      ...prev,
+      selfieUrl: previewUrl,
+      verificationStatus: 'pending',
+      autoVerificationMessage: 'Verification files uploaded. Save your profile to start the 10-minute automatic verification.'
+    }));
+    try {
+      const updated = await buddyService.uploadSelfie(getBuddyId(), file);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+      setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl));
+    } catch (error) {
+      console.error("Error uploading selfie video:", error);
     }
   };
 
   const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('video/')) {
-        alert("Verification requires a video file for liveness detection.");
-        return;
-      }
-      const previewUrl = URL.createObjectURL(file);
-      setSelfiePreviewIsVideo(true);
-      setBuddyData(prev => ({ ...prev, selfieUrl: previewUrl, verificationStatus: 'processing' }));
-      triggerPolling();
-      try {
-        const updated = await buddyService.uploadSelfie(getBuddyId(), file);
-        setBuddyData(prev => ({ ...prev, ...updated }));
-        setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl));
-        triggerPolling();
-      } catch (error) {
-        console.error("Error uploading selfie video:", error);
-      }
+      await uploadSelfieFile(file);
+      e.target.value = '';
     }
   };
 
   const handleSaveAndNext = async () => {
+    if (buddyData.age != null && (buddyData.age < MIN_BUDDY_AGE || buddyData.age > MAX_BUDDY_AGE)) {
+      alert(`Buddy age must be between ${MIN_BUDDY_AGE} and ${MAX_BUDDY_AGE}.`);
+      return;
+    }
+    if (buddyData.price != null && (buddyData.price < MIN_HOURLY_RATE || buddyData.price > MAX_HOURLY_RATE)) {
+      alert(`Hourly rate must be between $${MIN_HOURLY_RATE} and $${MAX_HOURLY_RATE}.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const { reviews, id, verificationStatus, ...rest } = buddyData;
-      await buddyService.updateProfile(getBuddyId(), rest);
+      const updated = await buddyService.updateProfile(getBuddyId(), rest);
+      setBuddyData(prev => ({ ...prev, ...updated }));
+      setSelfiePreviewIsVideo(isVideoUrl(updated.selfieUrl));
       await updateUser({
-        name: buddyData.name,
-        location: buddyData.location,
-        description: buddyData.description,
-        avatar: buddyData.image,
-        verificationStatus: buddyData.verificationStatus
+        name: updated.name,
+        location: updated.location,
+        description: updated.description,
+        avatar: updated.image,
+        verificationStatus: updated.verificationStatus
       });
+      if (updated.verificationStatus === 'processing') {
+        triggerPolling();
+      }
       setStep(prev => prev + 1);
     } catch (error) {
       console.error("Error updating onboarding details:", error);
@@ -244,13 +331,13 @@ const BuddyOnboarding: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[8px] font-black text-secondary/40 uppercase tracking-widest ml-1">Age</label>
-                    <input name="age" type="number" value={buddyData.age || ''} onChange={handleChange} className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10"/>
+                    <input name="age" type="number" min={MIN_BUDDY_AGE} max={MAX_BUDDY_AGE} value={buddyData.age || ''} onChange={handleChange} className="w-full bg-surface border border-gray-100 rounded-xl px-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10"/>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[8px] font-black text-secondary/40 uppercase tracking-widest ml-1">Hourly Rate ($)</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-secondary/25 text-xs">$</span>
-                      <input name="price" type="number" value={buddyData.price || ''} onChange={handleChange} className="w-full bg-surface border border-gray-100 rounded-xl pl-8 pr-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10"/>
+                      <input name="price" type="number" min={MIN_HOURLY_RATE} max={MAX_HOURLY_RATE} step="1" value={buddyData.price || ''} onChange={handleChange} className="w-full bg-surface border border-gray-100 rounded-xl pl-8 pr-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10"/>
                     </div>
                   </div>
                 </div>
@@ -259,7 +346,21 @@ const BuddyOnboarding: React.FC = () => {
                   <label className="text-[8px] font-black text-secondary/40 uppercase tracking-widest ml-1">Base Location</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={14} />
-                    <input name="location" value={buddyData.location || ''} onChange={handleChange} placeholder="Da Nang, Vietnam" className="w-full bg-surface border border-gray-100 rounded-xl pl-10 pr-4 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10"/>
+                    <select
+                      name="location"
+                      value={buddyData.location || ''}
+                      onChange={handleLocationChange}
+                      className="w-full appearance-none bg-surface border border-gray-100 rounded-xl pl-10 pr-10 py-3 text-xs font-bold text-secondary outline-none focus:ring-2 focus:ring-primary/10 cursor-pointer"
+                    >
+                      <option value="" disabled>Select your base location</option>
+                      {buddyData.location && !BASE_LOCATION_OPTIONS.includes(buddyData.location) && (
+                        <option value={buddyData.location}>{buddyData.location}</option>
+                      )}
+                      {BASE_LOCATION_OPTIONS.map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-secondary/25" size={14} />
                   </div>
                 </div>
 
@@ -339,7 +440,7 @@ const BuddyOnboarding: React.FC = () => {
                   <p className="text-[8px] text-secondary/40 font-bold uppercase tracking-widest">Platform security relies on guide verification</p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-200/20 text-[7px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                  <Shield size={8} /> OCR SCAN
+                  <Shield size={8} /> AUTO VERIFY
                 </span>
               </div>
 
@@ -366,18 +467,24 @@ const BuddyOnboarding: React.FC = () => {
                     )}
                     <input type="file" ref={frontInputRef} onChange={(e) => handleFileUpload(e, 'front')} className="hidden" accept="image/jpeg,image/jpg,image/png,image/webp" />
                   </div>
-
-                  {buddyData.idCardFront && buddyData.qualityScore !== undefined && (
-                    <div className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider ${buddyData.qualityScore >= 70 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                      {buddyData.qualityScore >= 70 ? '✅ Resolution check passed' : '⚠️ Image resolution blurry'} ({Math.round(buddyData.qualityScore)}%)
-                    </div>
-                  )}
-                  {buddyData.idCardFront && buddyData.extractedFullName && (
-                    <div className="bg-surface border border-gray-100 rounded-xl p-3 text-[8px] space-y-1 font-black uppercase tracking-wider text-secondary/40 leading-none">
-                      <p><span className="opacity-55">Name:</span> <span className="text-secondary italic">{buddyData.extractedFullName}</span></p>
-                      {buddyData.extractedIdNumber && <p><span className="opacity-55">ID:</span> <span className="text-secondary">{buddyData.extractedIdNumber}</span></p>}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => frontInputRef.current?.click()}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                    >
+                      <Upload size={12} />
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptureMode({ type: 'id-card', side: 'front' })}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                    >
+                      <Camera size={12} />
+                      Camera
+                    </button>
+                  </div>
                 </div>
 
                 {/* ID back */}
@@ -402,6 +509,24 @@ const BuddyOnboarding: React.FC = () => {
                     )}
                     <input type="file" ref={backInputRef} onChange={(e) => handleFileUpload(e, 'back')} className="hidden" accept="image/jpeg,image/jpg,image/png,image/webp" />
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => backInputRef.current?.click()}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                    >
+                      <Upload size={12} />
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptureMode({ type: 'id-card', side: 'back' })}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                    >
+                      <Camera size={12} />
+                      Camera
+                    </button>
+                  </div>
                 </div>
 
                 {/* Selfie video */}
@@ -424,6 +549,24 @@ const BuddyOnboarding: React.FC = () => {
                       </>
                     )}
                     <input type="file" ref={selfieInputRef} onChange={handleSelfieUpload} className="hidden" accept="video/mp4,video/webm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selfieInputRef.current?.click()}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-surface text-[8px] font-black uppercase tracking-widest text-secondary/45"
+                    >
+                      <Upload size={12} />
+                      Upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptureMode({ type: 'selfie-video' })}
+                      className="flex h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-[8px] font-black uppercase tracking-widest text-primary"
+                    >
+                      <Camera size={12} />
+                      Record
+                    </button>
                   </div>
                 </div>
               </div>
@@ -479,7 +622,7 @@ const BuddyOnboarding: React.FC = () => {
                   <span className="font-black uppercase tracking-wider">Queue status</span>
                 </div>
                 <p className="text-secondary/70">
-                  {buddyData.autoVerificationMessage || "Your files are being processed. Verification completes within a few minutes."}
+                  {buddyData.autoVerificationMessage || "Your files are queued. Verification completes automatically after 10 minutes."}
                 </p>
               </div>
             </div>
@@ -525,6 +668,12 @@ const BuddyOnboarding: React.FC = () => {
           </div>
         </div>
       </div>
+      <VerificationCaptureModal
+        mode={captureMode}
+        onClose={() => setCaptureMode(null)}
+        onIdCardCaptured={uploadIdCardFile}
+        onSelfieRecorded={uploadSelfieFile}
+      />
     </div>
   );
 };

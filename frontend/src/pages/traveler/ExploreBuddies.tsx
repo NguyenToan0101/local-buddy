@@ -448,7 +448,7 @@ const ExploreBuddies: React.FC = () => {
 
             <div className="space-y-4">
               {[
-                { n: 1, title: 'Biometric Verification', desc: 'Buddies submit ID + face scans matched against government documents.' },
+                { n: 1, title: 'Identity Evidence Review', desc: 'Buddies submit ID documents and a selfie video before automatic profile activation.' },
                 { n: 2, title: 'Meet Publicly First', desc: 'Always make your first meetup in busy public places like cafes or hotel lobbies.' },
                 { n: 3, title: 'Live Location Sharing', desc: 'Share real-time location links from booking screens to trusted contacts.' },
               ].map(({ n, title, desc }) => (

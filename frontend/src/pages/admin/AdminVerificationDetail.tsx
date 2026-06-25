@@ -37,20 +37,13 @@ interface VerificationRecord {
   eVisaNumber?: string | null;
   eVisaCountry?: string | null;
   eVisaExpiryDate?: string | null;
-  extractedFullName?: string | null;
-  extractedIdNumber?: string | null;
-  extractedDateOfBirth?: string | null;
-  faceMatchScore?: number | null;
-  livenessScore?: number | null;
-  qualityScore?: number | null;
-  antiSpoofScore?: number | null;
+  verificationScore?: number | null;
   riskScore?: number | null;
   riskReason?: string | null;
   duplicateDetected?: boolean | null;
   duplicateUserId?: string | null;
   rejectionReason?: string | null;
   autoVerificationMessage?: string | null;
-  ocrScore?: number | null;
   age?: number;
 }
 
@@ -196,7 +189,7 @@ const AdminVerificationDetail: React.FC = () => {
       : [
           { label: 'ID front image', passed: Boolean(record.docs.front) },
           { label: 'ID back image', passed: Boolean(record.docs.back) },
-          { label: 'Selfie or liveness video', passed: Boolean(record.docs.selfie) },
+          { label: 'Selfie verification video', passed: Boolean(record.docs.selfie) },
         ];
   }, [record]);
 
@@ -400,7 +393,7 @@ const AdminVerificationDetail: React.FC = () => {
                 <section className="admin-card !rounded-2xl space-y-6">
                   <div>
                     <h2 className="text-xl font-black text-admin-main">EKYC Document Review</h2>
-                    <p className="mt-1 text-sm font-bold text-admin-muted">Compare identity documents with the liveness evidence.</p>
+                    <p className="mt-1 text-sm font-bold text-admin-muted">Review identity documents with the selfie evidence.</p>
                   </div>
 
                   {record.docs.front && record.docs.back ? (
@@ -450,22 +443,18 @@ const AdminVerificationDetail: React.FC = () => {
                     <h3 className="text-sm font-black uppercase tracking-[0.2em] text-admin-main">Identity Data</h3>
                     <div className="space-y-3">
                       <DetailRow icon={User} label="Official Name" value={record.name} />
-                      <DetailRow icon={FileText} label="OCR Name" value={record.extractedFullName || '-'} />
-                      <DetailRow icon={FileText} label="ID Number" value={record.extractedIdNumber || '-'} />
-                      <DetailRow icon={Calendar} label="DOB" value={record.extractedDateOfBirth || '-'} />
+                      <DetailRow icon={FileText} label="ID Front" value={record.docs.front ? 'Uploaded' : 'Missing'} />
+                      <DetailRow icon={FileText} label="ID Back" value={record.docs.back ? 'Uploaded' : 'Missing'} />
+                      <DetailRow icon={Calendar} label="Selfie Video" value={record.docs.selfie ? 'Uploaded' : 'Missing'} />
                     </div>
                   </section>
 
                   <section className="admin-card !rounded-2xl space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-admin-main">Auto Scores</h3>
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-admin-main">Automatic Verification</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        ['Face', record.faceMatchScore],
-                        ['Live', record.livenessScore],
-                        ['Quality', record.qualityScore],
-                        ['OCR', record.ocrScore],
+                        ['Score', record.verificationScore],
                         ['Risk', record.riskScore],
-                        ['Anti', record.antiSpoofScore == null ? null : 100 - record.antiSpoofScore],
                       ].map(([label, value]) => (
                         <div key={String(label)} className="border-b border-admin pb-3">
                           <p className="text-[9px] font-black uppercase tracking-widest text-admin-muted">{label}</p>
