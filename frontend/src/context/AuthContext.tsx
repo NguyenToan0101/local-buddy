@@ -49,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!cancelled) {
           localStorage.setItem('user', JSON.stringify(freshUser));
           setUser(freshUser);
+          // Khôi phục định danh GA4 khi user quay lại app
+          trackingService.identifyUser(freshUser);
         }
       } catch {
         if (!cancelled) {
@@ -71,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const { user, token } = await authService.login(email, password);
     storeAuth(user, token);
+    trackingService.identifyUser(user);
     void trackingService.track('LOGIN', { role: user.role });
     return user;
   };
@@ -78,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithToken = useCallback(async (token: string) => {
     const user = await authService.fetchMe(token);
     storeAuth(user, token);
+    trackingService.identifyUser(user);
     void trackingService.track('LOGIN', { role: user.role, method: 'token' });
     return user;
   }, [storeAuth]);
@@ -105,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    // Xóa định danh GA4 trước khi xóa session
+    trackingService.clearUser();
     clearAuth();
   };
 

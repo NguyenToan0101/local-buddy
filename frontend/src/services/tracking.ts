@@ -1,3 +1,5 @@
+import type { User } from './auth';
+
 const SENSITIVE_KEY_PARTS = ['password', 'token', 'secret', 'authorization', 'cookie', 'credential', 'apikey', 'api_key', 'session', 'user_id'];
 const MAX_METADATA_KEYS = 25;
 const GA4_MEASUREMENT_ID = 'G-9L0TFC23QJ';
@@ -155,6 +157,56 @@ export const trackingService = {
       // Analytics must never break the product flow.
     }
   },
+
+  /**
+   * Gắn định danh người dùng vào GA4.
+   * Chỉ dùng internal ID (UUID) — không gửi email hay tên thật.
+   */
+  identifyUser: (user: User) => {
+    try {
+      ensureGa4Loaded();
+
+      // Set user_id để GA4 stitch sessions cross-device
+      window.gtag?.('config', GA4_MEASUREMENT_ID, {
+        user_id: user.id,
+        send_page_view: false,
+      });
+
+      // Set user_properties — persist trên toàn bộ session
+      window.gtag?.('set', 'user_properties', {
+        user_role: user.role ?? null,
+        user_nationality: user.nationality ?? null,
+        verification_status: user.verificationStatus ?? null,
+        has_languages: Array.isArray(user.languages) && user.languages.length > 0 ? 'yes' : 'no',
+      });
+    } catch {
+      // Analytics must never break the product flow.
+    }
+  },
+
+  /**
+   * Xóa định danh người dùng khi logout.
+   */
+  clearUser: () => {
+    try {
+      if (!gaInitialized) return;
+
+      window.gtag?.('config', GA4_MEASUREMENT_ID, {
+        user_id: undefined,
+        send_page_view: false,
+      });
+
+      window.gtag?.('set', 'user_properties', {
+        user_role: null,
+        user_nationality: null,
+        verification_status: null,
+        has_languages: null,
+      });
+    } catch {
+      // Analytics must never break the product flow.
+    }
+  },
+
   heartbeat: async () => {
     // GA4 handles engagement collection client-side; the legacy heartbeat endpoint is no longer used.
   },
