@@ -300,21 +300,26 @@ const EarningsTab: React.FC = () => {
       </div>
 
       {/* 3. Transaction Logs - Filterable & Searchable Table */}
-      <div className="space-y-4 pt-4 border-t border-gray-100">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
-          <h4 className="text-xs font-black text-secondary uppercase tracking-wider">Transaction Ledger</h4>
+      <div className="space-y-6 pt-8 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
+          <div>
+            <h4 className="text-sm font-black text-secondary uppercase tracking-widest flex items-center gap-2">
+              <Sparkles size={16} className="text-primary animate-pulse" /> Transaction Ledger
+            </h4>
+            <p className="text-[9px] font-bold text-secondary/40 uppercase tracking-wider mt-1">Detailed history of all financial activities</p>
+          </div>
           
           <div className="flex flex-wrap items-center gap-3">
             {/* Filter buttons */}
-            <div className="flex bg-[#F3F4F6] rounded-xl p-1 shrink-0">
+            <div className="flex bg-slate-100/80 rounded-2xl p-1 shrink-0 backdrop-blur-md border border-white/50 shadow-inner">
               {(['all', 'income', 'withdrawal'] as const).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all border-none cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 border-none cursor-pointer ${
                     activeFilter === filter
-                    ? 'bg-white text-secondary shadow-sm'
-                    : 'text-secondary/40 hover:text-secondary/80'
+                    ? 'bg-white text-primary shadow-sm scale-100'
+                    : 'bg-transparent text-secondary/40 hover:text-secondary hover:bg-white/50 scale-95 hover:scale-100'
                   }`}
                 >
                   {filter}
@@ -323,52 +328,80 @@ const EarningsTab: React.FC = () => {
             </div>
 
             {/* Search Input */}
-            <div className="relative shrink-0 w-full sm:w-48">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary/35" />
+            <div className="relative shrink-0 w-full sm:w-64 group">
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/40 group-focus-within:text-primary transition-colors duration-300" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search ledger..."
-                className="w-full bg-[#F3F4F6]/60 border border-transparent rounded-xl py-2 pl-8 pr-3 text-[9px] font-black text-secondary placeholder:text-secondary/30 outline-none focus:bg-white focus:border-gray-200 transition-all"
+                placeholder="Search by name, description..."
+                className="w-full bg-slate-50/50 border border-slate-200/60 rounded-2xl py-3 pl-10 pr-4 text-[10px] font-bold text-secondary placeholder:text-secondary/30 outline-none focus:bg-white focus:border-primary/30 focus:shadow-[0_0_15px_rgba(255,122,69,0.1)] transition-all duration-300"
               />
             </div>
           </div>
         </div>
 
         {/* Ledger Rows */}
-        <div className="bg-white rounded-[24px] shadow-sm border border-gray-100/80 divide-y divide-gray-50 overflow-hidden">
-          {filteredTransactions.length > 0 ? (
-            filteredTransactions.map((t) => (
-              <div key={t.id} className="flex items-center justify-between p-4.5 hover:bg-gray-50/20 transition-all group">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                    t.type === 'income' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-gray-100 text-secondary/40'
-                  }`}>
-                    {t.type === 'income' ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}
+        <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden relative">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent"></div>
+          
+          <div className="divide-y divide-slate-50/80">
+            {filteredTransactions.length > 0 ? (
+              filteredTransactions.map((t, index) => (
+                <div 
+                  key={t.id} 
+                  className="flex items-center justify-between p-5 hover:bg-slate-50/50 transition-all duration-300 group relative overflow-hidden"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Hover gradient effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+
+                  <div className="flex items-center gap-4 min-w-0 relative z-10">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${
+                      t.type === 'income' 
+                      ? 'bg-gradient-to-br from-emerald-400/10 to-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                      : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500 border border-slate-200'
+                    }`}>
+                      {t.type === 'income' ? <ArrowUpRight size={20} strokeWidth={2.5} /> : <ArrowDownLeft size={20} strokeWidth={2.5} />}
+                    </div>
+                    <div className="min-w-0">
+                      <h5 className="text-[11px] font-black text-secondary uppercase tracking-widest truncate group-hover:text-primary transition-colors duration-300">
+                        {t.client || t.target || (t.type === 'income' ? 'System / Bonus' : 'Payout Account')}
+                      </h5>
+                      <p className="text-[9px] font-bold text-secondary/40 uppercase tracking-widest truncate mt-1">
+                        {t.activity || t.description || 'Account settlement action'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h5 className="text-[10px] font-black text-secondary uppercase tracking-widest truncate">{t.client || t.target || 'Payout Account'}</h5>
-                    <p className="text-[8.5px] font-bold text-secondary/40 uppercase tracking-wide truncate mt-0.5">{t.activity || 'Account settlement action'}</p>
+                  
+                  <div className="text-right shrink-0 relative z-10">
+                    <p className={`text-base font-black italic tracking-tight group-hover:scale-105 transition-transform duration-300 origin-right ${
+                      t.type === 'income' ? 'text-emerald-500' : 'text-slate-700'
+                    }`}>
+                      {t.type === 'income' ? '+' : '-'}${Math.abs(t.amount).toFixed(2)}
+                    </p>
+                    <div className="flex items-center justify-end gap-1.5 mt-1">
+                      <Clock size={10} className="text-secondary/20" />
+                      <p className="text-[9px] font-bold text-secondary/30 uppercase tracking-widest">
+                        {t.date || t.createdAt}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="text-right shrink-0">
-                  <p className={`text-sm font-black italic tracking-tight ${t.type === 'income' ? 'text-emerald-600' : 'text-secondary'}`}>
-                    {t.type === 'income' ? '+' : '-'}${Math.abs(t.amount).toFixed(2)}
-                  </p>
-                  <p className="text-[8px] font-bold text-secondary/20 uppercase tracking-widest mt-1">{t.date}</p>
+              ))
+            ) : (
+              <div className="py-24 text-center space-y-5 bg-slate-50/30">
+                <div className="w-16 h-16 bg-white shadow-sm border border-slate-100 rounded-[20px] flex items-center justify-center mx-auto text-secondary/20 relative">
+                  <Wallet size={24} />
+                  <div className="absolute inset-0 bg-primary/5 rounded-[20px] animate-pulse"></div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-black text-secondary/40 uppercase tracking-widest">No matching transactions</p>
+                  <p className="text-[9px] font-bold text-secondary/30 tracking-wider mt-1">Try adjusting your filters or search query</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="py-16 text-center space-y-4 bg-gray-50/10">
-              <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto text-secondary/15">
-                <Wallet size={22} />
-              </div>
-              <p className="text-[9px] font-black text-secondary/30 uppercase tracking-widest">No matching transactions</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
