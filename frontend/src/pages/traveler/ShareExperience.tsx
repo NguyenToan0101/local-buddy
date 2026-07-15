@@ -15,6 +15,7 @@ import {
   Tag,
   UserRound,
   X,
+  PlayCircle,
 } from 'lucide-react';
 import { bookingService, buddyService, experienceService } from '../../services/api';
 import type { Buddy } from '../../services/api';
@@ -190,7 +191,7 @@ const ShareExperience: React.FC = () => {
 
   const addImageFiles = (files: FileList | null) => {
     if (!files) return;
-    const nextFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    const nextFiles = Array.from(files).filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'));
     setImageFiles((current) => [...current, ...nextFiles].slice(0, 8));
   };
 
@@ -492,9 +493,20 @@ const ShareExperience: React.FC = () => {
                   {imagePreviews.length > 0 ? (
                     <div className="p-3">
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                        {imagePreviews.map((preview, index) => (
+                        {imagePreviews.map((preview, index) => {
+                          const isVideo = imageFiles[index]?.type.startsWith('video/');
+                          return (
                           <div key={preview} className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
-                            <img src={preview} alt={`Story preview ${index + 1}`} className="h-full w-full object-cover" />
+                            {isVideo ? (
+                              <>
+                                <video src={`${preview}#t=0.1`} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <PlayCircle size={24} className="text-white/70 drop-shadow-md" />
+                                </div>
+                              </>
+                            ) : (
+                              <img src={preview} alt={`Story preview ${index + 1}`} className="h-full w-full object-cover" />
+                            )}
                             <button
                               type="button"
                               onClick={() => removeImageFile(index)}
@@ -504,14 +516,15 @@ const ShareExperience: React.FC = () => {
                               <X size={16} strokeWidth={3} />
                             </button>
                           </div>
-                        ))}
+                          );
+                        })}
                         {imagePreviews.length < 8 && (
                           <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-primary/30 bg-white text-center transition hover:bg-primary/5">
                             <ImagePlus size={24} strokeWidth={3} className="text-primary" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Add more</span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,video/*"
                               multiple
                               className="hidden"
                               onChange={(event) => {
@@ -530,12 +543,12 @@ const ShareExperience: React.FC = () => {
                         <ImagePlus size={25} strokeWidth={3} />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-secondary">Upload real trip photos</p>
-                        <p className="mt-1 text-xs font-semibold text-secondary/45">Select up to 8 images. Each photo is stored in experience_images.</p>
+                        <p className="text-sm font-black text-secondary">Upload real trip media</p>
+                        <p className="mt-1 text-xs font-semibold text-secondary/45">Select up to 8 images or videos. Each media is stored in experience_images.</p>
                       </div>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,video/*"
                         multiple
                         className="hidden"
                         onChange={(event) => {
@@ -599,8 +612,19 @@ const ShareExperience: React.FC = () => {
             <p className="text-[9px] font-black uppercase tracking-widest text-secondary/35">Preview</p>
             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <div className="aspect-[16/9] bg-slate-100">
-                {imagePreviews[0] || buddyAvatar ? (
-                  <img src={imagePreviews[0] || buddyAvatar} alt="Experience preview" className="h-full w-full object-cover" />
+                {imagePreviews[0] ? (
+                  imageFiles[0]?.type.startsWith('video/') ? (
+                    <>
+                      <video src={`${imagePreviews[0]}#t=0.1`} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <PlayCircle size={48} className="text-white/70 drop-shadow-md" />
+                      </div>
+                    </>
+                  ) : (
+                    <img src={imagePreviews[0]} alt="Experience preview" className="h-full w-full object-cover" />
+                  )
+                ) : buddyAvatar ? (
+                  <img src={buddyAvatar} alt="Experience preview" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-secondary/25">
                     <ImagePlus size={38} />

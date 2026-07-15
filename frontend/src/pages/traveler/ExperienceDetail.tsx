@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  MapPin, Star, ChevronLeft, Compass, ArrowRight, Shield
+  MapPin, Star, ChevronLeft, Compass, ArrowRight, Shield, X, ChevronRight, PlayCircle
 } from 'lucide-react';
 import { buddyService, experienceService } from '../../services/api';
 import type { Experience, Buddy } from '../../services/api';
@@ -11,11 +11,28 @@ import ExperienceCard from '../../components/features/ExperienceCard';
 
 const ExperienceDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const [experience, setExperience] = useState<Experience | null>(null);
   const [buddy, setBuddy] = useState<Buddy | null>(null);
   const [similarExperiences, setSimilarExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+
+  const mediaList = experience?.images && experience.images.length > 0 
+    ? experience.images 
+    : (experience?.image ? [experience.image] : []);
+  
+  const isVideo = (url: string) => {
+    if (!url) return false;
+    return url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video');
+  };
+
+  const openGallery = (index: number) => {
+    setCurrentMediaIndex(index);
+    setIsGalleryOpen(true);
+  };
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -87,12 +104,26 @@ const ExperienceDetail: React.FC = () => {
         </section>
 
         {/* Hero Story Header - Unified Premium Container */}
-        <section className="relative rounded-[40px] md:rounded-[56px] overflow-hidden min-h-[480px] md:aspect-[21/9] shadow-premium-hover group bg-secondary">
-          <img 
-            src={experience.image} 
-            alt={experience.title} 
-            className="w-full h-full absolute inset-0 object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105"
-          />
+        <section 
+          className="relative rounded-[40px] md:rounded-[56px] overflow-hidden min-h-[480px] md:aspect-[21/9] shadow-premium-hover group bg-secondary"
+          onMouseEnter={() => heroVideoRef.current?.play().catch(() => {})}
+          onMouseLeave={() => heroVideoRef.current?.pause()}
+        >
+          {isVideo(experience.image) ? (
+            <video 
+              ref={heroVideoRef}
+              src={experience.image}
+              poster={experience.image.replace(/\.(mp4|webm|ogg)$/i, '.jpg')}
+              className="w-full h-full absolute inset-0 object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105"
+              muted loop playsInline
+            />
+          ) : (
+            <img 
+              src={experience.image} 
+              alt={experience.title} 
+              className="w-full h-full absolute inset-0 object-cover opacity-90 transition-transform duration-1000 group-hover:scale-105"
+            />
+          )}
           {/* Rich gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
           
@@ -160,26 +191,74 @@ const ExperienceDetail: React.FC = () => {
               </div>
               
               {/* Photo Memory Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-10">
-                <div className="md:col-span-7 rounded-[32px] overflow-hidden shadow-premium group/memory h-[320px] md:h-[400px] relative">
-                  <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Travel memory" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/memory:opacity-100 transition-opacity flex items-end p-6">
-                    <span className="text-white text-xs font-black uppercase tracking-wider">Explore Local Vibes</span>
-                  </div>
-                </div>
-                <div className="md:col-span-5 grid grid-rows-2 gap-6">
-                  <div className="rounded-[24px] overflow-hidden shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px] relative">
-                    <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
-                  </div>
-                  <div className="rounded-[24px] overflow-hidden relative shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px]">
-                    <img src={experience.image} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
-                    <div className="absolute inset-0 bg-secondary/85 backdrop-blur-sm flex flex-col items-center justify-center group/btn cursor-pointer transition-all hover:bg-secondary/70">
-                      <span className="text-white font-black text-sm uppercase tracking-widest transition-transform group-hover/btn:scale-105">+ 8 Photos</span>
-                      <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em] mt-1">Live Gallery</span>
+              {mediaList.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-10">
+                  <div 
+                    onClick={() => openGallery(0)}
+                    className="md:col-span-7 rounded-[32px] overflow-hidden shadow-premium group/memory h-[320px] md:h-[400px] relative cursor-pointer"
+                  >
+                    {isVideo(mediaList[0]) ? (
+                      <video src={`${mediaList[0]}#t=0.1`} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" muted loop playsInline preload="metadata" />
+                    ) : (
+                      <img src={mediaList[0]} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Travel memory" />
+                    )}
+                    {isVideo(mediaList[0]) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <PlayCircle size={64} className="text-white/80 drop-shadow-lg" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover/memory:opacity-100 transition-opacity flex items-end p-6">
+                      <span className="text-white text-xs font-black uppercase tracking-wider">Explore Local Vibes</span>
                     </div>
                   </div>
+                  
+                  {mediaList.length > 1 && (
+                    <div className="md:col-span-5 grid grid-rows-2 gap-6">
+                      <div 
+                        onClick={() => openGallery(1)}
+                        className="rounded-[24px] overflow-hidden shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px] relative cursor-pointer"
+                      >
+                        {isVideo(mediaList[1]) ? (
+                          <video src={`${mediaList[1]}#t=0.1`} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" muted loop playsInline preload="metadata" />
+                        ) : (
+                          <img src={mediaList[1]} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
+                        )}
+                        {isVideo(mediaList[1]) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <PlayCircle size={40} className="text-white/80 drop-shadow-lg" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {mediaList.length > 2 && (
+                        <div 
+                          onClick={() => openGallery(2)}
+                          className="rounded-[24px] overflow-hidden relative shadow-sm border border-gray-100 group/memory h-[148px] md:h-[188px] cursor-pointer"
+                        >
+                          {isVideo(mediaList[2]) ? (
+                            <video src={`${mediaList[2]}#t=0.1`} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" muted loop playsInline preload="metadata" />
+                          ) : (
+                            <img src={mediaList[2]} className="w-full h-full object-cover group-hover/memory:scale-105 transition-transform duration-700" alt="Memory" />
+                          )}
+                          {isVideo(mediaList[2]) && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <PlayCircle size={40} className="text-white/80 drop-shadow-lg" />
+                            </div>
+                          )}
+                          {mediaList.length > 3 && (
+                            <div className="absolute inset-0 bg-secondary/85 backdrop-blur-sm flex flex-col items-center justify-center group/btn cursor-pointer transition-all hover:bg-secondary/70">
+                              <span className="text-white font-black text-sm uppercase tracking-widest transition-transform group-hover/btn:scale-105">
+                                + {mediaList.length - 3} Media
+                              </span>
+                              <span className="text-[8px] font-black text-primary uppercase tracking-[0.2em] mt-1">Live Gallery</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </section>
           </div>
 
@@ -266,6 +345,53 @@ const ExperienceDetail: React.FC = () => {
         </section>
 
       </main>
+
+      {/* Lightbox Gallery */}
+      {isGalleryOpen && mediaList.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm">
+          <button 
+            onClick={() => setIsGalleryOpen(false)}
+            className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
+          >
+            <X size={32} />
+          </button>
+          
+          <button 
+            onClick={() => setCurrentMediaIndex((prev) => (prev > 0 ? prev - 1 : mediaList.length - 1))}
+            className="absolute left-6 text-white/50 hover:text-white transition-colors p-4"
+          >
+            <ChevronLeft size={48} />
+          </button>
+
+          <div className="max-w-5xl w-full max-h-[85vh] p-4 flex items-center justify-center">
+            {isVideo(mediaList[currentMediaIndex]) ? (
+              <video 
+                src={mediaList[currentMediaIndex]} 
+                controls 
+                autoPlay 
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              />
+            ) : (
+              <img 
+                src={mediaList[currentMediaIndex]} 
+                alt="Gallery item" 
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              />
+            )}
+          </div>
+
+          <button 
+            onClick={() => setCurrentMediaIndex((prev) => (prev < mediaList.length - 1 ? prev + 1 : 0))}
+            className="absolute right-6 text-white/50 hover:text-white transition-colors p-4"
+          >
+            <ChevronRight size={48} />
+          </button>
+          
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white font-bold tracking-widest text-sm bg-black/50 px-4 py-2 rounded-full backdrop-blur-md">
+            {currentMediaIndex + 1} / {mediaList.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
