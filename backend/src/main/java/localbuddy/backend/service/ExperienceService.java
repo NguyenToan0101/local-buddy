@@ -127,7 +127,13 @@ public class ExperienceService {
         if (!experience.getTraveler().getId().equals(currentUserId)) {
             throw new IllegalArgumentException("You are not allowed to update this experience.");
         }
-        String imageUrl = cloudinaryService.uploadImage(file, "local-buddy/experiences/" + experienceId);
+        String originalFilename = file.getOriginalFilename();
+        String imageUrl;
+        if (originalFilename != null && (originalFilename.toLowerCase().endsWith(".mp4") || originalFilename.toLowerCase().endsWith(".webm"))) {
+            imageUrl = cloudinaryService.uploadVideo(file, "local-buddy/experiences/" + experienceId);
+        } else {
+            imageUrl = cloudinaryService.uploadImage(file, "local-buddy/experiences/" + experienceId);
+        }
         saveImage(experience, imageUrl, displayOrder);
         return mapToDto(experience);
     }

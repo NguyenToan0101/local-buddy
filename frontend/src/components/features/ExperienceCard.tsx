@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Images, MapPin, Star } from 'lucide-react';
+import { Images, MapPin, Star, PlayCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { Experience } from '../../services/api';
 
@@ -11,6 +11,17 @@ const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
   const { user } = useAuth();
   const travelerInitials = (exp.travelerName || 'Traveler').slice(0, 2).toUpperCase();
   const imageCount = Array.isArray(exp.images) ? exp.images.length : exp.image ? 1 : 0;
+  
+  const isVideo = (url: string) => {
+    if (!url) return false;
+    return url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video');
+  };
+  const getThumbnail = (url: string) => {
+    if (isVideo(url)) {
+      return url.replace(/\.(mp4|webm|ogg)$/i, '.jpg');
+    }
+    return url;
+  };
   const detailPath = user?.role === 'TRAVELER'
     ? `/traveller/experience/${exp.id}`
     : user?.role === 'BUDDY'
@@ -27,10 +38,15 @@ const ExperienceCard: React.FC<ExperienceCardProps> = ({ experience: exp }) => {
     >
       <div className="relative h-[260px] w-full shrink-0 isolate overflow-hidden bg-slate-100">
         <img
-          src={exp.image}
+          src={getThumbnail(exp.image)}
           alt={exp.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
         />
+        {isVideo(exp.image) && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <PlayCircle size={48} className="text-white/60 drop-shadow-md" />
+          </div>
+        )}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           {imageCount > 1 && (
             <div className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/95 px-3 py-1.5 text-xs font-black text-secondary shadow-sm backdrop-blur-md">
